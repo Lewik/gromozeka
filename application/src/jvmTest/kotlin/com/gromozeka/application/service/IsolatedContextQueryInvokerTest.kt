@@ -91,6 +91,7 @@ class IsolatedContextQueryInvokerTest {
                 toolContext = mapOf(TOOL_CONTEXT_USER_ID to "operator",
                     TOOL_CONTEXT_CONVERSATION_ID to "target", TOOL_CONTEXT_THREAD_ID to "pinned", TOOL_CONTEXT_TARGET_MESSAGE_ID to "u",
                     TOOL_CONTEXT_PROJECT_ID to "project", TOOL_CONTEXT_AGENT_DEFINITION_ID to "agent"))),
+            lastIncludedMessageId = Conversation.Message.Id("u"),
             capturedAt = Instant.fromEpochMilliseconds(0), sourceMessageCount = 1, omittedTrailingMessageCount = 0,
         )
         val calls = mutableListOf<AiRuntimeRequest>()

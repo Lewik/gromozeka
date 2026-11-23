@@ -1730,8 +1730,10 @@ and Visual inventories also remove absent entries. The first post-upgrade baseli
 marks a replay boundary: unreconstructable pre-boundary reasoning is projected
 portably, and compaction carries the boundary forward. Isolated snapshots do not
 append history or affect later change detection.
-Worker Gateway protocol **32** carries the new instruction variant; update Server
-and Workers together.
+Worker Gateway protocol **32** introduced the instruction variant. Protocol **37**
+adds its keyed revision fields alongside the proactive-compaction wire changes.
+Update Server and Workers together; protocol 36 Workers are rejected during the
+handshake.
 
 Managed shell commands accept an optional `description`: a short user-facing
 purpose in the user's language, preferably **at most 50 characters including

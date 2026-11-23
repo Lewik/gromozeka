@@ -25,12 +25,12 @@ data class ConversationContextSnapshot(
     val runtimeSelection: AiRuntimeSelection,
     val resolvedRuntime: com.gromozeka.domain.service.ResolvedAiRuntime,
     val request: AiRuntimeRequest,
+    /** Last message in the pinned durable prefix, before ephemeral snapshot enrichment. */
+    val lastIncludedMessageId: Conversation.Message.Id?,
     val capturedAt: Instant,
     val sourceMessageCount: Int,
     val omittedTrailingMessageCount: Int,
-) {
-    val lastIncludedMessageId: Conversation.Message.Id? get() = request.messages.lastOrNull()?.id
-}
+)
 
 /**
  * Operates AFTER the normal provider/coverage projection. Never repairs or writes history.

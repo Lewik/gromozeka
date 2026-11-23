@@ -153,6 +153,7 @@ class ConversationContextSnapshotService(
             runtimeSelection = agent.runtimeSelection,
             resolvedRuntime = resolved,
             request = request,
+            lastIncludedMessageId = prefix.lastOrNull()?.id,
             capturedAt = capturedAt,
             sourceMessageCount = original.size,
             omittedTrailingMessageCount = projected.size - prefix.size,

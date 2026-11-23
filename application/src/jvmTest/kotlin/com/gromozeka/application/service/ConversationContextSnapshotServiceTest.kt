@@ -6,6 +6,7 @@ import com.gromozeka.domain.repository.ArtifactRepository
 import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.service.*
 import com.gromozeka.domain.tool.*
+import com.gromozeka.domain.visual.VisualRepository
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 import org.mockito.Mockito
@@ -40,6 +41,20 @@ class ConversationContextSnapshotServiceTest {
         Mockito.verify(f.conversations).getProject(f.conversation.id)
         Mockito.verifyNoMoreInteractions(f.conversations)
         Mockito.verifyNoInteractions(f.artifactRepository, f.contentStore)
+    }
+
+    @Test fun `ephemeral runtime observations do not replace the durable prefix boundary`() = runBlocking<Unit> {
+        val f = Fixture(includeRuntimeObservations = true)
+        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(listOf(f.user))
+
+        val snapshot = f.capture()
+
+        assertEquals(f.user.id, snapshot.lastIncludedMessageId)
+        assertEquals(f.user.id, snapshot.request.messages.first().id)
+        val observation = snapshot.request.messages.last()
+        assertIs<Conversation.Message.Author.Runtime>(observation.author)
+        assertTrue(observation.instructions.any { it is Conversation.Message.Instruction.RuntimeObservation })
+        assertNotEquals(snapshot.lastIncludedMessageId, observation.id)
     }
 
     @Test fun `history reader never follows an advanced current branch`() = runBlocking<Unit> {
@@ -290,7 +305,10 @@ class ConversationContextSnapshotServiceTest {
         assertFalse(error.toString().contains("PRIVATE_")); assertNull(error.cause)
     }
 
-    private class Fixture(nativeClaude: Boolean = false) {
+    private class Fixture(
+        nativeClaude: Boolean = false,
+        includeRuntimeObservations: Boolean = false,
+    ) {
         val now = Instant.fromEpochMilliseconds(0)
         val actor = User.Id("operator")
         val project = Project(Project.Id("project"), "Project", createdAt = now, lastUsedAt = now)
@@ -316,6 +334,7 @@ class ConversationContextSnapshotServiceTest {
         val skills = Mockito.mock(AgentSkillRuntimeCatalogService::class.java)
         val artifactRepository = Mockito.mock(ArtifactRepository::class.java)
         val contentStore = Mockito.mock(ArtifactContentStore::class.java)
+        private val visualRepository = Mockito.mock(VisualRepository::class.java)
         val pins = ReadOnlyTestPins()
         val baseCatalog = DistributedAiToolCatalogSnapshot(emptyList(), emptyMap(), emptyList(), "revision", "environment")
         var snapshotEnrichments = 0
@@ -329,6 +348,13 @@ class ConversationContextSnapshotServiceTest {
                 return request.copy(systemPrompts = request.systemPrompts + "read-only-runtime")
             }
         }
+        private val runtimeObservationEnricher = if (includeRuntimeObservations) {
+            ConversationRuntimeObservationService(
+                visualRepository,
+                InMemoryConversationRuntimeCoordinator(),
+                Mockito.mock(ConversationRuntimeMessageAppender::class.java),
+            )
+        } else null
         init {
             val connection = if (nativeClaude) AiConnection.ClaudeCode(AiConnection.Id("connection"), "Connection", enabled = true, executionTarget = AiExecutionTarget.Worker("synthetic-native-worker"))
                 else AiConnection.OpenAiSubscription(AiConnection.Id("connection"), "Connection", enabled = true)
@@ -345,10 +371,14 @@ class ConversationContextSnapshotServiceTest {
                 Mockito.`when`(prompts.assembleSystemPrompt(agent, RuntimeEnvironmentContext.ProjectBound(project,
                     RuntimeEnvironmentExecutor.Server, RuntimeEnvironmentContext.ConversationInfo(conversation.id, conversation.displayName))))
                     .thenReturn(listOf("base"))
+                if (includeRuntimeObservations) {
+                    Mockito.`when`(visualRepository.list(conversation.id)).thenReturn(emptyList())
+                }
             }
         }
         suspend fun capture() = ConversationContextSnapshotService(conversations, history, configuration, prompts, settings,
             catalog, skills, capabilities, AiToolRuntimeCatalogService(), MessageTemporalContextService(), StickyMessageInstructionService(),
-            ConversationArtifactApplicationService(artifactRepository, contentStore), ConversationPinnedPrompt(pins), listOf(enricher)).capture(target, conversation, agent, actor)
+            ConversationArtifactApplicationService(artifactRepository, contentStore), ConversationPinnedPrompt(pins),
+            listOfNotNull(enricher, runtimeObservationEnricher)).capture(target, conversation, agent, actor)
     }
 }

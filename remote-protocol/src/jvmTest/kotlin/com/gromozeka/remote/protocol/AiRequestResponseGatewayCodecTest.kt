@@ -121,6 +121,43 @@ class AiRequestResponseGatewayCodecTest {
     }
 
     @Test
+    fun keyedRuntimeObservationSurvivesWorkerRequestEncoding() = runBlocking {
+        val fixture = TestHandler()
+        val observation = Conversation.Message(
+            id = Conversation.Message.Id("runtime-observation"),
+            conversationId = Conversation.Id("conversation"),
+            role = Conversation.Message.Role.USER,
+            author = Conversation.Message.Author.Runtime(),
+            content = emptyList(),
+            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
+                text = "current state",
+                key = "visual-state:test",
+                revision = "revision-1",
+            )),
+            createdAt = Instant.fromEpochMilliseconds(0),
+        )
+        val request = fixture.runtimeRequest.copy(messages = listOf(observation))
+        val handler = object : AiRequestResponseExecutionHandler by fixture {
+            override suspend fun call(
+                runtime: ResolvedAiRuntime,
+                workspaceRootPath: String?,
+                request: AiRuntimeRequest,
+            ): AiRuntimeResponse {
+                assertEquals(listOf(observation), request.messages)
+                return fixture.runtimeResponse
+            }
+        }
+
+        val encoded = AiRequestResponseGatewayCodec.encodeCallRequest(fixture.runtime, null, request)
+        val wire = encoded.decodeToString()
+        kotlin.test.assertTrue(wire.contains("\"key\":\"visual-state:test\""))
+        kotlin.test.assertTrue(wire.contains("\"revision\":\"revision-1\""))
+        val response = AiRequestResponseGatewayCodec.execute(encoded, handler)
+
+        assertEquals(fixture.runtimeResponse, AiRequestResponseGatewayCodec.decodeCallResponse(response))
+    }
+
+    @Test
     fun `model discovery is connection scoped and rejects wrong executor or disabled connection`() = runBlocking<Unit> {
         val fixture = TestHandler()
         val worker = com.gromozeka.domain.service.ConversationRuntimeWorkerId("models-worker")
