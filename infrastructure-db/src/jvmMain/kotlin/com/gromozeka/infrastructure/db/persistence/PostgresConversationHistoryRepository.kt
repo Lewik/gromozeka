@@ -58,8 +58,10 @@ class PostgresConversationHistoryRepository(
         require(before == null || after == null)
         val boundary = when { before != null -> "AND tm.position < ?"; after != null -> "AND tm.position > ?"; else -> "" }
         val direction = if (after != null) "ASC" else "DESC"
-        return query("$JOIN WHERE tm.thread_id = ? $boundary ORDER BY tm.position $direction LIMIT ?",
-            listOfNotNull(threadId.value, before ?: after, limit)).sortedBy { it.position }
+        return query(
+            "$JOIN WHERE tm.thread_id = ? $boundary AND NOT $RUNTIME_OBSERVATION ORDER BY tm.position $direction LIMIT ?",
+            listOfNotNull(threadId.value, before ?: after, limit),
+        ).sortedBy { it.position }
     }
 
     override suspend fun position(threadId: Conversation.Thread.Id, messageId: Conversation.Message.Id): Int? = withContext(Dispatchers.IO) {
@@ -155,5 +157,6 @@ class PostgresConversationHistoryRepository(
         val THINKING_TYPE = Conversation.Message.ContentItem.Thinking.serializer().descriptor.serialName
         val TOOL_CALL_TYPE = Conversation.Message.ContentItem.ToolCall.serializer().descriptor.serialName
         const val JOIN = "SELECT tm.position, m.message_json FROM thread_messages tm JOIN messages m ON m.id = tm.message_id"
+        const val RUNTIME_OBSERVATION = "COALESCE((m.context_metadata_json::jsonb ->> 'runtimeObservation')::boolean, false)"
     }
 }

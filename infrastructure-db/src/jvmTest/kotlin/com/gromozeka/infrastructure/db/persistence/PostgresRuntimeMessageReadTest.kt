@@ -32,6 +32,39 @@ import kotlin.time.Clock
 
 class PostgresRuntimeMessageReadTest {
     @Test
+    fun `timeline paging counts visible rows without reading runtime observation bodies`() = runBlocking {
+        withFixture { f ->
+            val thread = f.conversation.currentThread
+            val first = f.message("visible-first")
+            f.save(first, thread, 0)
+            List(3) { index ->
+                f.message("runtime-observation-$index").copy(
+                    author = Conversation.Message.Author.Runtime(),
+                    content = emptyList(),
+                    instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
+                        text = "PRIVATE_STATE_${"x".repeat(250_000)}",
+                        key = "visual:$index",
+                        revision = "revision-$index",
+                    )),
+                ).let { if (index == 0) it.withDurableRuntimeObservationBoundary() else it }
+                    .also { f.save(it, thread, index + 1) }
+            }
+            val last = f.message("visible-last")
+            f.save(last, thread, 4)
+
+            lateinit var page: List<com.gromozeka.domain.repository.PositionedConversationMessage>
+            val measurement = f.measure {
+                page = f.history.page(thread, before = null, after = null, limit = 2)
+            }
+
+            assertEquals(listOf(first.id, last.id), page.map { it.message.id })
+            assertEquals(2L, measurement.bodies)
+            assertTrue(measurement.bytes < 10_000)
+            assertTrue(page.none { it.message.author is Conversation.Message.Author.Runtime })
+        }
+    }
+
+    @Test
     fun `V93 upgrades an existing V92 database after the batched legacy header backfill`() = runBlocking {
         withFixture(target = "90") { f ->
             val thread = f.conversation.currentThread
