@@ -57,7 +57,9 @@ BEGIN
             ((SELECT runtime_observation FROM facts) OR
                 ((SELECT count(*) FROM content) = 1 AND
                     EXISTS (SELECT 1 FROM content WHERE value ->> 'type' = 'ContextCompactionResult'))),
-        'runtimeObservation', (SELECT runtime_observation FROM facts)
+        'runtimeObservation', (SELECT runtime_observation FROM facts),
+        'keyedRuntimeObservation', (SELECT runtime_observation FROM facts) AND
+            NOT EXISTS (SELECT 1 FROM instructions WHERE value ->> 'key' IS NULL)
     )::text);
 EXCEPTION WHEN SQLSTATE '22P05' THEN
     RETURN NULL;

@@ -1282,17 +1282,27 @@ no reader fallback for old records; the default belongs only to new-panel creati
 Before each ordinary conversation LLM request,
 `ConversationRuntimeObservationService` compares saved Visual state with keyed
 observations already present in the current conversation history. It atomically
-appends one Runtime-authored USER message containing only changed observations:
+appends one first-class `RUNTIME` message containing only changed observations:
 a complete Visual inventory plus one full state snapshot for each changed enabled
 Visual. An unchanged large Visual is therefore not copied into every request, but
 its latest full keyed snapshot remains durable and survives Server restarts and
 copy-on-write branches. Any compaction checkpoint invalidates the inferred keyed
 frontier; the next ordinary request writes one complete baseline. The checkpoint
 carries an existing replay boundary when it covers one; otherwise that baseline
-establishes a new boundary. The message has no ordinary content, and its runtime
-instructions are removed from client history projections. It is invisible in the
-chat timeline, does not mark the conversation unread, and does not trigger an
-automatic response by itself.
+establishes a new boundary. Superseded Runtime generations are removed while
+selecting sparse model history, before their potentially large bodies are read.
+The retained delta chain is bounded to 1 MiB and 128 messages. If one complete
+baseline is itself larger than 1 MiB, that irreducible baseline is retained and
+only the additional delta tail is bounded to another 1 MiB, instead of copying the
+baseline on every small change.
+
+The Server stores the full Runtime instructions, but client events, point reads
+and paged history expose only a compact row shell. The shell is visible in the
+chat timeline as a Runtime observation and advances the client's history activity
+revision. It does not mark the conversation unread and does not trigger an
+automatic response by itself. Readable compaction never includes Runtime bodies
+in the summary prompt; the next ordinary model request records a fresh complete
+baseline when the compacted history no longer carries one.
 
 Disabled Visuals remain in the complete inventory as `state-status=disabled`,
 with metadata but no state or snapshot ID. A small keyed disabled marker replaces
@@ -1310,8 +1320,13 @@ compacted away, the next ordinary request writes the missing current snapshots
 again. An isolated context query remains read-only and receives one fresh ephemeral
 view. Before the first durable baseline, that ephemeral view is a request-local
 replay boundary; it never changes later durable revision detection. There is no
-backfill migration for old conversations: the first ordinary request after upgrade
-writes a complete baseline. JSON values are untrusted data
+Runtime-message body backfill for old conversations: V95 only recomputes the
+body-free context-selection metadata for existing messages, and the first ordinary
+request after upgrade writes a complete baseline. `RUNTIME` is intentionally a
+protocol role rather than a compatibility encoding. Server and desktop/mobile
+clients must therefore be updated together; an older client cannot deserialize a
+new Runtime row, and the controlled deployments do not keep a legacy projection.
+JSON values are untrusted data
 and XML delimiters are escaped; neither reminders nor client drafts implicitly
 submit forms. `get` remains useful for autonomous fresh reads, markup and diagnostics.
 

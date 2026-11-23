@@ -80,7 +80,9 @@ class MemoryApplicationService(
         namespace: MemoryNamespace,
     ): MemoryReadResult = collectMemoryRunTimings(llmCallObservers) { timingCollector ->
         val startedAt = Clock.System.now()
-        val memoryContextMessages = threadMessages.filterNot { it.isSyntheticMemoryRuntimeMessage() }
+        val memoryContextMessages = threadMessages.filter {
+            it.role != Conversation.Message.Role.RUNTIME && !it.isSyntheticMemoryRuntimeMessage()
+        }
         val targetIndex = memoryContextMessages.indexOfFirst { it.id == targetMessage.id }
         val contextMessages = if (targetIndex >= 0) {
             memoryContextMessages.take(targetIndex + 1)

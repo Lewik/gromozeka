@@ -150,6 +150,22 @@ class ConversationRuntimeObservationServiceTest {
     }
 
     @Test
+    fun `small command deltas do not recopy an irreducibly large Visual baseline`() = runBlocking {
+        val f = Fixture()
+        f.visuals = listOf(VISUAL.copy(state = json(
+            """{"form":{},"data":{"payload":"${"x".repeat(1_100_000)}"}}""",
+        )))
+        val baseline = f.append("large-baseline", emptyList()).single()
+        f.coordinator.upsertCommandTask(command("running", "Background work"))
+
+        val commandStarted = f.append("command-started", listOf(baseline)).single()
+
+        assertFalse(commandStarted.isDurableRuntimeObservationBoundary)
+        assertEquals(listOf(ConversationRuntimeObservationService.COMMANDS_KEY), commandStarted.observations().map { it.key })
+        assertFalse(commandStarted.toString().contains("x".repeat(1_000)))
+    }
+
+    @Test
     fun `closing a Visual after a selective checkpoint still replaces retained state`() = runBlocking {
         val f = Fixture()
         val baseline = f.append("baseline", emptyList()).single()

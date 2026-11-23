@@ -50,7 +50,7 @@ class ManualCompactionService internal constructor(
 
         val full = window.isFullSelection(requested)
         val selection = if (full && strategy == SquashType.COMPACT) window.prefix(toolCallPairingService)
-        else if (full) headers
+        else if (full) window.fullSelection()
         else {
             val paired = toolCallPairingService.includePairedHeaders(headers, requested)
             headers.filter { it.id in paired }

@@ -9,6 +9,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySource
+import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.service.ConversationDomainService
 import java.security.MessageDigest
 import org.springframework.stereotype.Service
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service
 @Service
 class MemoryOperationPreparer(
     private val conversationService: ConversationDomainService,
+    private val threadMessages: ThreadMessageRepository,
 ) {
     private val sourceMapper = ConversationMessageMemorySourceMapper()
 
@@ -25,7 +27,7 @@ class MemoryOperationPreparer(
     ): List<PreparedMemoryOperation> {
         val conversationId = Conversation.Id(conversationIdValue)
         val conversation = requireConversation(conversationId)
-        return conversationService.loadCurrentMessages(conversationId).mapNotNull { message ->
+        return threadMessages.getMessagesByThreadWithoutRuntime(conversation.currentThread).mapNotNull { message ->
             if (message.isSyntheticMemoryMessage()) {
                 return@mapNotNull null
             }
@@ -60,7 +62,7 @@ class MemoryOperationPreparer(
         val conversationId = Conversation.Id(conversationIdValue)
         val conversation = requireConversation(conversationId)
         val targetMessage = resolveTargetMessage(
-            conversationService.loadCurrentMessages(conversationId),
+            threadMessages.getMessagesByThreadWithoutRuntime(conversation.currentThread),
             targetMessageId,
         )
         return PreparedMemoryOperation(
@@ -147,7 +149,7 @@ class MemoryOperationPreparer(
         val conversationId = Conversation.Id(conversationIdValue)
         val conversation = requireConversation(conversationId)
         val targetMessage = resolveTargetMessage(
-            conversationService.loadCurrentMessages(conversationId),
+            threadMessages.getMessagesByThreadWithoutRuntime(conversation.currentThread),
             targetMessageId,
         )
         return PreparedMemoryOperation(
@@ -192,7 +194,7 @@ class MemoryOperationPreparer(
         val conversationId = Conversation.Id(conversationIdValue)
         val conversation = requireConversation(conversationId)
         val targetMessage = resolveTargetMessage(
-            conversationService.loadCurrentMessages(conversationId),
+            threadMessages.getMessagesByThreadWithoutRuntime(conversation.currentThread),
             targetMessageId,
         )
         return PreparedMemoryOperation(

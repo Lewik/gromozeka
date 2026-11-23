@@ -15,4 +15,6 @@ interface ConversationHistoryRepository {
     suspend fun selectedIds(threadId: Conversation.Thread.Id, selection: ConversationMessageSelection): List<Conversation.Message.Id>
     suspend fun latestUserMessage(threadId: Conversation.Thread.Id): PositionedConversationMessage?
     suspend fun latestUserActivity(threadId: Conversation.Thread.Id, userId: com.gromozeka.domain.model.User.Id): com.gromozeka.domain.model.ConversationUserActivity?
+    /** Latest matching user-instruction id, using body-free context metadata. */
+    suspend fun latestUserInstructionId(threadId: Conversation.Thread.Id, instructionIds: Set<String>): String?
 }

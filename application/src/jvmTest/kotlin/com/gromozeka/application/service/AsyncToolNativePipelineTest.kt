@@ -334,17 +334,31 @@ class AsyncToolNativePipelineTest {
             }
         }
         val scopes = AsyncToolScopeAccess(users, conversationRepo, projects, agents)
-        val admission = AsyncToolAdmissionService(store, scopes, conversations, agents, catalog, contexts, slots, approvals, coordinator, workers)
-        private val outcomes = AsyncToolOutcomeService(store, scopes)
-        private val historyStore = responding<ConversationHistoryRepository> {
-            assertEquals("thread", it.arguments[0])
-            val index = messages.indexOfFirst { message -> message.id.value == it.arguments[1] }
-            when (it.method.name.substringBefore('-')) {
-                "position" -> index.takeIf { position -> position >= 0 }
-                "message" -> index.takeIf { position -> position >= 0 }?.let { position -> PositionedConversationMessage(position, messages[position]) }
-                else -> error("Unexpected history read ${it.method.name}")
+        private val historyStore = responding<ConversationHistoryRepository> { invocation ->
+            assertEquals("thread", invocation.arguments[0])
+            when (invocation.method.name.substringBefore('-')) {
+                "position" -> messages.indexOfFirst { message -> message.id.value == invocation.arguments[1] }
+                    .takeIf { position -> position >= 0 }
+                "message" -> messages.indexOfFirst { message -> message.id.value == invocation.arguments[1] }
+                    .takeIf { position -> position >= 0 }
+                    ?.let { position -> PositionedConversationMessage(position, messages[position]) }
+                "latestUserInstructionId" -> {
+                    @Suppress("UNCHECKED_CAST")
+                    val ids = invocation.arguments[1] as Set<String>
+                    messages.asReversed().asSequence()
+                        .filter { it.author !is Conversation.Message.Author.Agent }
+                        .flatMap { it.instructions.asSequence() }
+                        .filterIsInstance<Conversation.Message.Instruction.UserInstruction>()
+                        .firstOrNull { it.id in ids }
+                        ?.id
+                }
+                else -> error("Unexpected history read ${invocation.method.name}")
             }
         }
+        val admission = AsyncToolAdmissionService(
+            store, scopes, conversations, agents, catalog, contexts, slots, approvals, coordinator, workers, historyStore,
+        )
+        private val outcomes = AsyncToolOutcomeService(store, scopes)
         private val history = ConversationHistoryReadService(conversationRepo, historyStore, coordinator)
         private val secrets = ToolSecretResolutionService(mock())
         private val parallel = ParallelToolExecutor(provider, approvals)

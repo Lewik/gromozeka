@@ -7,6 +7,7 @@ import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.isFullContextCompaction
+import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ProjectDomainService
@@ -373,6 +374,7 @@ class SearchToolsToolCallback(
     private val projectDomainService: ProjectDomainService,
     private val agentDomainService: AgentDomainService,
     private val conversationDomainService: ConversationDomainService,
+    private val messageHistory: ThreadMessageRepository,
     private val distributedToolCatalog: DistributedAiToolCatalog,
     private val agentSkillRuntimeCatalogService: AgentSkillRuntimeCatalogService,
     private val runtimeCatalogService: AiToolRuntimeCatalogService,
@@ -447,7 +449,7 @@ class SearchToolsToolCallback(
         val loadedToolNames = runtimeCatalogService.loadedToolNames(
             agent = agent,
             catalog = preparedCatalog,
-            messages = conversationDomainService.loadCurrentMessages(conversationId),
+            messages = messageHistory.getMessagesByThreadWithoutRuntime(conversation.currentThread),
             memoryEnabled = settingsProvider.userProfile.memorySettings.let { it.autoRemember || it.autoRecall },
         )
         val matches = searchService.search(

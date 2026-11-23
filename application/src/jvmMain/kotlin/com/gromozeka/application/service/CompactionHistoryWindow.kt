@@ -13,9 +13,20 @@ import com.gromozeka.domain.repository.ThreadMessageRepository
 internal class CompactionHistoryWindow(val headers: List<CompactionMessageHeader>) {
     private val index = ConversationCompactionIndex(headers.map { it.node })
     private val positions = headers.mapIndexed { i, header -> header.id to i }.toMap()
-    private val visible by lazy { index.project().map { headers[positions.getValue(it.id)] } }
+    private val latestRuntimeBaseline = headers.indexOfLast {
+        it.role == Message.Role.RUNTIME && it.durableRuntimeObservationBoundary
+    }
+    private fun isSupersededRuntimeObservation(header: CompactionMessageHeader): Boolean =
+        latestRuntimeBaseline > 0 && header.role == Message.Role.RUNTIME &&
+            positions.getValue(header.id) < latestRuntimeBaseline
+    private val visible by lazy {
+        index.project().map { headers[positions.getValue(it.id)] }
+            .filterNot(::isSupersededRuntimeObservation)
+    }
 
     fun isFullSelection(selected: Set<Message.Id>): Boolean = visible.all { it.id in selected }
+
+    fun fullSelection(): List<CompactionMessageHeader> = headers.filterNot(::isSupersededRuntimeObservation)
 
     fun prefix(pairs: ToolCallPairingService): List<CompactionMessageHeader> {
         val invalidated = headers.flatMap { it.coverage }.flatMapTo(mutableSetOf()) { it.invalidatedReplayMessageIds }
@@ -41,7 +52,11 @@ internal class CompactionHistoryWindow(val headers: List<CompactionMessageHeader
             val paired = pairs.includePairedHeaders(visible, headers.subList(boundary, headers.size).map { it.id })
             boundary = minOf(boundary, paired.minOf { positions.getValue(it) })
         } while (boundary != previous)
-        return if (visible.any { positions.getValue(it.id) < boundary }) headers.take(boundary) else emptyList()
+        return if (visible.any { positions.getValue(it.id) < boundary }) {
+            headers.take(boundary).filterNot(::isSupersededRuntimeObservation)
+        } else {
+            emptyList()
+        }
     }
 
     suspend fun messages(
@@ -85,6 +100,7 @@ internal class CompactionHistoryWindow(val headers: List<CompactionMessageHeader
         val portableBodyIndex = replayBoundary.takeIf { it >= 0 }?.let { boundary ->
             bodies.indexOfFirst { positions.getValue(it.id) >= boundary }.takeIf { it >= 0 } ?: bodies.size
         }
-        return ConversationContext(bodies, index, portableBodyIndex).messagesForProvider(provider, visibleIds)
+        val projected = ConversationContext(bodies, index, portableBodyIndex).messagesForProvider(provider, visibleIds)
+        return if (provider == null) projected.filterNot { it.role == Message.Role.RUNTIME } else projected
     }
 }

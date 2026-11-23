@@ -65,8 +65,8 @@ class MemoryOperationContextResolver(
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalArgumentException("Conversation not found: ${conversationId.value}")
         val threadMessages = threadId
-            ?.let { threadMessageRepository.getMessagesByThread(it) }
-            ?: conversationService.loadCurrentMessages(conversationId)
+            ?.let { threadMessageRepository.getMessagesByThreadWithoutRuntime(it) }
+            ?: threadMessageRepository.getMessagesByThreadWithoutRuntime(conversation.currentThread)
         val contextualAgentId = threadMessages.asReversed()
             .mapNotNull { (it.author as? Conversation.Message.Author.Agent)?.agentDefinitionId }
             .firstOrNull()

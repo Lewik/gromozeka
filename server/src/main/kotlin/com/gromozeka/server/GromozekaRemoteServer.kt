@@ -786,7 +786,6 @@ class GromozekaRemoteServer(
                     )
                 )
                 is ForkConversationRequest -> ConversationResponse(conversationDomainService.fork(request.conversationId))
-                is LoadCurrentMessagesRequest -> MessagesResponse(conversationDomainService.loadCurrentMessages(request.conversationId))
                 is RegenerateSuggestedRepliesRequest -> SuggestedRepliesResponse(
                     sourceMessageId = request.sourceMessageId,
                     replies = conversationDomainService.regenerateSuggestedReplies(

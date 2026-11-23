@@ -85,12 +85,12 @@ class ConversationHistoryReadServiceTest {
     }
 
     @Test
-    fun pointReadsFollowCurrentThreadWithoutProjectingOrScanningHistory() = runBlocking {
+    fun pointReadsKeepCanonicalRuntimeStateInternalWithoutScanningHistory() = runBlocking {
         val oldThread = Conversation.Thread.Id("old-thread")
         var conversation: Conversation? = Conversation(conversationId, Project.Id("project"),
             setOf(Conversation.Participant.User(com.gromozeka.domain.model.User.Id("user"))),
             currentThread = threadId, createdAt = now, updatedAt = now)
-        val message = Conversation.Message(Conversation.Message.Id("target"), conversationId,
+        var stored = Conversation.Message(Conversation.Message.Id("target"), conversationId,
             role = Conversation.Message.Role.ASSISTANT, content = listOf(
                 Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("x".repeat(80_000)))),
             providerMetadata = kotlinx.serialization.json.buildJsonObject {
@@ -100,9 +100,9 @@ class ConversationHistoryReadServiceTest {
         val repository = stub<ConversationHistoryRepository> { method, args ->
             val name = method.substringBefore('-')
             calls += name
-            val matches = args[0] == threadId.value && args[1] == message.id.value
+            val matches = args[0] == threadId.value && args[1] == stored.id.value
             when (name) {
-                "message" -> if (matches) PositionedConversationMessage(0, message) else null
+                "message" -> if (matches) PositionedConversationMessage(0, stored) else null
                 "position" -> if (matches) 0 else null
                 else -> error("Point reads must not scan history: $name")
             }
@@ -111,18 +111,26 @@ class ConversationHistoryReadServiceTest {
             stub<ConversationRepository> { method, _ -> check(method.startsWith("findById")); conversation },
             repository, InMemoryConversationRuntimeCoordinator(),
         )
-        assertTrue(service.containsMessage(conversationId, message.id))
+        assertTrue(service.containsMessage(conversationId, stored.id))
         assertEquals(listOf("position"), calls)
-        assertEquals(message, service.findMessage(conversationId, message.id))
-        assertEquals(message, service.message(conversationId, message.id))
+        assertEquals(stored, service.findMessage(conversationId, stored.id))
+        assertEquals(stored, service.message(conversationId, stored.id))
+        stored = stored.copy(
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = emptyList(),
+            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("PRIVATE_STATE", "state", "revision")),
+        )
+        assertEquals(stored, service.findMessage(conversationId, stored.id))
+        assertEquals(ConversationMessageProjection.projectEvent(stored), service.message(conversationId, stored.id))
         conversation = conversation!!.copy(currentThread = oldThread)
-        assertFalse(service.containsMessage(conversationId, message.id))
-        kotlin.test.assertNull(service.findMessage(conversationId, message.id))
-        kotlin.test.assertFailsWith<IllegalArgumentException> { service.message(conversationId, message.id) }
+        assertFalse(service.containsMessage(conversationId, stored.id))
+        kotlin.test.assertNull(service.findMessage(conversationId, stored.id))
+        kotlin.test.assertFailsWith<IllegalArgumentException> { service.message(conversationId, stored.id) }
         conversation = null
         val before = calls.size
-        kotlin.test.assertFailsWith<IllegalArgumentException> { service.findMessage(conversationId, message.id) }
-        kotlin.test.assertFailsWith<IllegalArgumentException> { service.containsMessage(conversationId, message.id) }
+        kotlin.test.assertFailsWith<IllegalArgumentException> { service.findMessage(conversationId, stored.id) }
+        kotlin.test.assertFailsWith<IllegalArgumentException> { service.containsMessage(conversationId, stored.id) }
         assertEquals(before, calls.size)
     }
 

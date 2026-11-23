@@ -639,7 +639,9 @@ class ConversationEngineDeliveryTest {
 
     @Test fun `incident recovers only the admitted async receipt and never repeats ordinary or missing async siblings`() = runBlocking {
         val operations = TestAsyncToolOperations()
-        val recovery = AsyncToolAdmissionService(operations, mock(), mock(), mock(), mock(), mock(), mock(), mock(), mock(), mock())
+        val recovery = AsyncToolAdmissionService(
+            operations, mock(), mock(), mock(), mock(), mock(), mock(), mock(), mock(), mock(), mock(),
+        )
         val f = Fixture(asyncRecovery = recovery)
         val running = f.begin()
         fun call(id: String, async: Boolean) = ContentItem.ToolCall(ContentItem.ToolCall.Id(id), ContentItem.ToolCall.Data(id,
@@ -1357,15 +1359,22 @@ class ConversationEngineDeliveryTest {
         }
         val contextReads = mutableListOf<String?>()
         private val contextHistory = responding<com.gromozeka.domain.repository.ThreadMessageRepository> {
-            check(it.method.name.substringBefore('-') == "getContextMessagesByThread")
             assertEquals(currentConversation.currentThread.value, it.arguments[0])
-            val provider = it.arguments[1] as String?
-            contextReads += provider
-            val selected = selectModelHistoryMessageIds(
-                messages.map { message -> MessageContextHeader(message.id, MessageContextMetadata.from(message)) },
-                messages.filter { message -> MessageContextMetadata.from(message).hasCompaction }, provider,
-            )
-            messages.filter { message -> message.id in selected }
+            when (it.method.name.substringBefore('-')) {
+                "getContextMessagesByThread" -> {
+                    val provider = it.arguments[1] as String?
+                    contextReads += provider
+                    val selected = selectModelHistoryMessageIds(
+                        messages.map { message -> MessageContextHeader(message.id, MessageContextMetadata.from(message)) },
+                        messages.filter { message -> MessageContextMetadata.from(message).hasCompaction }, provider,
+                    )
+                    messages.filter { message -> message.id in selected }
+                }
+                "getMessagesByThreadWithoutRuntime" -> messages.filter { message ->
+                    message.role != Conversation.Message.Role.RUNTIME
+                }
+                else -> error("Unexpected context history operation: ${it.method.name}")
+            }
         }
         var historyMessageReads = 0
         private val history = ConversationHistoryReadService(

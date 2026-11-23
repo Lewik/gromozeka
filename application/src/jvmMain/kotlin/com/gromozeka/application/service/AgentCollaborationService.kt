@@ -26,7 +26,6 @@ class AgentCollaborationService(
     private val stateSync: ConversationRuntimeStateSyncService,
     private val tabLayouts: UserConversationTabLayoutService,
     private val messageHistory: ConversationHistoryRepository,
-    private val history: ConversationDomainService? = null,
 ) {
     val wakeups = Channel<Unit>(Channel.CONFLATED)
     fun signal() { wakeups.trySend(Unit) }
@@ -160,15 +159,15 @@ class AgentCollaborationService(
     }
 
     internal suspend fun readOnlyOrigin(source: AgentContextRef, actor: User.Id, sourceMessageId: Conversation.Message.Id): Boolean {
-        val userMode = history?.loadCurrentMessages(source.conversationId).orEmpty()
-            .filter { it.author !is Conversation.Message.Author.Agent }.flatMap { it.instructions }
-            .filterIsInstance<Conversation.Message.Instruction.UserInstruction>()
-            .lastOrNull { it.id == "mode_readonly" || it.id == "mode_writable" }
+        val userMode = messageHistory.latestUserInstructionId(
+            source.threadId,
+            setOf("mode_readonly", "mode_writable"),
+        )
         val inherited = repository.findDelivery(sourceMessageId.value)
         require(inherited == null || (inherited.target.address == source.address && inherited.actorUserId == actor)) {
             "Originating collaboration message belongs to another session"
         }
-        return userMode?.id == "mode_readonly" || inherited?.readOnly == true ||
+        return userMode == "mode_readonly" || inherited?.readOnly == true ||
             repository.requests(source.conversationId).any { it.target.address == source.address && it.isOpen && it.readOnly }
     }
 

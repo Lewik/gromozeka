@@ -105,12 +105,14 @@ class ConversationPinnedPromptTest {
         Mockito.`when`(assembly.assembleSystemPrompt(agent, RuntimeEnvironmentContext.Standalone(RuntimeEnvironmentExecutor.Server))).thenReturn(listOf("standalone base"))
         val tools = Mockito.mock(AiToolProvider::class.java)
         Mockito.`when`(tools.getTools()).thenReturn(emptyList())
+        val threadMessages = Mockito.mock(com.gromozeka.domain.repository.ThreadMessageRepository::class.java)
+        Mockito.`when`(threadMessages.getMessagesByThreadWithoutRuntime(conversation.currentThread)).thenReturn(emptyList())
         val resolver = com.gromozeka.application.service.memory.MemoryOperationContextResolver(conversations,
             Mockito.mock(AgentDomainService::class.java), assembly, defaults, Mockito.mock(WorkspaceDomainService::class.java),
             Mockito.mock(ProjectDomainService::class.java), ConversationRuntimeExecutorDescriptor(
                 ConversationRuntimeExecutorIdentity.Server(ConversationRuntimeServerSessionId("server")), setOf(ConversationRuntimeCapability.MEMORY_PIPELINE)),
             tools, Mockito.mock(com.gromozeka.domain.repository.MessageRepository::class.java),
-            Mockito.mock(com.gromozeka.domain.repository.ThreadMessageRepository::class.java))
+            threadMessages)
         val resolved = resolver.resolveConversation(owner)
         assertEquals(owner, (resolved.runtimeContext as RuntimeEnvironmentContext.ProjectBound).conversation?.id)
         assertEquals(listOf("unchanged base"), resolved.systemPrompts)

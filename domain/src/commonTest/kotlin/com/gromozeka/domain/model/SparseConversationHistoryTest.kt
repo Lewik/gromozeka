@@ -141,6 +141,37 @@ class SparseConversationHistoryTest {
     }
 
     @Test
+    fun supersededRuntimeObservationGenerationsAreExcludedBeforeHydration() {
+        fun observation(id: String, revision: String, boundary: Boolean = false): Message {
+            val message = text(id).copy(
+                role = Message.Role.RUNTIME,
+                author = Message.Author.Runtime(),
+                content = emptyList(),
+                instructions = listOf(Message.Instruction.RuntimeObservation("state-$revision", "state", revision)),
+            )
+            return if (boundary) message.withDurableRuntimeObservationBoundary() else message
+        }
+        val human = text("human")
+        val oldBaseline = observation("old-baseline", "old-0", boundary = true)
+        val oldDelta = observation("old-delta", "old-1")
+        val currentBaseline = observation("current-baseline", "current-0", boundary = true)
+        val currentDelta = observation("current-delta", "current-1")
+        val history = listOf(human, oldBaseline, oldDelta, currentBaseline, currentDelta)
+
+        val selected = select(history, null)
+
+        assertTrue(human.id in selected)
+        assertTrue(currentBaseline.id in selected)
+        assertTrue(currentDelta.id in selected)
+        assertTrue(oldBaseline.id !in selected)
+        assertTrue(oldDelta.id !in selected)
+        assertEquals(
+            ConversationContext(history).messagesForProvider(null),
+            ConversationContext(history.filter { it.id in selected }).messagesForProvider(null),
+        )
+    }
+
+    @Test
     fun retainsNativeUsageObservationsEvenWhenSelectiveCoverageHidesTheirMessages() {
         fun observation(id: String, tokens: JsonElement) = text(id).copy(role = Message.Role.ASSISTANT,
             content = listOf(ContentItem.AssistantMessage(Message.StructuredText(id))),

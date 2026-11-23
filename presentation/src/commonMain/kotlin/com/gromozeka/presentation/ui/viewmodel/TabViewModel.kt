@@ -483,7 +483,7 @@ class TabViewModel(
                         true
                     } else {
                         applyHistoryEvent(event)
-                        if (runtimeReplayCompleted && event.message.role != Conversation.Message.Role.RUNTIME) {
+                        if (runtimeReplayCompleted) {
                             _historyActivityRevision.update { it + 1 }
                         }
                         false

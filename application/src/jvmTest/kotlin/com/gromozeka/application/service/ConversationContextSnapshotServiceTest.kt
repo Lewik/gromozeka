@@ -17,7 +17,7 @@ class ConversationContextSnapshotServiceTest {
     @Test fun `pinned prefix includes available runtime layers without turn preparation or catalog writes`() = runBlocking<Unit> {
         val f = Fixture()
         val original = listOf(f.user, f.incompleteCall)
-        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(original)
+        f.historyMessages = original
         val snapshot = f.capture()
         assertEquals(f.target, snapshot.target)
         assertEquals(2, snapshot.sourceMessageCount)
@@ -32,7 +32,7 @@ class ConversationContextSnapshotServiceTest {
 
         assertEquals(1, f.snapshotEnrichments)
         assertEquals(original, listOf(f.user, f.incompleteCall))
-        Mockito.verify(f.history).getMessagesByThread(f.target.threadId)
+        f.verifyHistoryRead()
         Mockito.verifyNoMoreInteractions(f.history)
         Mockito.verify(f.catalog).readSnapshot(f.project, f.agent.toolAccess, f.conversation)
         Mockito.verifyNoMoreInteractions(f.catalog)
@@ -45,7 +45,7 @@ class ConversationContextSnapshotServiceTest {
 
     @Test fun `ephemeral runtime observations do not replace the durable prefix boundary`() = runBlocking<Unit> {
         val f = Fixture(includeRuntimeObservations = true)
-        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(listOf(f.user))
+        f.historyMessages = listOf(f.user)
 
         val snapshot = f.capture()
 
@@ -67,7 +67,7 @@ class ConversationContextSnapshotServiceTest {
             content = emptyList(),
             instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("old state", "state", "old")),
         ).withDurableRuntimeObservationBoundary()
-        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(listOf(retained, f.user))
+        f.historyMessages = listOf(retained, f.user)
 
         val snapshot = f.capture()
 
@@ -93,7 +93,7 @@ class ConversationContextSnapshotServiceTest {
                 ),
             )),
         )
-        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(listOf(f.user, checkpoint))
+        f.historyMessages = listOf(f.user, checkpoint)
 
         val snapshot = f.capture()
         val projected = snapshot.request.projectedMessages(AiConnection.Kind.OPENAI_SUBSCRIPTION.name)
@@ -109,17 +109,17 @@ class ConversationContextSnapshotServiceTest {
         val f = Fixture()
         val advanced = f.conversation.copy(currentThread = Conversation.Thread.Id("advanced"))
         Mockito.`when`(f.conversations.findById(f.conversation.id)).thenReturn(advanced)
-        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(listOf(f.user))
+        f.historyMessages = listOf(f.user)
         val snapshot = f.capture()
         assertEquals(f.target.threadId, snapshot.target.threadId)
-        Mockito.verify(f.history).getMessagesByThread(f.target.threadId)
+        f.verifyHistoryRead()
         Mockito.verifyNoMoreInteractions(f.history)
         Mockito.verify(f.conversations, Mockito.never()).findById(f.conversation.id)
     }
 
     @Test fun `missing mandatory cached catalog fails instead of reduced history-only view`() = runBlocking<Unit> {
         val f = Fixture()
-        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(listOf(f.user))
+        f.historyMessages = listOf(f.user)
         Mockito.`when`(f.capabilities.cachedPromptFor(emptyList())).thenThrow(ContextSnapshotUnavailableException("not ready"))
         assertFailsWith<ContextSnapshotUnavailableException> { f.capture() }
         assertEquals(0, f.snapshotEnrichments)
@@ -136,7 +136,7 @@ class ConversationContextSnapshotServiceTest {
         Mockito.`when`(f.settings.userProfile).thenReturn(UserProfile(messageInstructionGroups = listOf(group)))
         val first = f.user.copy(instructions = listOf(retained))
         val tail = f.user.copy(id = Conversation.Message.Id("excluded"), instructions = listOf(newer))
-        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(listOf(first, f.incompleteCall, tail))
+        f.historyMessages = listOf(first, f.incompleteCall, tail)
         val snapshot = f.capture()
         assertEquals(listOf(retained), snapshot.request.messages.single().instructions.filterIsInstance<Conversation.Message.Instruction.UserInstruction>())
         assertEquals(2, snapshot.omittedTrailingMessageCount)
@@ -148,7 +148,7 @@ class ConversationContextSnapshotServiceTest {
         val calls = f.incompleteCall.copy(content = listOf(toolCall("a"), toolCall("b")))
         val onlyFirstResult = f.user.copy(id = Conversation.Message.Id("result-a"), content = listOf(toolResult("a")))
         for (raw in listOf(emptyList(), listOf(streaming), listOf(calls, onlyFirstResult))) {
-            Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(raw)
+            f.historyMessages = raw
             val snapshot = f.capture()
             assertTrue(snapshot.request.messages.isEmpty())
             assertEquals(raw.size, snapshot.sourceMessageCount)
@@ -163,7 +163,7 @@ class ConversationContextSnapshotServiceTest {
         val checkpoint = f.user.copy(id = Conversation.Message.Id("native-checkpoint"), role = Conversation.Message.Role.ASSISTANT,
             content = listOf(summary(listOf(f.user.id), Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS, native = true),
                 Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("still streaming"), state = Conversation.Message.BlockState.STREAMING)))
-        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(listOf(f.user, checkpoint))
+        f.historyMessages = listOf(f.user, checkpoint)
         assertFailsWith<ContextSnapshotUnavailableException> { f.capture() }
     }
 
@@ -172,7 +172,7 @@ class ConversationContextSnapshotServiceTest {
         val checkpoint = f.user.copy(id = Conversation.Message.Id("selective-checkpoint"), role = Conversation.Message.Role.ASSISTANT,
             content = listOf(summary(listOf(f.user.id), Conversation.Message.ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES),
                 Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("still streaming"), state = Conversation.Message.BlockState.STREAMING)))
-        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(listOf(f.user, checkpoint))
+        f.historyMessages = listOf(f.user, checkpoint)
         assertFailsWith<ContextSnapshotUnavailableException> { f.capture() }
     }
 
@@ -182,7 +182,7 @@ class ConversationContextSnapshotServiceTest {
             summary(listOf(f.user.id), Conversation.Message.ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES)))
         val raw = listOf(f.user, f.incompleteCall, checkpoint)
         assertTrue(raw.flatMap { it.content }.none { it.state == Conversation.Message.BlockState.STREAMING })
-        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(raw)
+        f.historyMessages = raw
         assertFailsWith<ContextSnapshotUnavailableException> { f.capture() }
     }
 
@@ -194,7 +194,7 @@ class ConversationContextSnapshotServiceTest {
             val second = f.user.copy(id = Conversation.Message.Id("result-b"), content = listOf(toolResult("b")))
             val checkpoint = f.user.copy(id = Conversation.Message.Id("completed-checkpoint"), content = listOf(
                 summary(listOf(calls.id, first.id, second.id), coverage)))
-            Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(listOf(f.user, calls, first, second, checkpoint))
+            f.historyMessages = listOf(f.user, calls, first, second, checkpoint)
             val snapshot = f.capture()
             val expected = if (coverage == Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS)
                 listOf(checkpoint.id) else listOf(f.user.id, checkpoint.id)
@@ -231,7 +231,7 @@ class ConversationContextSnapshotServiceTest {
                 sourceMessageIds = item.sourceMessageIds.map(ids::getValue),
                 invalidatedReplayMessageIds = item.invalidatedReplayMessageIds.map { ids[it] ?: it },
             ) else item }) }
-        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(forked)
+        f.historyMessages = forked
         val snapshot = f.capture()
         val expectedIds = listOf("fork-checkpoint", "fork-retained", "fork-calls", "fork-result-a", "fork-result-b", "fork-summary", "fork-tail")
         assertEquals(expectedIds, snapshot.request.messages.map { it.id.value })
@@ -327,7 +327,7 @@ class ConversationContextSnapshotServiceTest {
 
     @Test fun `pins are the last application block and query keeps the target owner under synthetic invocation`() = runBlocking<Unit> {
         val f = Fixture()
-        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(listOf(f.user))
+        f.historyMessages = listOf(f.user)
         f.pins.values = listOf(testPin(f.conversation.id, "  PIN_TARGET_A\n", 2), testPin(f.conversation.id, "PIN_TARGET_B", 1))
         val snapshot = f.capture()
         val block = snapshot.request.systemPrompts.last()
@@ -347,7 +347,7 @@ class ConversationContextSnapshotServiceTest {
 
     @Test fun `pin read error is content free and does not produce an empty snapshot`() = runBlocking<Unit> {
         val f = Fixture()
-        Mockito.`when`(f.history.getMessagesByThread(f.target.threadId)).thenReturn(listOf(f.user))
+        f.historyMessages = listOf(f.user)
         f.pins.failure = IllegalStateException("PRIVATE_PIN_TEXT PRIVATE_CREDENTIAL")
         val error = assertFailsWith<ContextSnapshotUnavailableException> { f.capture() }
         assertFalse(error.toString().contains("PRIVATE_")); assertNull(error.cause)
@@ -374,6 +374,9 @@ class ConversationContextSnapshotServiceTest {
                 Conversation.Message.ContentItem.ToolCall.Data("read", JsonObject(emptyMap())))))
         val conversations = Mockito.mock(ConversationDomainService::class.java)
         val history = Mockito.mock(ThreadMessageRepository::class.java)
+        var historyMessages = emptyList<Conversation.Message>()
+        private val nativeProvider: String?
+        private val prepareRuntimeObservationBoundary = includeRuntimeObservations
         val configuration = Mockito.mock(AiConfigurationProvider::class.java)
         val prompts = Mockito.mock(AgentPromptAssemblyService::class.java)
         val settings = Mockito.mock(SettingsProvider::class.java)
@@ -406,12 +409,18 @@ class ConversationContextSnapshotServiceTest {
         init {
             val connection = if (nativeClaude) AiConnection.ClaudeCode(AiConnection.Id("connection"), "Connection", enabled = true, executionTarget = AiExecutionTarget.Worker("synthetic-native-worker"))
                 else AiConnection.OpenAiSubscription(AiConnection.Id("connection"), "Connection", enabled = true)
+            nativeProvider = connection.kind.nativeCompactionProvider()
             val model = AiModelConfiguration(agent.runtimeSelection.modelConfigurationId, connection.id, "test", "Test")
             val resolved = ResolvedAiRuntime(connection, model, AiModelSpec("test", connection.kind.provider,
                 setOf(AiModelCapability.TEXT_GENERATION, AiModelCapability.IMAGE_INPUT), AiModelSpec.Limits(textGeneration = AiModelSpec.Limits.TextGeneration(100_000))))
             Mockito.`when`(configuration.resolveAiRuntime(agent.runtimeSelection)).thenReturn(resolved)
             Mockito.`when`(settings.userProfile).thenReturn(UserProfile())
             runBlocking {
+                Mockito.`when`(history.getContextMessagesByThread(
+                    target.threadId,
+                    nativeProvider,
+                    prepareRuntimeObservationBoundary,
+                )).thenAnswer { historyMessages }
                 Mockito.`when`(conversations.getProject(conversation.id)).thenReturn(project)
                 Mockito.`when`(catalog.readSnapshot(project, agent.toolAccess, conversation)).thenReturn(baseCatalog)
                 Mockito.`when`(skills.prepare(agent, project.id, baseCatalog)).thenReturn(AgentSkillRuntimeCatalog(baseCatalog, "skills"))
@@ -423,6 +432,13 @@ class ConversationContextSnapshotServiceTest {
                     Mockito.`when`(visualRepository.list(conversation.id)).thenReturn(emptyList())
                 }
             }
+        }
+        suspend fun verifyHistoryRead() {
+            Mockito.verify(history).getContextMessagesByThread(
+                target.threadId,
+                nativeProvider,
+                prepareRuntimeObservationBoundary,
+            )
         }
         suspend fun capture() = ConversationContextSnapshotService(conversations, history, configuration, prompts, settings,
             catalog, skills, capabilities, AiToolRuntimeCatalogService(), MessageTemporalContextService(), StickyMessageInstructionService(),

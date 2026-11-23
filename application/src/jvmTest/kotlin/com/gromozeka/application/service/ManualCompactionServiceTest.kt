@@ -1065,6 +1065,8 @@ private class InMemoryThreadMessageRepository(
         links[threadId]?.maxOfOrNull(ThreadMessageLink::position)
     override suspend fun getMessagesByThread(threadId: Conversation.Thread.Id): List<Conversation.Message> =
         messages(threadId)
+    override suspend fun getMessagesByThreadWithoutRuntime(threadId: Conversation.Thread.Id): List<Conversation.Message> =
+        messages(threadId).filter { it.role != Conversation.Message.Role.RUNTIME }
     val bodyReads = mutableListOf<Conversation.Message.Id>()
     override suspend fun compactionHeaders(threadId: Conversation.Thread.Id) = messages(threadId).map(CompactionMessageHeader::from)
     override suspend fun compactionBodies(threadId: Conversation.Thread.Id, ids: List<Conversation.Message.Id>): List<Conversation.Message> {

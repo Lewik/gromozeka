@@ -32,6 +32,75 @@ import kotlin.time.Clock
 
 class PostgresRuntimeMessageReadTest {
     @Test
+    fun `non Runtime history and user mode reads never hydrate Runtime bodies`() = runBlocking {
+        withFixture { f ->
+            val thread = f.conversation.currentThread
+            val writable = f.message("writable").copy(instructions = listOf(
+                Conversation.Message.Instruction.UserInstruction("mode_writable", "Writable", "Allow changes"),
+            ))
+            val runtime = f.message("runtime").copy(
+                role = Conversation.Message.Role.RUNTIME,
+                author = Conversation.Message.Author.Runtime(),
+                content = emptyList(),
+                instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
+                    "PRIVATE_STATE_${"x".repeat(300_000)}", "visual:one", "revision",
+                )),
+            ).withDurableRuntimeObservationBoundary()
+            val readonly = f.message("readonly").copy(instructions = listOf(
+                Conversation.Message.Instruction.UserInstruction("mode_readonly", "Readonly", "No changes"),
+            ))
+            listOf(writable, runtime, readonly).forEachIndexed { index, message -> f.save(message, thread, index) }
+
+            lateinit var visible: List<Conversation.Message>
+            val historyRead = f.measure { visible = f.links.getMessagesByThreadWithoutRuntime(thread) }
+            lateinit var mode: String
+            val modeRead = f.measure {
+                mode = checkNotNull(f.history.latestUserInstructionId(
+                    thread,
+                    setOf("mode_readonly", "mode_writable"),
+                ))
+            }
+
+            assertEquals(listOf(writable, readonly), visible)
+            assertEquals(2L, historyRead.bodies)
+            assertTrue(historyRead.bytes < 20_000)
+            assertEquals("mode_readonly", mode)
+            assertEquals(0L, modeRead.bodies)
+        }
+    }
+
+    @Test
+    fun `sparse context skips superseded Runtime bodies before deserialization`() = runBlocking {
+        withFixture { f ->
+            val thread = f.conversation.currentThread
+            fun observation(id: String, text: String, boundary: Boolean = false): Conversation.Message {
+                val message = f.message(id).copy(
+                    role = Conversation.Message.Role.RUNTIME,
+                    author = Conversation.Message.Author.Runtime(),
+                    content = emptyList(),
+                    instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(text, "visual:one", id)),
+                )
+                return if (boundary) message.withDurableRuntimeObservationBoundary() else message
+            }
+            val root = f.message("root")
+            val oldBaseline = observation("old-baseline", "OLD_PRIVATE_${"x".repeat(300_000)}", boundary = true)
+            val oldDelta = observation("old-delta", "OLD_PRIVATE_${"y".repeat(300_000)}")
+            val currentBaseline = observation("current-baseline", "current", boundary = true)
+            val currentDelta = observation("current-delta", "current-delta")
+            val tail = f.message("tail")
+            val history = listOf(root, oldBaseline, oldDelta, currentBaseline, currentDelta, tail)
+            history.forEachIndexed { index, message -> f.save(message, thread, index) }
+
+            lateinit var selected: List<Conversation.Message>
+            val measurement = f.measure { selected = f.links.getContextMessagesByThread(thread, null) }
+
+            assertEquals(listOf(root, currentBaseline, currentDelta, tail), selected)
+            assertEquals(4L, measurement.bodies)
+            assertTrue(measurement.bytes < 30_000)
+        }
+    }
+
+    @Test
     fun `timeline paging counts visible rows without reading runtime observation bodies`() = runBlocking {
         withFixture { f ->
             val thread = f.conversation.currentThread

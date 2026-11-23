@@ -16,6 +16,7 @@ import com.gromozeka.domain.repository.ThreadMessageRepository
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.max
 import org.jetbrains.exposed.v1.jdbc.*
@@ -82,6 +83,18 @@ class ExposedThreadMessageRepository(
             .map { row ->
                 json.decodeFromString<Conversation.Message>(row[Messages.messageJson])
             }
+            .let(::resolveCurrentMessageAuthors)
+    }
+
+    override suspend fun getMessagesByThreadWithoutRuntime(threadId: Conversation.Thread.Id): List<Conversation.Message> = dbQuery {
+        (ThreadMessages innerJoin Messages)
+            .select(Messages.messageJson)
+            .where {
+                (ThreadMessages.threadId eq threadId.value) and
+                    (Messages.role neq Conversation.Message.Role.RUNTIME.name)
+            }
+            .orderBy(ThreadMessages.position, SortOrder.ASC)
+            .map { row -> json.decodeFromString<Conversation.Message>(row[Messages.messageJson]) }
             .let(::resolveCurrentMessageAuthors)
     }
 

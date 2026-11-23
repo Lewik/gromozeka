@@ -682,7 +682,7 @@ class MemoryMessageRoutingApplicationService(
         targetMessage: Conversation.Message,
         threadContextMessages: List<Conversation.Message>? = null,
     ): MemoryThreadContext {
-        val threadMessages = (threadContextMessages ?: threadMessageRepository.getMessagesByThread(threadId))
+        val threadMessages = (threadContextMessages ?: threadMessageRepository.getMessagesByThreadWithoutRuntime(threadId))
             .filterNot { it.isSyntheticMemoryRuntimeMessage() }
             .filter { it.isMemoryStageContextMessage() }
         val targetIndex = threadMessages.indexOfFirst { it.id == targetMessage.id }

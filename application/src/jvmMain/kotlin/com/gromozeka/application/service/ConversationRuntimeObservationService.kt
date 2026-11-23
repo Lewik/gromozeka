@@ -306,13 +306,24 @@ class ConversationRuntimeObservationService(
         changed: List<Conversation.Message.Instruction.RuntimeObservation>,
     ): Boolean {
         if (isEmpty()) return false
+        // A checkpoint can carry the replay boundary while the first following Runtime row
+        // contains the complete keyed state without repeating the marker.
+        val baselineIndex = indexOfLast { it.isDurableRuntimeObservationBoundary }.coerceAtLeast(0)
+        val baselineBytes = get(baselineIndex).runtimeObservationBytes()
         val retainedBytes = sumOf { message -> message.runtimeObservationBytes() }
+        // A baseline may be irreducibly larger than the normal cap. Bound only additional growth
+        // in that case, instead of copying the same oversized state for every small delta.
+        val retainedByteLimit = if (baselineBytes > MAX_RETAINED_OBSERVATION_BYTES) {
+            baselineBytes + MAX_RETAINED_OBSERVATION_BYTES
+        } else {
+            MAX_RETAINED_OBSERVATION_BYTES
+        }
         val existingCanShrink = size > 1 &&
-            (size > MAX_RETAINED_OBSERVATION_MESSAGES || retainedBytes > MAX_RETAINED_OBSERVATION_BYTES)
+            (size > MAX_RETAINED_OBSERVATION_MESSAGES || retainedBytes > retainedByteLimit)
         val changedBytes = changed.sumOf { it.text.encodeToByteArray().size.toLong() }
         val additionWouldOverflow = changed.isNotEmpty() &&
             (size + 1 > MAX_RETAINED_OBSERVATION_MESSAGES ||
-                retainedBytes + changedBytes > MAX_RETAINED_OBSERVATION_BYTES)
+                retainedBytes + changedBytes > retainedByteLimit)
         return existingCanShrink || additionWouldOverflow
     }
 

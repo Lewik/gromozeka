@@ -143,7 +143,7 @@ class ConversationApplicationService(
         val conversation = findById(conversationId)
             ?: error("Conversation not found: ${conversationId.value}")
         require(conversation.externalChannel == null) { "Suggested replies are unavailable in an external channel" }
-        val messages = loadCurrentMessages(conversationId)
+        val messages = threadMessageRepo.getMessagesByThreadWithoutRuntime(conversation.currentThread)
         val sourceMessage = messages.firstOrNull { it.id == sourceMessageId }
             ?: error("Suggested reply source message not found: ${sourceMessageId.value}")
         require(sourceMessage.role == Conversation.Message.Role.ASSISTANT) {

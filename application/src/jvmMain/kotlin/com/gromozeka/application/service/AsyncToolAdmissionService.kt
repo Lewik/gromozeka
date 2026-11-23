@@ -3,6 +3,7 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.*
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.repository.AsyncToolOperationRepository
+import com.gromozeka.domain.repository.ConversationHistoryRepository
 import com.gromozeka.domain.service.*
 import com.gromozeka.domain.tool.*
 import com.gromozeka.shared.uuid.uuid7
@@ -23,6 +24,7 @@ class AsyncToolAdmissionService(
     private val approvals: ToolApprovalService,
     private val runtime: ConversationRuntimeCoordinator,
     private val workers: AsyncWorkerToolExecutionClient,
+    private val history: ConversationHistoryRepository,
     private val collaboration: AgentCollaborationService? = null,
 ) {
     data class Admission(val operationId: AsyncToolOperation.Id?, val receipt: ContentItem.ToolResult)
@@ -54,12 +56,9 @@ class AsyncToolAdmissionService(
         }
         val sourceConversation = requireNotNull(conversations.findById(task.conversationId)) { "Async conversation unavailable" }
         val source = AgentContextRef(task.conversationId, sourceConversation.currentThread, payload.agentDefinitionId)
-        val mode = conversations.loadCurrentMessages(task.conversationId)
-            .filter { it.author !is Conversation.Message.Author.Agent }.flatMap { it.instructions }
-            .filterIsInstance<Conversation.Message.Instruction.UserInstruction>()
-            .lastOrNull { it.id == "mode_readonly" || it.id == "mode_writable" }
+        val mode = history.latestUserInstructionId(source.threadId, setOf("mode_readonly", "mode_writable"))
         val inheritedReadOnly = collaboration?.readOnlyOrigin(source, checkNotNull(task.actorUserId), payload.rootUserMessageId) == true
-        val readOnly = mode?.id == "mode_readonly" || inheritedReadOnly
+        val readOnly = mode == "mode_readonly" || inheritedReadOnly
         val origin = AsyncToolOrigin(
             actorUserId = checkNotNull(task.actorUserId), projectId = context.requiredProjectId(), conversationId = task.conversationId,
             threadId = Conversation.Thread.Id(requireNotNull(context.getString(TOOL_CONTEXT_THREAD_ID))),

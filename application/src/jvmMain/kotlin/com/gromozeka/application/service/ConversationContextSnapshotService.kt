@@ -48,8 +48,16 @@ class ConversationContextSnapshotService(
         val resolved = configuration.resolveAiRuntime(agent.runtimeSelection)
         requireToolFreeContextQueryBackend(resolved.connection.kind)
         val profile = settings.userProfile
+        val nativeProvider = resolved.connection.kind.nativeCompactionProvider()
+        val prepareRuntimeObservationBoundary = enrichers.any {
+            it.establishesRuntimeObservationBoundaryInSnapshot
+        }
         // A single ordered repository read pins the history prefix. Later appends/compacts are not admitted.
-        val original = history.getMessagesByThread(target.threadId)
+        val original = history.getContextMessagesByThread(
+            target.threadId,
+            nativeProvider,
+            prepareRuntimeObservationBoundary,
+        )
         val project = conversations.getProject(conversation.id)
         val context = RuntimeEnvironmentContext.ProjectBound(
             project = project,
@@ -78,10 +86,6 @@ class ConversationContextSnapshotService(
             ),
         )
         val projectionRequest = AiRuntimeRequest(emptyList(), original, options = options)
-        val nativeProvider = resolved.connection.kind.nativeCompactionProvider()
-        val prepareRuntimeObservationBoundary = enrichers.any {
-            it.establishesRuntimeObservationBoundaryInSnapshot
-        }
         val projected = projectionRequest.projectedMessages(
             nativeProvider,
             prepareRuntimeObservationBoundary = prepareRuntimeObservationBoundary,

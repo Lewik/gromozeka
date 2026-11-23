@@ -14,6 +14,7 @@ data class MessageContextMetadata(
     val nativeUsage: JsonObject?,
     val durableRuntimeObservationBoundary: Boolean = false,
     val runtimeObservation: Boolean = false,
+    val keyedRuntimeObservation: Boolean = false,
 ) {
     companion object {
         fun from(message: Message): MessageContextMetadata = MessageContextMetadata(
@@ -32,6 +33,7 @@ data class MessageContextMetadata(
             } else null,
             durableRuntimeObservationBoundary = message.isDurableRuntimeObservationBoundary,
             runtimeObservation = message.isDurableRuntimeObservationMessage,
+            keyedRuntimeObservation = message.isDurableKeyedRuntimeObservationMessage,
         )
     }
 }
@@ -101,6 +103,15 @@ fun selectModelHistoryMessageIds(
     lastUserText?.let(required::add)
     // Only retained messages need an exact predecessor; added covered predecessors do not recurse.
     required += required.mapNotNull(previousHumanMessages::get)
+    val latestKeyedRuntimeBaseline = headers.indexOfLast {
+        it.metadata.keyedRuntimeObservation && it.metadata.durableRuntimeObservationBoundary
+    }
+    if (latestKeyedRuntimeBaseline > 0) {
+        headers.take(latestKeyedRuntimeBaseline)
+            .filter { it.metadata.keyedRuntimeObservation }
+            .mapTo(mutableSetOf(), MessageContextHeader::id)
+            .let(required::removeAll)
+    }
     return required
 }
 

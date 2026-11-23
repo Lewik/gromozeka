@@ -133,6 +133,33 @@ class PostgresConversationHistoryRepository(
         }
     }
 
+    override suspend fun latestUserInstructionId(
+        threadId: Conversation.Thread.Id,
+        instructionIds: Set<String>,
+    ): String? {
+        if (instructionIds.isEmpty()) return null
+        val placeholders = instructionIds.joinToString(",") { "?" }
+        return withContext(Dispatchers.IO) {
+            dataSource.connection.use { connection ->
+                connection.prepareStatement("""
+                    SELECT item.instruction_id
+                    FROM thread_messages tm
+                    JOIN messages m ON m.id = tm.message_id
+                    CROSS JOIN LATERAL jsonb_array_elements_text(
+                        COALESCE(m.context_metadata_json::jsonb -> 'userInstructionIds', '[]'::jsonb)
+                    ) WITH ORDINALITY AS item(instruction_id, ordinal)
+                    WHERE tm.thread_id = ? AND item.instruction_id IN ($placeholders)
+                    ORDER BY tm.position DESC, item.ordinal DESC
+                    LIMIT 1
+                """.trimIndent()).use { statement ->
+                    statement.setString(1, threadId.value)
+                    instructionIds.forEachIndexed { index, id -> statement.setString(index + 2, id) }
+                    statement.executeQuery().use { rows -> if (rows.next()) rows.getString(1) else null }
+                }
+            }
+        }
+    }
+
     private suspend fun query(sql: String, arguments: List<Any>): List<PositionedConversationMessage> {
         val messages = withContext(Dispatchers.IO) {
             dataSource.connection.use { connection ->

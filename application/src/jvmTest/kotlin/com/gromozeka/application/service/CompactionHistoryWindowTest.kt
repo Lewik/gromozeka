@@ -4,8 +4,12 @@ import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.domain.model.MessageCompactionTextRenderer
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
+import com.gromozeka.domain.model.withDurableRuntimeObservationBoundary
+import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
+import org.mockito.Mockito
 import kotlin.test.*
 import kotlin.time.Instant
 
@@ -85,5 +89,36 @@ class CompactionHistoryWindowTest {
         for (text in listOf("small", "x".repeat(400_000))) {
             assertTrue(prefix(listOf(message("only", text)), pairs).isEmpty())
         }
+    }
+
+    @Test fun `readable prefix neither loads superseded Runtime generations nor summarizes current Runtime state`(): Unit = runBlocking {
+        fun observation(id: String, text: String, boundary: Boolean = false): Conversation.Message {
+            val value = message(id, "").copy(
+                role = Conversation.Message.Role.RUNTIME,
+                author = Conversation.Message.Author.Runtime(),
+                content = emptyList(),
+                instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(text, "state", id)),
+            )
+            return if (boundary) value.withDurableRuntimeObservationBoundary() else value
+        }
+        val old = message("old", "old dialogue")
+        val oldBaseline = observation("old-baseline", "obsolete baseline", boundary = true)
+        val oldDelta = observation("old-delta", "obsolete delta")
+        val currentBaseline = observation("current-baseline", "current state", boundary = true)
+        val recent = message("recent", "x".repeat(80_000))
+        val history = listOf(old, oldBaseline, oldDelta, currentBaseline, recent)
+        val window = window(history)
+        val selection = window.prefix(pairs)
+        val repository = Mockito.mock(ThreadMessageRepository::class.java)
+        val thread = Conversation.Thread.Id("thread")
+        Mockito.`when`(repository.compactionBodies(thread, selection.map { it.id })).thenReturn(
+            history.filter { message -> selection.any { it.id == message.id } },
+        )
+
+        val readable = window.messages(repository, thread, selection, provider = null)
+
+        assertEquals(listOf(old.id, currentBaseline.id), selection.map { it.id })
+        assertEquals(listOf(old), readable)
+        Mockito.verify(repository).compactionBodies(thread, listOf(old.id, currentBaseline.id))
     }
 }

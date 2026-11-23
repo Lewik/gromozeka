@@ -808,6 +808,7 @@ class ConversationEngineService(
         val memoryRecallTask = pendingMemoryRecallTaskIfNeeded(
             parentTask = task,
             conversationId = conversationId,
+            threadId = conversation.currentThread,
             rootUserMessageId = payload.rootUserMessageId,
             agentDefinitionId = payload.agentDefinitionId,
             nextLlmIteration = payload.iteration + 1,
@@ -856,7 +857,7 @@ class ConversationEngineService(
         }
         ensureRuntimeTaskOwner(conversation.id, task.id, executor)
         if (runtimeCoordinator.listPending(conversation.id).any { it.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT }) return continueAfterNewInput()
-        val priorTextContinues = conversationService.loadCurrentMessages(conversation.id).count {
+        val priorTextContinues = contextHistory.getMessagesByThreadWithoutRuntime(conversation.currentThread).count {
             it.id.value.startsWith(draft.turnId + ":") && it.providerMetadata["collaborationNext"] == JsonPrimitive("CONTINUE")
         }
         if (priorTextContinues >= 4) {
@@ -1003,7 +1004,7 @@ class ConversationEngineService(
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor)
-        val currentMessages = conversationService.loadCurrentMessages(conversationId)
+        val currentMessages = contextHistory.getMessagesByThreadWithoutRuntime(conversation.currentThread)
         if (!currentMessages.hasPendingMemoryRecall(payload.targetMessageId)) {
             log.info {
                 "Skipping memory recall without pending marker: conversation=${conversationId.value} target=${payload.targetMessageId.value}"
@@ -1467,13 +1468,11 @@ class ConversationEngineService(
     }
 
     private suspend fun loadRuntimeMessages(conversation: Conversation, kind: AiConnection.Kind): List<Conversation.Message> =
-        if (conversation.externalChannel == null && kind !in setOf(AiConnection.Kind.CLAUDE_CODE, AiConnection.Kind.GITHUB_COPILOT)) {
-            contextHistory.getContextMessagesByThread(
-                conversation.currentThread,
-                kind.nativeCompactionProvider(),
-                prepareRuntimeObservationBoundary = true,
-            )
-        } else conversationService.loadCurrentMessages(conversation.id)
+        contextHistory.getContextMessagesByThread(
+            conversation.currentThread,
+            kind.nativeCompactionProvider(),
+            prepareRuntimeObservationBoundary = true,
+        )
 
     private suspend fun buildConversationRuntimeContext(
         agentDefinitionId: AgentDefinition.Id,
@@ -1605,7 +1604,8 @@ class ConversationEngineService(
                 conversation = conversation,
                 messages = when (settings.contextMode) {
                     UserProfile.SuggestedRepliesSettings.ContextMode.RECENT_MESSAGES -> currentMessages
-                    UserProfile.SuggestedRepliesSettings.ContextMode.FULL_THREAD -> conversationService.loadCurrentMessages(conversation.id)
+                    UserProfile.SuggestedRepliesSettings.ContextMode.FULL_THREAD ->
+                        contextHistory.getMessagesByThreadWithoutRuntime(conversation.currentThread)
                 } + assistantMessages,
                 sourceMessage = sourceMessage,
                 agentDefinitionId = agentDefinitionId,
@@ -1711,6 +1711,7 @@ class ConversationEngineService(
     private suspend fun pendingMemoryRecallTaskIfNeeded(
         parentTask: ConversationRuntimeTask,
         conversationId: Conversation.Id,
+        threadId: Conversation.Thread.Id,
         rootUserMessageId: Conversation.Message.Id,
         agentDefinitionId: AgentDefinition.Id,
         nextLlmIteration: Int,
@@ -1720,7 +1721,7 @@ class ConversationEngineService(
         if (!automaticMemoryRecallEnabled) {
             return null
         }
-        val targetMessageId = conversationService.loadCurrentMessages(conversationId)
+        val targetMessageId = contextHistory.getMessagesByThreadWithoutRuntime(threadId)
             .nextPendingMemoryRecallTarget()
             ?: return null
         return memoryRecallTask(

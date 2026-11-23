@@ -499,7 +499,7 @@ class TabViewModelRuntimeReplayTest {
             historyPosition = 11,
         ))
         runCurrent()
-        assertEquals(0, model.historyActivityRevision.value)
+        assertEquals(1, model.historyActivityRevision.value)
         events.emit(ConversationRuntimeEvent.MessageEmitted(
             conversationId = conversationId,
             taskId = null,
@@ -510,7 +510,7 @@ class TabViewModelRuntimeReplayTest {
         ))
         runCurrent()
 
-        assertEquals(1, model.historyActivityRevision.value)
+        assertEquals(2, model.historyActivityRevision.value)
         assertEquals(listOf(initial.id, observationShell.id, assistant.id), model.allMessages.value.map { it.id })
         assertEquals(listOf(initial.id, observationShell.id, assistant.id), model.historyContent.value.messages.map { it.id })
         assertNull(model.newerHistory.value)
