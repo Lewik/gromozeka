@@ -110,7 +110,9 @@ class TelegramRequestEnricher(
         val latest = linkedMapOf<String, Conversation.Message.Instruction.RuntimeObservation>()
         retained.forEach { message ->
             message.instructions.filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>().forEach { observation ->
-                observation.key?.let { latest[it] = observation }
+                observation.key?.let { key ->
+                    if (observation.removed) latest.remove(key) else latest[key] = observation
+                }
             }
         }
         val source = retained.lastOrNull() ?: return emptyList()

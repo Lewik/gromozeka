@@ -201,6 +201,43 @@ class ManualCompactionServiceTest {
     }
 
     @Test
+    fun `selective summary invalidates replay between covered sources before carrying boundary`() = runBlocking {
+        val f = Fixture()
+        val boundary = f.third.copy(
+            id = Conversation.Message.Id("runtime-observation"),
+            author = Conversation.Message.Author.Runtime(),
+            content = emptyList(),
+            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("state", "state", "revision")),
+        ).withDurableRuntimeObservationBoundary()
+        val unselected = f.third.copy(
+            id = Conversation.Message.Id("unselected-assistant"),
+            role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(
+                Conversation.Message.ContentItem.Thinking("provider reasoning", signature = "signature"),
+                Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("visible answer")),
+            ),
+        )
+        val selected = f.third.copy(id = Conversation.Message.Id("selected-tail"))
+        f.append(boundary)
+        f.append(unselected)
+        f.append(selected)
+
+        val updated = f.service().compactRuntimeHistory(
+            f.conversation.id,
+            listOf(boundary.id, selected.id),
+            SquashType.DISTILL,
+        )
+
+        val history = f.threadMessages.messages(updated.currentThread)
+        val checkpoint = history.single { it.compactions().isNotEmpty() }
+        val result = checkpoint.compactions().single()
+        assertTrue(checkpoint.isDurableRuntimeObservationBoundary)
+        assertTrue(unselected.id in result.invalidatedReplayMessageIds)
+        val projected = ConversationContext(history).messages().single { it.id == unselected.id }
+        assertTrue(projected.content.none { it is Conversation.Message.ContentItem.Thinking })
+    }
+
+    @Test
     fun `every strategy commits one canonical compaction in conversation order`() = runBlocking {
         SquashType.entries.forEach { strategy ->
             val fixture = Fixture()

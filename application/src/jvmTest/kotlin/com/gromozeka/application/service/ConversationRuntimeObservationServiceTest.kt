@@ -97,6 +97,7 @@ class ConversationRuntimeObservationServiceTest {
             it.jsonObject.getValue("visual-id").jsonPrimitive.content
         })
         val tombstone = frame(closed.observations().last().text, "visual-state-context")
+        assertTrue(closed.observations().last().removed)
         assertEquals(VISUAL.id, tombstone.getValue("visual-id").jsonPrimitive.content)
         assertEquals("closed", tombstone.getValue("state-status").jsonPrimitive.content)
         assertFalse(closed.toString().contains("saved"))
@@ -107,10 +108,11 @@ class ConversationRuntimeObservationServiceTest {
     fun `closing a Visual after a selective checkpoint still replaces retained state`() = runBlocking {
         val f = Fixture()
         val baseline = f.append("baseline", emptyList()).single()
-        val checkpoint = checkpoint("checkpoint", listOf(baseline))
+        val selected = user("selected")
+        val checkpoint = checkpoint("checkpoint", listOf(selected))
 
         f.visuals = emptyList()
-        val closed = f.append("closed", listOf(baseline, checkpoint)).single()
+        val closed = f.append("closed", listOf(baseline, selected, checkpoint)).single()
 
         assertEquals(
             listOf(
@@ -124,6 +126,20 @@ class ConversationRuntimeObservationServiceTest {
             "closed",
             frame(closed.observations().last().text, "visual-state-context")
                 .getValue("state-status").jsonPrimitive.content,
+        )
+        assertTrue(closed.observations().last().removed)
+
+        val afterCheckpoint = checkpoint("after-close", listOf(baseline, closed))
+        val restored = f.append(
+            "after-checkpoint",
+            listOf(baseline, selected, checkpoint, closed, afterCheckpoint),
+        ).single()
+        assertEquals(
+            listOf(
+                ConversationRuntimeObservationService.COMMANDS_KEY,
+                ConversationRuntimeObservationService.VISUAL_INVENTORY_KEY,
+            ),
+            restored.observations().map { it.key },
         )
     }
 

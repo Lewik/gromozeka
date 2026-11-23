@@ -1,6 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.compactions
 import com.gromozeka.domain.model.isDurableRuntimeObservationBoundary
 import com.gromozeka.domain.model.ai.AiModelSpec
@@ -68,6 +69,7 @@ class ConversationRuntimeObservationService(
             append(establishesBoundary)
             changed.forEach {
                 append('\u0000')
+                append(if (it.removed) '-' else '+')
                 append(it.key)
                 append('=')
                 append(it.revision)
@@ -217,7 +219,7 @@ class ConversationRuntimeObservationService(
                         put("visual-id", key.removePrefix(VISUAL_STATE_KEY_PREFIX))
                         put("state-status", "closed")
                     }
-                    add(observation(key, stateData, renderClosedVisualState(stateData)))
+                    add(observation(key, stateData, renderClosedVisualState(stateData), removed = true))
                 }
         }
     }
@@ -226,10 +228,12 @@ class ConversationRuntimeObservationService(
         key: String,
         data: JsonObject,
         text: String,
+        removed: Boolean = false,
     ) = Conversation.Message.Instruction.RuntimeObservation(
         text = text,
         key = key,
         revision = hash("$key\u0000${canonical(data)}"),
+        removed = removed,
     )
 
     private fun renderVisualInventory(data: JsonObject): String = """
@@ -272,15 +276,20 @@ class ConversationRuntimeObservationService(
             message.instructions.filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>().forEach { observation ->
                 val key = observation.key
                 val revision = observation.revision
-                if (key != null && revision != null) put(key, revision)
+                if (key != null && observation.removed) remove(key)
+                else if (key != null && revision != null) put(key, revision)
             }
         }
     }
 
     private fun List<Conversation.Message>.runtimeObservationKeys(): Set<String> = buildSet {
-        this@runtimeObservationKeys.forEach { message ->
-            message.instructions.filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>()
-                .mapNotNullTo(this) { it.key }
+        ConversationContext(this@runtimeObservationKeys).messages().forEach { message ->
+            message.instructions.filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>().forEach { observation ->
+                val key = observation.key
+                if (key != null) {
+                    if (observation.removed) remove(key) else add(key)
+                }
+            }
         }
     }
 
