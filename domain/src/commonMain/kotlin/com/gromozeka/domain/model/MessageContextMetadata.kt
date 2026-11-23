@@ -11,6 +11,7 @@ data class MessageContextMetadata(
     val humanInput: Boolean,
     val userText: Boolean,
     val userInstructionIds: List<String>,
+    val agentAuthored: Boolean = false,
     val nativeUsage: JsonObject?,
     val durableRuntimeObservationBoundary: Boolean = false,
     val runtimeObservation: Boolean = false,
@@ -25,6 +26,7 @@ data class MessageContextMetadata(
                 message.instructions.none { it is Message.Instruction.Source.Agent },
             userText = message.role == Message.Role.USER && message.content.any { it is Message.ContentItem.UserMessage },
             userInstructionIds = message.instructions.filterIsInstance<Message.Instruction.UserInstruction>().map { it.id },
+            agentAuthored = message.author is Message.Author.Agent,
             nativeUsage = if (message.providerMetadata["provider"] == JsonPrimitive("OPENAI_SUBSCRIPTION")) buildJsonObject {
                 put("connectionId", message.providerMetadata["connectionId"] ?: JsonNull)
                 put("model", message.providerMetadata["model"] ?: JsonNull)
@@ -103,16 +105,16 @@ fun selectModelHistoryMessageIds(
     lastUserText?.let(required::add)
     // Only retained messages need an exact predecessor; added covered predecessors do not recurse.
     required += required.mapNotNull(previousHumanMessages::get)
-    val latestKeyedRuntimeBaseline = headers.indexOfLast {
-        it.metadata.keyedRuntimeObservation && it.metadata.durableRuntimeObservationBoundary
-    }
-    if (latestKeyedRuntimeBaseline > 0) {
-        headers.take(latestKeyedRuntimeBaseline)
-            .filter { it.metadata.keyedRuntimeObservation }
-            .mapTo(mutableSetOf(), MessageContextHeader::id)
-            .let(required::removeAll)
-    }
+    required.retainAll(selectRawExternalHistoryMessageIds(headers))
     return required
+}
+
+/** Preserve raw channel history while dropping keyed Runtime state replaced by the latest replay boundary. */
+fun selectRawExternalHistoryMessageIds(headers: List<MessageContextHeader>): Set<Message.Id> {
+    val latestBoundary = headers.indexOfLast { it.metadata.durableRuntimeObservationBoundary }
+    return headers.mapIndexedNotNullTo(linkedSetOf()) { index, header ->
+        header.id.takeIf { index >= latestBoundary || !header.metadata.keyedRuntimeObservation }
+    }
 }
 
 private fun JsonObject.requiresOriginalObservation(): Boolean {

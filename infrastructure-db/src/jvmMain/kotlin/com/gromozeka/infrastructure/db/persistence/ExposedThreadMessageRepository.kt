@@ -7,6 +7,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageContextHeader
 import com.gromozeka.domain.model.MessageContextMetadata
 import com.gromozeka.domain.model.selectModelHistoryMessageIds
+import com.gromozeka.domain.model.selectRawExternalHistoryMessageIds
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.v1.jdbc.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.v1.core.inList
@@ -98,6 +99,19 @@ class ExposedThreadMessageRepository(
             .let(::resolveCurrentMessageAuthors)
     }
 
+    override suspend fun getRawExternalContextMessagesByThread(
+        threadId: Conversation.Thread.Id,
+    ): List<Conversation.Message> = newSuspendedTransaction(
+        Dispatchers.IO, transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ, readOnly = true,
+    ) {
+        val captured = readContextHeaders(threadId)
+        materializeContextSelection(
+            threadId,
+            captured,
+            selectRawExternalHistoryMessageIds(captured.headers),
+        )
+    }
+
     override suspend fun compactionHeaders(threadId: Conversation.Thread.Id): List<CompactionMessageHeader> =
         newSuspendedTransaction(Dispatchers.IO, transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ, readOnly = true) {
             val rows = (ThreadMessages innerJoin Messages).select(ThreadMessages.messageId, Messages.compactionHeader)
@@ -132,35 +146,57 @@ class ExposedThreadMessageRepository(
     ): List<Conversation.Message> = newSuspendedTransaction(
         Dispatchers.IO, transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ, readOnly = true,
     ) {
-        val storedHeaders = (ThreadMessages innerJoin Messages)
-            .select(ThreadMessages.messageId, Messages.contextMetadataJson)
-            .where { ThreadMessages.threadId eq threadId.value }
-            .orderBy(ThreadMessages.position, SortOrder.ASC)
-            .map { row -> Conversation.Message.Id(row[ThreadMessages.messageId]) to row[Messages.contextMetadataJson] }
-        val bodies = readContextBodies(threadId, storedHeaders.filter { it.second == null }.map { it.first })
-            .associateByTo(mutableMapOf()) { it.id }
-        val headers = storedHeaders.map { (id, metadata) -> MessageContextHeader(id,
-            if (metadata != null) json.decodeFromString<MessageContextMetadata>(metadata)
-            else MessageContextMetadata.from(bodies[id] ?: error("Missing body for Unicode context metadata: ${id.value}")),
-        ) }
-        val checkpointIds = headers.filter { it.metadata.hasCompaction }.map { it.id }
-        readContextBodies(threadId, checkpointIds.filterNot(bodies::containsKey)).forEach { bodies[it.id] = it }
-        val checkpoints = checkpointIds.map(bodies::getValue)
+        val captured = readContextHeaders(threadId)
+        val checkpointIds = captured.headers.filter { it.metadata.hasCompaction }.map { it.id }
+        readContextBodies(threadId, checkpointIds.filterNot(captured.bodies::containsKey)).forEach {
+            captured.bodies[it.id] = it
+        }
+        val checkpoints = checkpointIds.map(captured.bodies::getValue)
         val required = selectModelHistoryMessageIds(
-            headers,
+            captured.headers,
             checkpoints,
             nativeProvider,
             prepareRuntimeObservationBoundary,
         )
-        readContextBodies(threadId, required.filterNot(bodies::containsKey)).forEach { bodies[it.id] = it }
-        val selected = headers.filter { it.id in required }.map { header ->
-            val message = bodies[header.id] ?: error("Missing message in captured context: ${header.id.value}")
+        materializeContextSelection(threadId, captured, required)
+    }
+
+    private fun readContextHeaders(threadId: Conversation.Thread.Id): CapturedContextHeaders {
+        val stored = (ThreadMessages innerJoin Messages)
+            .select(ThreadMessages.messageId, Messages.contextMetadataJson)
+            .where { ThreadMessages.threadId eq threadId.value }
+            .orderBy(ThreadMessages.position, SortOrder.ASC)
+            .map { row -> Conversation.Message.Id(row[ThreadMessages.messageId]) to row[Messages.contextMetadataJson] }
+        val bodies = readContextBodies(threadId, stored.filter { it.second == null }.map { it.first })
+            .associateByTo(mutableMapOf()) { it.id }
+        val headers = stored.map { (id, metadata) ->
+            MessageContextHeader(
+                id,
+                if (metadata != null) json.decodeFromString<MessageContextMetadata>(metadata)
+                else MessageContextMetadata.from(
+                    bodies[id] ?: error("Missing body for Unicode context metadata: ${id.value}"),
+                ),
+            )
+        }
+        return CapturedContextHeaders(headers, bodies)
+    }
+
+    private fun materializeContextSelection(
+        threadId: Conversation.Thread.Id,
+        captured: CapturedContextHeaders,
+        required: Set<Conversation.Message.Id>,
+    ): List<Conversation.Message> {
+        readContextBodies(threadId, required.filterNot(captured.bodies::containsKey)).forEach {
+            captured.bodies[it.id] = it
+        }
+        val selected = captured.headers.filter { it.id in required }.map { header ->
+            val message = captured.bodies[header.id] ?: error("Missing message in captured context: ${header.id.value}")
             check(message.id == header.id && MessageContextMetadata.from(message) == header.metadata) {
                 "Message context metadata does not match its canonical body: ${header.id.value}"
             }
             message
         }
-        resolveCurrentMessageAuthors(selected)
+        return resolveCurrentMessageAuthors(selected)
     }
 
     private fun readContextBodies(threadId: Conversation.Thread.Id, ids: List<Conversation.Message.Id>): List<Conversation.Message> =
@@ -173,4 +209,9 @@ class ExposedThreadMessageRepository(
     override suspend fun deleteByThread(threadId: Conversation.Thread.Id): Unit = dbQuery {
         ThreadMessages.deleteWhere { ThreadMessages.threadId eq threadId.value }
     }
+
+    private data class CapturedContextHeaders(
+        val headers: List<MessageContextHeader>,
+        val bodies: MutableMap<Conversation.Message.Id, Conversation.Message>,
+    )
 }

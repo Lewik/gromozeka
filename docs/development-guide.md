@@ -642,15 +642,20 @@ projection is unchanged; there is no last-N cutoff or mutable transcript cache.
 
 Native CLI sessions (Claude Code and Copilot), external-channel filtering, timeline
 reads, explicit history mutations and isolated snapshot assembly retain their existing
-raw-history contracts. They are not silently redirected to the sparse read. Switching
-away from an opaque checkpoint's owner can legitimately require the original archive;
-missing recovery sources remain an explicit error.
+raw-history contracts. They are not silently redirected to the model-sparse read.
+External channels select their raw non-Runtime archive directly from headers and drop
+only keyed Runtime generations superseded by the latest replay boundary before loading
+bodies. Switching away from an opaque checkpoint's owner can legitimately require the
+original archive; missing recovery sources remain an explicit error.
 
 PostgreSQL can reject escaped Unicode such as NUL while inspecting otherwise valid
-stored JSON. V81 represents only this `22P05` case as absent derived metadata; the
-reader derives exact metadata from that individual body using the existing Kotlin
-serializer. It never substitutes guessed metadata, rewrites payload strings or suppresses
-other SQL/JSON failures. Derived metadata cannot be edited independently of its message.
+stored JSON. V81 represents only this `22P05` case as absent derived metadata; readers
+derive exact metadata from that individual body using the existing Kotlin serializer.
+Mode resolution normally uses body-free instruction and author metadata, while only
+these exceptional rows are hydrated; agent-authored instructions cannot override the
+user's mode. The fallback never substitutes guessed metadata, rewrites payload strings
+or suppresses other SQL/JSON failures. Derived metadata cannot be edited independently
+of its message.
 
 `PostgresRuntimeMessageReadTest` checks thread isolation, bounded rows/body reads,
 full-message preservation and SQL aggregation against disposable PostgreSQL. Its
@@ -1296,13 +1301,16 @@ baseline is itself larger than 1 MiB, that irreducible baseline is retained and
 only the additional delta tail is bounded to another 1 MiB, instead of copying the
 baseline on every small change.
 
-The Server stores the full Runtime instructions, but client events, point reads
-and paged history expose only a compact row shell. The shell is visible in the
-chat timeline as a Runtime observation and advances the client's history activity
-revision. It does not mark the conversation unread and does not trigger an
-automatic response by itself. Readable compaction never includes Runtime bodies
-in the summary prompt; the next ordinary model request records a fresh complete
-baseline when the compacted history no longer carries one.
+The Server stores the full Runtime instructions, but client events, point reads,
+paged history and the canonical remote archive expose only a compact row shell.
+The archive still returns every canonical non-Runtime body from one coherent
+server-side read; Runtime JSON is replaced by the shell in SQL and is never
+hydrated. The shell is visible in the chat timeline as a Runtime observation and
+advances the client's history activity revision. It does not mark the conversation
+unread and does not trigger an automatic response by itself. Readable compaction
+never includes Runtime bodies in the summary prompt; the next ordinary model
+request records a fresh complete baseline when the compacted history no longer
+carries one.
 
 Disabled Visuals remain in the complete inventory as `state-status=disabled`,
 with metadata but no state or snapshot ID. A small keyed disabled marker replaces

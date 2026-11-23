@@ -1067,6 +1067,13 @@ private class InMemoryThreadMessageRepository(
         messages(threadId)
     override suspend fun getMessagesByThreadWithoutRuntime(threadId: Conversation.Thread.Id): List<Conversation.Message> =
         messages(threadId).filter { it.role != Conversation.Message.Role.RUNTIME }
+    override suspend fun getRawExternalContextMessagesByThread(threadId: Conversation.Thread.Id): List<Conversation.Message> {
+        val history = messages(threadId)
+        val selected = com.gromozeka.domain.model.selectRawExternalHistoryMessageIds(
+            history.map { com.gromozeka.domain.model.MessageContextHeader(it.id, com.gromozeka.domain.model.MessageContextMetadata.from(it)) },
+        )
+        return history.filter { it.id in selected }
+    }
     val bodyReads = mutableListOf<Conversation.Message.Id>()
     override suspend fun compactionHeaders(threadId: Conversation.Thread.Id) = messages(threadId).map(CompactionMessageHeader::from)
     override suspend fun compactionBodies(threadId: Conversation.Thread.Id, ids: List<Conversation.Message.Id>): List<Conversation.Message> {

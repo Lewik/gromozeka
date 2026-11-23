@@ -587,6 +587,49 @@ class ConversationEngineDeliveryTest {
         assertEquals(original, f.messages.take(original.size))
     }
 
+    @Test fun `external channel keeps raw history while pruning superseded Runtime state`() = runBlocking {
+        val f = Fixture()
+        f.currentConversation = f.currentConversation.copy(
+            externalChannel = ExternalConversationChannel("telegram", "connection", "channel"),
+        )
+        val root = f.messages.single()
+        val archived = root.copy(id = Conversation.Message.Id("archived"), content = listOf(ContentItem.UserMessage("RAW_ARCHIVE")))
+        val oldRuntime = root.copy(
+            id = Conversation.Message.Id("old-runtime"),
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = emptyList(),
+            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("OLD_STATE", "state", "old")),
+        ).withDurableRuntimeObservationBoundary()
+        val checkpoint = root.copy(
+            id = Conversation.Message.Id("checkpoint"),
+            role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(ContentItem.ContextCompactionResult(
+                ContentItem.ContextCompactionResult.Payload.ReadableSummary("summary"),
+                ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+            )),
+        ).withDurableRuntimeObservationBoundary()
+        val currentRuntime = oldRuntime.copy(
+            id = Conversation.Message.Id("current-runtime"),
+            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("CURRENT_STATE", "state", "current")),
+            providerMetadata = JsonObject(emptyMap()),
+        )
+        f.messages.clear()
+        f.messages += listOf(archived, oldRuntime, checkpoint, currentRuntime, root)
+
+        val task = f.begin()
+        assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(f.engine.runRuntimeTask(task, executor) {})
+
+        assertEquals(1, f.rawContextReads)
+        assertTrue(f.contextReads.isEmpty())
+        val requestIds = f.requests.single().messages.map { it.id }
+        assertTrue(archived.id in requestIds)
+        assertTrue(checkpoint.id in requestIds)
+        assertTrue(currentRuntime.id in requestIds)
+        assertTrue(oldRuntime.id !in requestIds)
+    }
+
     @Test fun `point append and replay never load the archive`() = runBlocking {
         val f = Fixture(); f.allowFullHistoryLoad = false
         val task = input("new-message")
@@ -1358,6 +1401,7 @@ class ConversationEngineDeliveryTest {
             }
         }
         val contextReads = mutableListOf<String?>()
+        var rawContextReads = 0
         private val contextHistory = responding<com.gromozeka.domain.repository.ThreadMessageRepository> {
             assertEquals(currentConversation.currentThread.value, it.arguments[0])
             when (it.method.name.substringBefore('-')) {
@@ -1372,6 +1416,13 @@ class ConversationEngineDeliveryTest {
                 }
                 "getMessagesByThreadWithoutRuntime" -> messages.filter { message ->
                     message.role != Conversation.Message.Role.RUNTIME
+                }
+                "getRawExternalContextMessagesByThread" -> {
+                    rawContextReads++
+                    val selected = selectRawExternalHistoryMessageIds(
+                        messages.map { message -> MessageContextHeader(message.id, MessageContextMetadata.from(message)) },
+                    )
+                    messages.filter { message -> message.id in selected }
                 }
                 else -> error("Unexpected context history operation: ${it.method.name}")
             }
@@ -1507,7 +1558,7 @@ class ConversationEngineDeliveryTest {
         }
 
         suspend fun begin(): ConversationRuntimeTask {
-            val root = input("root")
+            val root = input("root").copy(externalChannel = currentConversation.externalChannel)
             coordinator.submit(root)
             claim(root)
             val task = root.copy(id = ConversationRuntimeTask.Id("root:llm:1"), parentTaskId = root.id,

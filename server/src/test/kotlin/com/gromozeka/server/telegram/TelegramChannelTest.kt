@@ -331,6 +331,13 @@ class TelegramChannelTest {
             Conversation.Message.ContentItem.Thinking("STALE_PRIVATE_REASONING", signature = "signature"),
             Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("visible old answer")),
         ))
+        val checkpoint = textMessage("checkpoint", "", Conversation.Message.Role.ASSISTANT).copy(
+            content = listOf(Conversation.Message.ContentItem.ContextCompactionResult(
+                Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary("compacted summary"),
+                Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+            )),
+        )
         val oldObservation = textMessage("old-runtime-observation", "", Conversation.Message.Role.RUNTIME).copy(
             author = Conversation.Message.Author.Runtime(),
             content = emptyList(),
@@ -351,7 +358,7 @@ class TelegramChannelTest {
         ).withDurableRuntimeObservationBoundary()
         val invocation = invocation().copy(rootMessageId = root.id, route = route.copy(additionalInstruction = "Use a friendly voice"))
         val request = AiRuntimeRequest(systemPrompts = listOf("base"),
-            messages = listOf(oldObservation, foreign, root, observation, continuation))
+            messages = listOf(oldObservation, foreign, checkpoint, root, observation, continuation))
         val model = AiModelSpec("test", AiProvider.OPENAI, setOf(AiModelCapability.TEXT_GENERATION),
             AiModelSpec.Limits(textGeneration = AiModelSpec.Limits.TextGeneration(25000, 1024)))
         val enriched = enricher.materialize(invocation, model, request, setOf(root.id, continuation.id))

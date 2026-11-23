@@ -70,6 +70,122 @@ class PostgresRuntimeMessageReadTest {
     }
 
     @Test
+    fun `user mode decodes NULL metadata and ignores a later agent-authored override`() = runBlocking {
+        withFixture { f ->
+            val thread = f.conversation.currentThread
+            val writable = f.message("writable").copy(instructions = listOf(
+                Conversation.Message.Instruction.UserInstruction("mode_writable", "Writable", "Allow changes"),
+            ))
+            val readonly = f.message("readonly").copy(
+                content = listOf(ContentItem.UserMessage("read-only\u0000request")),
+                instructions = listOf(
+                    Conversation.Message.Instruction.UserInstruction("mode_readonly", "Readonly", "No changes"),
+                ),
+            )
+            val agentWritable = f.message("agent-writable").copy(
+                author = Conversation.Message.Author.Agent(
+                    com.gromozeka.domain.model.AgentDefinition.Id("peer"),
+                    "Peer",
+                ),
+                instructions = listOf(
+                    Conversation.Message.Instruction.UserInstruction("mode_writable", "Writable", "Allow changes"),
+                ),
+            )
+            listOf(writable, readonly, agentWritable).forEachIndexed { index, message ->
+                f.save(message, thread, index)
+            }
+            assertNull(f.metadata(readonly.id))
+            assertTrue(checkNotNull(f.metadata(agentWritable.id)).agentAuthored)
+
+            lateinit var mode: String
+            val measurement = f.measure {
+                mode = checkNotNull(f.history.latestUserInstructionId(
+                    thread,
+                    setOf("mode_readonly", "mode_writable"),
+                ))
+            }
+
+            assertEquals("mode_readonly", mode)
+            assertEquals(1L, measurement.bodies)
+            assertTrue(measurement.bytes < 20_000)
+        }
+    }
+
+    @Test
+    fun `canonical client archive keeps non Runtime bodies without reading Runtime state`() = runBlocking {
+        withFixture { f ->
+            val thread = f.conversation.currentThread
+            val canonical = f.message("canonical").copy(
+                role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(ContentItem.Thinking("reasoning", signature = "s".repeat(20_000))),
+                providerMetadata = buildJsonObject { put("providerReplay", "x".repeat(12_000)) },
+            )
+            val runtime = f.message("runtime").copy(
+                role = Conversation.Message.Role.RUNTIME,
+                author = Conversation.Message.Author.Runtime(),
+                content = emptyList(),
+                instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
+                    "PRIVATE_STATE_${"z".repeat(300_000)}",
+                    "visual:one",
+                    "revision",
+                )),
+            ).withDurableRuntimeObservationBoundary()
+            f.save(canonical, thread, 0)
+            f.save(runtime, thread, 1)
+
+            lateinit var archive: List<com.gromozeka.domain.repository.PositionedConversationMessage>
+            val measurement = f.measure { archive = f.history.clientMessages(thread) }
+
+            assertEquals(canonical, archive[0].message)
+            assertEquals(runtime.id, archive[1].message.id)
+            assertEquals(Conversation.Message.Role.RUNTIME, archive[1].message.role)
+            assertTrue(archive[1].message.instructions.isEmpty())
+            assertTrue(archive[1].message.providerMetadata.isEmpty())
+            assertEquals(1L, measurement.bodies)
+            assertTrue(measurement.bytes < 50_000)
+        }
+    }
+
+    @Test
+    fun `raw external context preserves compacted rows and skips superseded Runtime bodies`() = runBlocking {
+        withFixture { f ->
+            val thread = f.conversation.currentThread
+            fun observation(id: String, text: String, boundary: Boolean = false): Conversation.Message {
+                val message = f.message(id).copy(
+                    role = Conversation.Message.Role.RUNTIME,
+                    author = Conversation.Message.Author.Runtime(),
+                    content = emptyList(),
+                    instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(text, "visual:one", id)),
+                )
+                return if (boundary) message.withDurableRuntimeObservationBoundary() else message
+            }
+            val archived = f.message("archived")
+            val oldBaseline = observation("old-baseline", "OLD_PRIVATE_${"x".repeat(300_000)}", boundary = true)
+            val oldDelta = observation("old-delta", "OLD_PRIVATE_${"y".repeat(300_000)}")
+            val checkpoint = f.message("checkpoint").copy(
+                role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(ContentItem.ContextCompactionResult(
+                    ContentItem.ContextCompactionResult.Payload.ReadableSummary("summary"),
+                    ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                    coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                )),
+            ).withDurableRuntimeObservationBoundary()
+            val current = observation("current", "CURRENT_PRIVATE")
+            val tail = f.message("tail")
+            listOf(archived, oldBaseline, oldDelta, checkpoint, current, tail).forEachIndexed { index, message ->
+                f.save(message, thread, index)
+            }
+
+            lateinit var selected: List<Conversation.Message>
+            val measurement = f.measure { selected = f.links.getRawExternalContextMessagesByThread(thread) }
+
+            assertEquals(listOf(archived, checkpoint, current, tail), selected)
+            assertEquals(4L, measurement.bodies)
+            assertTrue(measurement.bytes < 30_000)
+        }
+    }
+
+    @Test
     fun `sparse context skips superseded Runtime bodies before deserialization`() = runBlocking {
         withFixture { f ->
             val thread = f.conversation.currentThread

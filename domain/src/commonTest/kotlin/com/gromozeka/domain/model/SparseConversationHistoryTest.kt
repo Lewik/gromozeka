@@ -172,6 +172,40 @@ class SparseConversationHistoryTest {
     }
 
     @Test
+    fun rawExternalHistoryKeepsCompactedRowsButDropsRuntimeStateBeforeCheckpointBoundary() {
+        fun observation(id: String, boundary: Boolean = false): Message {
+            val message = text(id).copy(
+                role = Message.Role.RUNTIME,
+                author = Message.Author.Runtime(),
+                content = emptyList(),
+                instructions = listOf(Message.Instruction.RuntimeObservation(id, "state", id)),
+            )
+            return if (boundary) message.withDurableRuntimeObservationBoundary() else message
+        }
+        val archived = text("archived")
+        val oldRuntime = observation("old-runtime", boundary = true)
+        val checkpoint = text("checkpoint").copy(
+            role = Message.Role.ASSISTANT,
+            content = listOf(ContentItem.ContextCompactionResult(
+                ContentItem.ContextCompactionResult.Payload.ReadableSummary("summary"),
+                ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+            )),
+        ).withDurableRuntimeObservationBoundary()
+        val currentRuntime = observation("current-runtime")
+        val tail = text("tail")
+        val history = listOf(archived, oldRuntime, checkpoint, currentRuntime, tail)
+
+        val selected = selectRawExternalHistoryMessageIds(
+            history.map { MessageContextHeader(it.id, MessageContextMetadata.from(it)) },
+        )
+
+        assertEquals(listOf(archived.id, checkpoint.id, currentRuntime.id, tail.id), history.mapNotNull {
+            it.id.takeIf(selected::contains)
+        })
+    }
+
+    @Test
     fun retainsNativeUsageObservationsEvenWhenSelectiveCoverageHidesTheirMessages() {
         fun observation(id: String, tokens: JsonElement) = text(id).copy(role = Message.Role.ASSISTANT,
             content = listOf(ContentItem.AssistantMessage(Message.StructuredText(id))),

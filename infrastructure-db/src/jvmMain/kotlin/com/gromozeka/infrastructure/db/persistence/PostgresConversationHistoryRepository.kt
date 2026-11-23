@@ -61,6 +61,12 @@ class PostgresConversationHistoryRepository(
         ).sortedBy { it.position }
     }
 
+    override suspend fun clientMessages(threadId: Conversation.Thread.Id): List<PositionedConversationMessage> =
+        queryPage(
+            "$PAGE_JOIN WHERE tm.thread_id = ? ORDER BY tm.position ASC",
+            listOf(threadId.value),
+        )
+
     override suspend fun position(threadId: Conversation.Thread.Id, messageId: Conversation.Message.Id): Int? = withContext(Dispatchers.IO) {
         dataSource.connection.use { connection ->
             connection.prepareStatement("SELECT position FROM thread_messages WHERE thread_id = ? AND message_id = ?").use { statement ->
@@ -142,19 +148,45 @@ class PostgresConversationHistoryRepository(
         return withContext(Dispatchers.IO) {
             dataSource.connection.use { connection ->
                 connection.prepareStatement("""
-                    SELECT item.instruction_id
-                    FROM thread_messages tm
-                    JOIN messages m ON m.id = tm.message_id
-                    CROSS JOIN LATERAL jsonb_array_elements_text(
-                        COALESCE(m.context_metadata_json::jsonb -> 'userInstructionIds', '[]'::jsonb)
-                    ) WITH ORDINALITY AS item(instruction_id, ordinal)
-                    WHERE tm.thread_id = ? AND item.instruction_id IN ($placeholders)
-                    ORDER BY tm.position DESC, item.ordinal DESC
-                    LIMIT 1
+                    WITH candidates AS (
+                        SELECT tm.position, item.ordinal, item.instruction_id, NULL::text AS message_json
+                        FROM thread_messages tm
+                        JOIN messages m ON m.id = tm.message_id
+                        CROSS JOIN LATERAL jsonb_array_elements_text(
+                            m.context_metadata_json::jsonb -> 'userInstructionIds'
+                        ) WITH ORDINALITY AS item(instruction_id, ordinal)
+                        WHERE tm.thread_id = ?
+                          AND m.context_metadata_json IS NOT NULL
+                          AND NOT COALESCE(
+                              (m.context_metadata_json::jsonb ->> 'agentAuthored')::boolean,
+                              false
+                          )
+                          AND item.instruction_id IN ($placeholders)
+                        UNION ALL
+                        SELECT tm.position, NULL::bigint, NULL::text, m.message_json
+                        FROM thread_messages tm
+                        JOIN messages m ON m.id = tm.message_id
+                        WHERE tm.thread_id = ? AND m.context_metadata_json IS NULL
+                    )
+                    SELECT instruction_id, message_json
+                    FROM candidates
+                    ORDER BY position DESC, ordinal DESC NULLS LAST
                 """.trimIndent()).use { statement ->
                     statement.setString(1, threadId.value)
                     instructionIds.forEachIndexed { index, id -> statement.setString(index + 2, id) }
-                    statement.executeQuery().use { rows -> if (rows.next()) rows.getString(1) else null }
+                    statement.setString(instructionIds.size + 2, threadId.value)
+                    statement.executeQuery().use { rows ->
+                        while (rows.next()) {
+                            rows.getString(1)?.let { return@withContext it }
+                            val message = json.decodeFromString<Conversation.Message>(rows.getString(2))
+                            if (message.author is Conversation.Message.Author.Agent) continue
+                            message.instructions.asReversed()
+                                .filterIsInstance<Conversation.Message.Instruction.UserInstruction>()
+                                .firstOrNull { it.id in instructionIds }
+                                ?.let { return@withContext it.id }
+                        }
+                        null
+                    }
                 }
             }
         }

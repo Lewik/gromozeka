@@ -1,6 +1,6 @@
 -- Keep generated sparse-read metadata aligned with the canonical Kotlin projection.
--- Recompute only existing Runtime-observation/boundary rows; all other legacy rows
--- decode the new false-valued fields through Kotlin defaults.
+-- Recompute existing Runtime-observation/boundary, user-instruction and agent-authored
+-- rows; other legacy rows decode the new false-valued fields through Kotlin defaults.
 CREATE OR REPLACE FUNCTION gromozeka_message_context_metadata(document json)
 RETURNS text
 LANGUAGE plpgsql IMMUTABLE STRICT
@@ -43,6 +43,7 @@ BEGIN
             SELECT json_agg(value -> 'id' ORDER BY ordinal) FROM instructions
             WHERE value ->> 'type' = 'com.gromozeka.domain.model.Conversation.Message.Instruction.UserInstruction'
         ), '[]'::json),
+        'agentAuthored', COALESCE(document #>> '{author,type}' = 'agent', false),
         'nativeUsage', CASE WHEN json_typeof(document #> '{providerMetadata,provider}') = 'string' AND
             document #>> '{providerMetadata,provider}' = 'OPENAI_SUBSCRIPTION'
         THEN json_build_object(
@@ -69,4 +70,6 @@ $$;
 UPDATE messages
 SET message_json = message_json
 WHERE message_json LIKE '%"runtime_observation"%'
-   OR message_json LIKE '%"gromozekaDurableRuntimeObservationBoundary"%';
+   OR message_json LIKE '%"gromozekaDurableRuntimeObservationBoundary"%'
+   OR message_json LIKE '%Conversation.Message.Instruction.UserInstruction%'
+   OR message_json LIKE '%"type":"agent"%';

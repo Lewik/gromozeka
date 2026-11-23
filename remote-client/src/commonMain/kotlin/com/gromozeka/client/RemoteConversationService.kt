@@ -3,7 +3,6 @@ package com.gromozeka.client
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Project
-import com.gromozeka.domain.model.ConversationHistoryPageRequest
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.remote.protocol.ConversationResponse
 import com.gromozeka.remote.protocol.ConversationsResponse
@@ -14,6 +13,8 @@ import com.gromozeka.remote.protocol.FindConversationRequest
 import com.gromozeka.remote.protocol.FindConversationsByProjectRequest
 import com.gromozeka.remote.protocol.ForkConversationRequest
 import com.gromozeka.remote.protocol.GetProjectRequest
+import com.gromozeka.remote.protocol.LoadCurrentMessagesRequest
+import com.gromozeka.remote.protocol.MessagesResponse
 import com.gromozeka.remote.protocol.ProjectResponse
 import com.gromozeka.remote.protocol.RegenerateSuggestedRepliesRequest
 import com.gromozeka.remote.protocol.SavedResponse
@@ -91,20 +92,9 @@ internal class RemoteConversationService(
         client.requestTyped<ForkConversationRequest, ConversationResponse>(ForkConversationRequest(conversationId))
             .conversation ?: error("Server returned null conversation after fork")
 
-    override suspend fun loadCurrentMessages(conversationId: Conversation.Id): List<Conversation.Message> {
-        val history = RemoteConversationHistoryService(client)
-        val pages = mutableListOf<List<Conversation.Message>>()
-        var before: com.gromozeka.domain.model.ConversationHistoryCursor? = null
-        do {
-            val page = history.loadPage(
-                conversationId,
-                ConversationHistoryPageRequest(before = before, limit = 100),
-            )
-            pages += page.messages.map { it.message }
-            before = page.older
-        } while (before != null)
-        return pages.asReversed().flatten()
-    }
+    override suspend fun loadCurrentMessages(conversationId: Conversation.Id): List<Conversation.Message> =
+        client.requestTyped<LoadCurrentMessagesRequest, MessagesResponse>(LoadCurrentMessagesRequest(conversationId))
+            .messages
 
     override suspend fun regenerateSuggestedReplies(
         conversationId: Conversation.Id,
