@@ -19,7 +19,8 @@ import java.util.concurrent.atomic.AtomicInteger
 import androidx.compose.ui.test.v2.runDesktopComposeUiTest
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.presentation.ui.session.MessageItem
-import com.gromozeka.presentation.ui.session.rememberMessageListEntries
+import com.gromozeka.presentation.ui.session.rememberConversationTimeline
+import com.gromozeka.presentation.ui.session.ConversationTimelineItem
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -206,7 +207,7 @@ class GromozekaMarkdownRenderingTest {
             CompositionLocalProvider(LocalInspectionMode provides true, LocalMarkdownParserBoundary provides parser) {
                 GromozekaTheme {
                     if (visible) Column {
-                        rememberMessageListEntries(listOf(message, healthy), emptyMap(), emptyMap()).forEach {
+                        rememberConversationTimeline(listOf(message, healthy), emptyMap(), emptyMap()).filterIsInstance<ConversationTimelineItem.Message>().map { it.entry }.forEach {
                             MessageItem(it, loadArtifactContent = { byteArrayOf() })
                         }
                     }
@@ -287,7 +288,7 @@ class GromozekaMarkdownRenderingTest {
                 GromozekaTheme {
                     if (segmented) {
                         Column {
-                            rememberMessageListEntries(listOf(message), emptyMap(), emptyMap()).forEach {
+                            rememberConversationTimeline(listOf(message), emptyMap(), emptyMap()).filterIsInstance<ConversationTimelineItem.Message>().map { it.entry }.forEach {
                                 MessageItem(it, loadArtifactContent = { byteArrayOf() })
                             }
                         }

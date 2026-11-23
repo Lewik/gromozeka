@@ -96,7 +96,7 @@ class MessageTextSelectionTest {
         setContent {
             CompositionLocalProvider(LocalInspectionMode provides true, LocalClipboard provides clipboard) {
                 GromozekaTheme {
-                    val entries = rememberMessageListEntries(listOf(message), emptyMap(), emptyMap())
+                    val entries = rememberConversationTimeline(listOf(message), emptyMap(), emptyMap()).filterIsInstance<ConversationTimelineItem.Message>().map { it.entry }
                     LazyColumn(Modifier.fillMaxSize().testTag("selection-host")) {
                         items(entries, key = { it.key }) { MessageItem(it, loadArtifactContent = { byteArrayOf() }) }
                     }

@@ -37,29 +37,42 @@ internal fun activityTestResults(messages: List<Conversation.Message>) = message
 internal fun ActivityTimelineFixture(
     messages: List<Conversation.Message>,
     results: Map<String, Conversation.Message.ContentItem.ToolResult> = activityTestResults(messages),
-    summaryStyle: ActivitySummaryStyle = ActivitySummaryStyle.ICONS,
+    isCompactLayout: Boolean = false,
+    modelRequest: ModelRequestActivity? = null,
+    messageSelectionEnabled: Boolean = false,
+    selectedMessageIds: Set<Conversation.Message.Id> = emptySet(),
+    onToggleSelection: (Conversation.Message.Id, Boolean) -> Unit = { _, _ -> },
+    onModelRequestClick: () -> Unit = {},
+    onTimeline: (List<ConversationTimelineItem>) -> Unit = {},
     loadArtifactContent: suspend (com.gromozeka.domain.model.Artifact.Id) -> ByteArray = { byteArrayOf() },
     onEntries: (List<MessageListEntry>) -> Unit = {},
 ) {
     var expanded by rememberSaveable { mutableStateOf(emptySet<String>()) }
-    val entries = rememberMessageListEntries(messages, emptyMap(), results, expanded)
-    onEntries(entries)
+    val entries = rememberConversationTimeline(messages, emptyMap(), results, expanded, modelRequest)
+    onTimeline(entries)
+    onEntries(entries.filterIsInstance<ConversationTimelineItem.Message>().map { it.entry })
     MaterialTheme {
         FollowLatestLazyColumn(
             items = entries,
-            itemKey = MessageListEntry::key,
+            itemKey = ConversationTimelineItem::key,
             contentRevision = entries,
             unreadLabel = { "$it new activity" },
             modifier = Modifier.fillMaxSize(),
-        ) { entry, pauseFollowingLatest ->
-            MessageItem(
-                entry = entry,
-                expandedActivityKeys = expanded,
-                onToggleActivityExpansion = { key -> expanded = if (key in expanded) expanded - key else expanded + key },
-                onManualContentResize = pauseFollowingLatest,
-                activitySummaryStyle = summaryStyle,
-                loadArtifactContent = loadArtifactContent,
-            )
+        ) { item, pauseFollowingLatest ->
+            ConversationTimelineItemContent(item, onModelRequestClick) { entry ->
+                MessageItem(
+                    entry = entry,
+                    messageSelectionEnabled = messageSelectionEnabled,
+                    isSelected = entry.message.id in selectedMessageIds,
+                    onToggleSelection = onToggleSelection,
+                    expandedActivityKeys = expanded,
+                    onToggleActivityExpansion = { key -> expanded = if (key in expanded) expanded - key else expanded + key },
+                    onManualContentResize = pauseFollowingLatest,
+                    onModelRequestClick = onModelRequestClick,
+                    isCompactLayout = isCompactLayout,
+                    loadArtifactContent = loadArtifactContent,
+                )
+            }
         }
     }
 }

@@ -4,6 +4,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.v2.runDesktopComposeUiTest
 import com.gromozeka.domain.model.*
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
+import com.gromozeka.presentation.services.translation.data.EnglishTranslation
 import com.gromozeka.presentation.ui.UiTestTag
 import kotlinx.serialization.json.*
 import java.awt.image.BufferedImage
@@ -45,16 +46,20 @@ class AsyncToolRenderingTest {
         onNodeWithText("second async body", substring = true).assertIsDisplayed()
     }
 
-    @Test fun failedAndCancelledOutcomesRemainDistinctAndUngrouped() = runDesktopComposeUiTest {
+    @Test fun failedAndCancelledOutcomesRemainDistinctInsideTheGroup() = runDesktopComposeUiTest {
         val messages = completion("failed", listOf(ContentItem.ToolResult.Data.Text("Effects may have occurred; do not repeat automatically")), error = true) +
             completion("cancelled", listOf(ContentItem.ToolResult.Data.Text("Cancelled before execution")), error = true,
                 state = Conversation.Message.BlockState.INTERRUPTED)
         var entries = emptyList<MessageListEntry>()
         setContent { ActivityTimelineFixture(messages, results(messages), onEntries = { entries = it }) }
         runOnIdle {
-            assertEquals(listOf(ActivityState.FAILED, ActivityState.INTERRUPTED), entries.mapNotNull { (it.segment as? MessageSegment.Activity)?.activity?.state })
-            assertTrue(entries.none { it.segment is MessageSegment.ActivityGroup })
+            val group = assertIs<MessageSegment.ActivityGroup>(entries.single().segment)
+            assertEquals(listOf(ActivityState.FAILED, ActivityState.INTERRUPTED), group.activities.map { it.activity.state })
         }
+        val translation = EnglishTranslation()
+        onNodeWithContentDescription(translation.text("runtime.failedTaskLabel"), useUnmergedTree = true).assertIsDisplayed()
+        onNodeWithContentDescription(translation.text("chat.activity.interrupted"), useUnmergedTree = true).assertIsDisplayed()
+        onNodeWithTag(UiTestTag.ActivityGroup("failed-call:0:content").value).performClick()
         onNodeWithTag(UiTestTag.ActivityItem("failed-call:0:content").value).performClick()
         onNodeWithText("Effects may have occurred", substring = true).assertIsDisplayed()
         onNodeWithText("Cancelled before execution", substring = true).assertDoesNotExist()

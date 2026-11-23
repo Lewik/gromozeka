@@ -13,6 +13,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
@@ -122,6 +123,35 @@ class FollowLatestLazyColumnTest {
     }
 
     @Test
+    fun retainedTransientActivityDoesNotHideAnAppendedUnreadMessage() = runDesktopComposeUiTest(width = 390, height = 500) {
+        val values = mutableStateListOf<String>().apply { addAll((0..30).map(Int::toString)); add("request") }
+        setContent {
+            val persisted = values.filterNot { it == "request" }
+            MaterialTheme {
+                FollowLatestLazyColumn(
+                    items = values,
+                    itemKey = { it },
+                    unreadKey = { it.takeUnless { key -> key == "request" } },
+                    contentRevision = values.toList(),
+                    unreadRevision = persisted,
+                    unreadLabel = { "$it new messages" },
+                    modifier = Modifier.fillMaxSize(),
+                ) { value, _ ->
+                    Text(value, Modifier.fillMaxWidth().height(72.dp).testTag("retained-transient:$value"))
+                }
+            }
+        }
+        waitForTag("retained-transient:request")
+        repeat(5) { onNodeWithTag(UiTestTag.MessageList.value).performTouchInput { swipeDown() }; waitForIdle() }
+        waitForTag("retained-transient:0")
+
+        runOnIdle { values.add(values.lastIndex, "31") }
+
+        onNodeWithText("1 new messages").assertIsDisplayed()
+        onNodeWithTag("retained-transient:31").assertDoesNotExist()
+    }
+
+    @Test
     fun prependingMarkdownKeepsTheSameMessageAtTheSameOffset() = runDesktopComposeUiTest(width = 800, height = 600) {
         fun message(index: Int) = activityTestMessage("markdown-$index", Conversation.Message.ContentItem.UserMessage("Message $index\n\n" + "A paragraph of text. ".repeat(15)))
         val messages = mutableStateListOf<Conversation.Message>().apply { addAll((0..30).map(::message)) }
@@ -173,6 +203,37 @@ class FollowLatestLazyColumnTest {
         }
         waitForIdle()
         runOnIdle { kotlin.test.assertEquals(listOf(0, 1), requestedBoundaries) }
+    }
+
+    @Test
+    fun transientActivityDoesNotCountAsUnreadOrHideItsReplacementMessage() = runDesktopComposeUiTest(width = 390, height = 500) {
+        val values = mutableStateListOf<String>().apply { addAll((0..30).map(Int::toString)); add("request") }
+        setContent {
+            val persisted = values.filterNot { it.startsWith("request") }
+            MaterialTheme {
+                FollowLatestLazyColumn(
+                    items = values, itemKey = { it }, unreadKey = { it.takeUnless { key -> key.startsWith("request") } },
+                    contentRevision = values.toList(), unreadRevision = persisted,
+                    unreadLabel = { "$it new messages" }, modifier = Modifier.fillMaxSize(),
+                ) { value, _ ->
+                    Text(value, Modifier.fillMaxWidth().height(72.dp).testTag("transient-test:$value"))
+                }
+            }
+        }
+        waitForTag("transient-test:request")
+        repeat(5) { onNodeWithTag(UiTestTag.MessageList.value).performTouchInput { swipeDown() }; waitForIdle() }
+        waitForTag("transient-test:0")
+        runOnIdle { values.remove("request"); values.add("31") }
+        onNodeWithText("1 new messages").assertIsDisplayed()
+        onNodeWithTag("transient-test:31").assertDoesNotExist()
+        runOnIdle { values.add("request-next") }
+        onNodeWithText("1 new messages").assertIsDisplayed()
+        onNodeWithText("2 new messages").assertDoesNotExist()
+        runOnIdle { values.remove("request-next"); values.add("32") }
+        onNodeWithText("2 new messages").assertIsDisplayed()
+        onNodeWithTag(UiTestTag.UnreadMessagesButton.value).performClick()
+        waitForTag("transient-test:32")
+        onNodeWithTag("transient-test:32").assertIsDisplayed()
     }
 
     private fun activityMessages(): List<Conversation.Message> =

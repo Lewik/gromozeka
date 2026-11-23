@@ -47,7 +47,6 @@ data class UIState(
         val customPrompts: List<String> = emptyList(),
 
         // Message editing state
-        val editMode: Boolean = false,
         val selectedMessageIds: Set<Conversation.Message.Id> = emptySet(),
         val collapsedContentItems: Map<Conversation.Message.Id, Set<Int>> = emptyMap(), // messageId -> set of collapsed content item indices
         val expandedActivityKeys: Set<String> = emptySet(),

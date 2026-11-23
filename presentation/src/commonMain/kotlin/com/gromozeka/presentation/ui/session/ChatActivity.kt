@@ -14,6 +14,19 @@ internal enum class ActivityState {
     INTERRUPTED,
 }
 
+internal enum class ActivityGroupSection {
+    COMPLETED,
+    PROBLEMS,
+    RUNNING,
+}
+
+internal val ActivityState.groupSection: ActivityGroupSection
+    get() = when (this) {
+        ActivityState.COMPLETE -> ActivityGroupSection.COMPLETED
+        ActivityState.FAILED, ActivityState.INTERRUPTED -> ActivityGroupSection.PROBLEMS
+        ActivityState.RUNNING -> ActivityGroupSection.RUNNING
+    }
+
 internal sealed interface ActivityKind {
     data class Tool(val name: String) : ActivityKind
     data object Reasoning : ActivityKind
@@ -83,22 +96,20 @@ internal fun groupActivityEntries(entries: List<MessageListEntry>, preservedGrou
     val pending = mutableListOf<ActivityReference>()
 
     fun flushPending() {
-        when (pending.size) {
-            0 -> Unit
-            1 -> result += pending.single().toEntry()
-            else -> result += MessageListEntry(
-                message = pending.first().message,
-                segment = MessageSegment.ActivityGroup(pending.toList()),
-                isFirstInMessage = pending.first().isFirstInMessage,
-                isLastInMessage = pending.last().isLastInMessage,
-            )
-        }
+        if (pending.isEmpty()) return
+        val first = pending.first()
+        result += if (pending.size == 1 && first.key !in preservedGroupStarts) first.toEntry() else MessageListEntry(
+            message = first.message,
+            segment = MessageSegment.ActivityGroup(pending.toList()),
+            isFirstInMessage = first.isFirstInMessage,
+            isLastInMessage = pending.last().isLastInMessage,
+        )
         pending.clear()
     }
 
     for (entry in entries) {
         val reference = entry.activityReferenceOrNull()
-        if (reference == null || reference.activity.state != ActivityState.COMPLETE) {
+        if (reference == null) {
             flushPending()
             result += entry
             continue
@@ -133,9 +144,13 @@ internal fun activityExpansionKey(entryKey: String): String = "activity:$entryKe
 
 internal fun activityGroupExpansionKey(entryKey: String): String = "group:$entryKey"
 
-internal data class ActivitySummary(val kind: ActivityKind, val count: Int)
+internal data class ActivitySummary(
+    val kind: ActivityKind,
+    val state: ActivityState,
+    val count: Int,
+)
 
 internal fun summarizeActivities(activities: List<ChatActivity>): List<ActivitySummary> =
-    activities.groupingBy(ChatActivity::kind).eachCount()
-        .map { (kind, count) -> ActivitySummary(kind, count) }
-        .sortedBy { it.kind != ActivityKind.Reasoning }
+    activities.groupingBy { it.state to it.kind }.eachCount()
+        .map { (key, count) -> ActivitySummary(key.second, key.first, count) }
+        .sortedWith(compareBy<ActivitySummary> { it.state.groupSection }.thenBy { it.kind != ActivityKind.Reasoning })
