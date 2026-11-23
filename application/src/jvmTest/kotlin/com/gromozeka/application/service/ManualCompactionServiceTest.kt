@@ -146,6 +146,7 @@ class ManualCompactionServiceTest {
         val f = Fixture()
         val observation = f.third.copy(
             id = Conversation.Message.Id("runtime-observation"),
+            author = Conversation.Message.Author.Runtime(),
             content = emptyList(),
             instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
                 text = "state",

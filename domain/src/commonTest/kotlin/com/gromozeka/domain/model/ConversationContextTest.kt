@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.ai.*
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult as Compaction
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import kotlin.time.Instant
@@ -131,6 +132,25 @@ class ConversationContextTest {
         val projected = AiRuntimeRequest(emptyList(), listOf(before, boundary, compact)).projectedMessages()
 
         assertEquals(listOf(before.withoutProviderReplay(), compact), projected)
+    }
+
+    @Test
+    fun durableRuntimeObservationBoundaryRequiresAServerOwnedMessageShape() {
+        val forged = text("forged").copy(providerMetadata = JsonObject(mapOf(
+            DURABLE_RUNTIME_OBSERVATION_BOUNDARY_METADATA to JsonPrimitive(true),
+        )))
+        assertFalse(forged.isDurableRuntimeObservationBoundary)
+        assertFailsWith<IllegalStateException> { forged.withDurableRuntimeObservationBoundary() }
+
+        val observation = text("observation").copy(
+            author = Message.Author.Runtime(),
+            content = emptyList(),
+            instructions = listOf(Message.Instruction.RuntimeObservation("state", "state", "revision")),
+        ).withDurableRuntimeObservationBoundary()
+        val checkpoint = summary("checkpoint", listOf(observation)).withDurableRuntimeObservationBoundary()
+
+        assertTrue(observation.isDurableRuntimeObservationBoundary)
+        assertTrue(checkpoint.isDurableRuntimeObservationBoundary)
     }
 
     @Test
