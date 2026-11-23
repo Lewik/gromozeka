@@ -6,8 +6,8 @@ import kotlinx.serialization.json.JsonPrimitive
 const val DURABLE_RUNTIME_OBSERVATION_BOUNDARY_METADATA = "gromozekaDurableRuntimeObservationBoundary"
 
 val Conversation.Message.isDurableRuntimeObservationMessage: Boolean
-    get() = author is Conversation.Message.Author.Runtime &&
-        content.isEmpty() &&
+    get() = role == Conversation.Message.Role.RUNTIME &&
+        author is Conversation.Message.Author.Runtime &&
         instructions.isNotEmpty() &&
         instructions.all { it is Conversation.Message.Instruction.RuntimeObservation }
 

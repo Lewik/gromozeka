@@ -792,7 +792,7 @@ internal class ClaudeCodeCliRuntime(
         messages.joinToString("\n\n") { message ->
             buildString {
                 append("<message role=\"")
-                append(message.role.name.lowercase())
+                append(message.providerTranscriptRole())
                 append("\" id=\"")
                 append(xmlEscape(message.id.value))
                 append("\">\n")
@@ -805,9 +805,11 @@ internal class ClaudeCodeCliRuntime(
                     append("\n")
                 }
 
-                message.content.forEach { item ->
-                    append(contentItemToTranscript(item, attachments))
-                    append("\n")
+                if (message.role != Conversation.Message.Role.RUNTIME) {
+                    message.content.forEach { item ->
+                        append(contentItemToTranscript(item, attachments))
+                        append("\n")
+                    }
                 }
 
                 append("</message>")
@@ -921,11 +923,23 @@ internal class ClaudeCodeCliRuntime(
 
     private fun messageSignature(message: Conversation.Message): String =
         buildString {
-            append(message.role.name)
+            append(message.providerTranscriptRole().uppercase())
             append('\u001F')
             append(message.instructions.joinToString("\u001D") { it.toXmlLine() })
             append('\u001F')
-            append(message.content.joinToString("\u001D", transform = ::contentSignature))
+            if (message.role != Conversation.Message.Role.RUNTIME) {
+                append(message.content.joinToString("\u001D", transform = ::contentSignature))
+            }
+        }
+
+    private fun Conversation.Message.providerTranscriptRole(): String =
+        when (role) {
+            Conversation.Message.Role.USER,
+            Conversation.Message.Role.RUNTIME,
+            -> "user"
+
+            Conversation.Message.Role.ASSISTANT -> "assistant"
+            Conversation.Message.Role.SYSTEM -> "system"
         }
 
     private fun assistantMessageSignature(message: AiAssistantMessage): String =

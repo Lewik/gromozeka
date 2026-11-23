@@ -151,6 +151,10 @@ internal sealed interface MessageSegment {
     data object Error : MessageSegment {
         override val key: String = "error"
     }
+
+    data object RuntimeObservation : MessageSegment {
+        override val key: String = "runtime-observation"
+    }
 }
 
 internal enum class MarkdownKind {
@@ -172,6 +176,10 @@ internal fun rememberMessageListEntries(
         key(message.id.value) {
             val segments = mutableListOf<MessageSegment>()
             val collapsedItems = collapsedContentItems[message.id].orEmpty()
+
+            if (message.role == Conversation.Message.Role.RUNTIME) {
+                segments += MessageSegment.RuntimeObservation
+            }
 
             for (contentIndex in message.content.indices) {
                 val content = message.content[contentIndex]
@@ -607,6 +615,13 @@ private fun MessageSegmentContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 6.dp),
+        )
+
+        MessageSegment.RuntimeObservation -> Text(
+            text = LocalTranslation.current.text("client.instructions.runtimeObservation"),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(vertical = 4.dp),
         )
 
         MessageSegment.Error -> MessageError(entry.message)

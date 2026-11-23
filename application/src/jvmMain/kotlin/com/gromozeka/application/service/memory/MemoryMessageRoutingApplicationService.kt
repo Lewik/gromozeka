@@ -708,7 +708,15 @@ class MemoryMessageRoutingApplicationService(
         syntheticKind == SyntheticMessageKind.MEMORY
 
     private fun Conversation.Message.isMemoryRouteableTarget(): Boolean =
-        role != Conversation.Message.Role.SYSTEM && error == null
+        when (role) {
+            Conversation.Message.Role.USER,
+            Conversation.Message.Role.ASSISTANT,
+            -> error == null
+
+            Conversation.Message.Role.SYSTEM,
+            Conversation.Message.Role.RUNTIME,
+            -> false
+        }
 
     private fun memoryIdFactory(
         prefix: String,
@@ -722,7 +730,15 @@ class MemoryMessageRoutingApplicationService(
 }
 
 internal fun Conversation.Message.isMemoryStageContextMessage(): Boolean =
-    role != Conversation.Message.Role.SYSTEM && error == null && !isDurableRuntimeObservationMessage
+    when (role) {
+        Conversation.Message.Role.USER,
+        Conversation.Message.Role.ASSISTANT,
+        -> error == null && !isDurableRuntimeObservationMessage
+
+        Conversation.Message.Role.SYSTEM,
+        Conversation.Message.Role.RUNTIME,
+        -> false
+    }
 
 private fun MemoryWriteRetrievalPlan.describeForLog(): String =
     "need=$needRetrieval types=${memoryTypes.joinToString { it.name }} " +

@@ -28,10 +28,7 @@ class PostgresConversationHistoryRepository(
                             SELECT m.created_at
                             FROM thread_messages tm JOIN messages m ON m.id = tm.message_id
                             WHERE tm.thread_id = t.id
-                              AND NOT COALESCE(
-                                  (m.context_metadata_json::jsonb ->> 'runtimeObservation')::boolean,
-                                  false
-                              )
+                              AND m.role <> 'RUNTIME'
                             ORDER BY tm.position DESC LIMIT 1
                         ) last_message ON TRUE
                         WHERE t.id = ANY (?)
@@ -58,8 +55,8 @@ class PostgresConversationHistoryRepository(
         require(before == null || after == null)
         val boundary = when { before != null -> "AND tm.position < ?"; after != null -> "AND tm.position > ?"; else -> "" }
         val direction = if (after != null) "ASC" else "DESC"
-        return query(
-            "$JOIN WHERE tm.thread_id = ? $boundary AND NOT $RUNTIME_OBSERVATION ORDER BY tm.position $direction LIMIT ?",
+        return queryPage(
+            "$PAGE_JOIN WHERE tm.thread_id = ? $boundary ORDER BY tm.position $direction LIMIT ?",
             listOfNotNull(threadId.value, before ?: after, limit),
         ).sortedBy { it.position }
     }
@@ -151,12 +148,51 @@ class PostgresConversationHistoryRepository(
         return messages.zip(authors) { positioned, message -> positioned.copy(message = message) }
     }
 
+    /** Runtime rows are visible timeline entries, but their model-only bodies can be hundreds of KiB. */
+    private suspend fun queryPage(sql: String, arguments: List<Any>): List<PositionedConversationMessage> {
+        val messages = withContext(Dispatchers.IO) {
+            dataSource.connection.use { connection ->
+                connection.prepareStatement(sql).use { statement ->
+                    arguments.forEachIndexed { index, argument -> statement.setObject(index + 1, argument) }
+                    statement.executeQuery().use { rows -> buildList {
+                        while (rows.next()) {
+                            val role = Conversation.Message.Role.valueOf(rows.getString(4))
+                            val message = if (role == Conversation.Message.Role.RUNTIME) {
+                                val createdAt = rows.getTimestamp(5).toInstant()
+                                Conversation.Message(
+                                    id = Conversation.Message.Id(rows.getString(2)),
+                                    conversationId = Conversation.Id(rows.getString(3)),
+                                    role = role,
+                                    author = Conversation.Message.Author.Runtime(),
+                                    content = emptyList(),
+                                    createdAt = kotlin.time.Instant.fromEpochSeconds(
+                                        createdAt.epochSecond,
+                                        createdAt.nano.toLong(),
+                                    ),
+                                )
+                            } else {
+                                json.decodeFromString<Conversation.Message>(rows.getString(6))
+                            }
+                            add(PositionedConversationMessage(rows.getInt(1), message))
+                        }
+                    } }
+                }
+            }
+        }
+        val authors = dbQuery { resolveCurrentMessageAuthors(messages.map { it.message }) }
+        return messages.zip(authors) { positioned, message -> positioned.copy(message = message) }
+    }
+
     @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
     private companion object {
         val TOOL_RESULT_TYPE = Conversation.Message.ContentItem.ToolResult.serializer().descriptor.serialName
         val THINKING_TYPE = Conversation.Message.ContentItem.Thinking.serializer().descriptor.serialName
         val TOOL_CALL_TYPE = Conversation.Message.ContentItem.ToolCall.serializer().descriptor.serialName
         const val JOIN = "SELECT tm.position, m.message_json FROM thread_messages tm JOIN messages m ON m.id = tm.message_id"
-        const val RUNTIME_OBSERVATION = "COALESCE((m.context_metadata_json::jsonb ->> 'runtimeObservation')::boolean, false)"
+        const val PAGE_JOIN = """
+            SELECT tm.position, m.id, m.conversation_id, m.role, m.created_at,
+                CASE WHEN m.role = 'RUNTIME' THEN NULL ELSE m.message_json END
+            FROM thread_messages tm JOIN messages m ON m.id = tm.message_id
+        """
     }
 }

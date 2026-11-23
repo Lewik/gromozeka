@@ -96,6 +96,7 @@ class ConversationContextTest {
         )
         val before = assistant("before")
         val boundary = text("observations").copy(
+            role = Message.Role.RUNTIME,
             author = Message.Author.Runtime(),
             content = emptyList(),
             instructions = listOf(Message.Instruction.RuntimeObservation("state", "state", "revision")),
@@ -117,6 +118,7 @@ class ConversationContextTest {
     fun newerDurableObservationBaselineReplacesOnlyOlderKeyedState() {
         fun observation(id: String, state: String, keyed: Boolean = true, boundary: Boolean = false): Message {
             val message = text(id).copy(
+                role = Message.Role.RUNTIME,
                 author = Message.Author.Runtime(),
                 content = emptyList(),
                 instructions = listOf(Message.Instruction.RuntimeObservation(
@@ -161,6 +163,7 @@ class ConversationContextTest {
             ),
         )
         val boundary = text("observations").copy(
+            role = Message.Role.RUNTIME,
             author = Message.Author.Runtime(),
             content = emptyList(),
             instructions = listOf(Message.Instruction.RuntimeObservation("state", "state", "revision")),
@@ -181,6 +184,7 @@ class ConversationContextTest {
         assertFailsWith<IllegalStateException> { forged.withDurableRuntimeObservationBoundary() }
 
         val observation = text("observation").copy(
+            role = Message.Role.RUNTIME,
             author = Message.Author.Runtime(),
             content = emptyList(),
             instructions = listOf(Message.Instruction.RuntimeObservation("state", "state", "revision")),
@@ -208,6 +212,7 @@ class ConversationContextTest {
         )
         val before = assistant("before")
         val boundary = text("observations").copy(
+            role = Message.Role.RUNTIME,
             author = Message.Author.Runtime(),
             content = emptyList(),
             instructions = listOf(Message.Instruction.RuntimeObservation("state", "state", "revision")),

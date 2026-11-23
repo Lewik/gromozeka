@@ -46,7 +46,7 @@ class ConversationRuntimeObservationService(
     private val log = klog.KLoggers.logger(this)
 
     /**
-     * Append one hidden Runtime message containing only changed keyed observations.
+     * Append one Runtime message containing only changed keyed observations.
      * The caller owns serialized conversation execution and reuses the returned messages in its request.
      */
     suspend fun appendChanged(
@@ -86,7 +86,7 @@ class ConversationRuntimeObservationService(
         var message = Conversation.Message(
             id = Conversation.Message.Id("${taskId.value}:runtime-observations:${hash(identity).take(24)}"),
             conversationId = conversation.id,
-            role = Conversation.Message.Role.USER,
+            role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
             content = emptyList(),
             instructions = observations,
@@ -127,7 +127,7 @@ class ConversationRuntimeObservationService(
         var message = Conversation.Message(
             id = Conversation.Message.Id("${turnId.value}:runtime-observations"),
             conversationId = conversationId,
-            role = Conversation.Message.Role.USER,
+            role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
             content = emptyList(),
             instructions = observations,

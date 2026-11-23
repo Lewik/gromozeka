@@ -5,6 +5,9 @@ import com.gromozeka.domain.model.DURABLE_RUNTIME_OBSERVATION_BOUNDARY_METADATA
 import com.gromozeka.domain.model.User
 
 fun Conversation.Message.attributeAuthenticatedSubmission(actorUser: User): Conversation.Message {
+    require(role != Conversation.Message.Role.RUNTIME) {
+        "Runtime messages cannot be submitted by clients"
+    }
     require(author !is Conversation.Message.Author.Runtime) {
         "Runtime-authored messages cannot be submitted by clients"
     }

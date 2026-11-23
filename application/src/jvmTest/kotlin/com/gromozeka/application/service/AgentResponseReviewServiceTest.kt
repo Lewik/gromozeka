@@ -68,6 +68,7 @@ class AgentResponseReviewServiceTest {
         val observationNoise = List(20) { index ->
             readableContext.copy(
                 id = Conversation.Message.Id("runtime-observation-$index"),
+                role = Conversation.Message.Role.RUNTIME,
                 author = Conversation.Message.Author.Runtime(),
                 content = emptyList(),
                 instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(

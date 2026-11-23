@@ -200,7 +200,7 @@ data class Conversation(
         value class Id(val value: String)
 
         /**
-         * Provider-facing message role.
+         * Canonical conversation message role. Provider adapters translate roles to their wire contracts.
          */
         @Serializable
         enum class Role {
@@ -212,6 +212,9 @@ data class Conversation(
 
             /** System notification or instruction */
             SYSTEM,
+
+            /** Application Runtime context recorded in conversation history */
+            RUNTIME,
 
         }
 

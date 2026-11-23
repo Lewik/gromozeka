@@ -1377,14 +1377,7 @@ class ConversationEngineService(
             groups = settingsProvider.userProfile.messageInstructionGroups,
         )
         val targetMessageId = rootUserMessageId
-            ?: currentMessages.lastOrNull {
-                it.role == Conversation.Message.Role.USER && !(
-                    it.content.isEmpty() && it.instructions.isNotEmpty() &&
-                        it.instructions.all { instruction ->
-                            instruction is Conversation.Message.Instruction.RuntimeObservation
-                        }
-                )
-            }?.id
+            ?: currentMessages.lastOrNull { it.role == Conversation.Message.Role.USER }?.id
             ?: Conversation.Message.Id("history-mutation-reprepare:${task.id.value}")
         // External channels keep their existing turn lifecycle; collaboration is opt-out for the whole turn.
         val activeCollaboration = collaboration.takeIf { conversation.externalChannel == null }

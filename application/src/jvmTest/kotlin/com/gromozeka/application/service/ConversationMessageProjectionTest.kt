@@ -15,8 +15,9 @@ class ConversationMessageProjectionTest {
             revision = "revision",
         )
         val original = message(emptyList()).copy(
-            role = Conversation.Message.Role.USER,
+            role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
+            content = listOf(Conversation.Message.ContentItem.UserMessage("ui-only-content")),
             instructions = listOf(observation),
         )
 
@@ -26,7 +27,9 @@ class ConversationMessageProjectionTest {
         assertTrue(view.message.instructions.isEmpty())
         assertFalse(view.hasMoreContent)
         assertFalse(Json.encodeToString(view).contains("private-state"))
+        assertFalse(Json.encodeToString(view).contains("ui-only-content"))
         assertEquals(original.id, event.id)
+        assertTrue(event.content.isEmpty())
         assertTrue(event.instructions.isEmpty())
         assertFalse(Json.encodeToString(event).contains("private-state"))
         assertTrue(Json.encodeToString(event).encodeToByteArray().size < 2_000)

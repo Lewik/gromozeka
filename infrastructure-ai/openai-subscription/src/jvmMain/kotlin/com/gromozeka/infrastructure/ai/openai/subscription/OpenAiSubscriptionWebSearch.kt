@@ -130,7 +130,9 @@ class OpenAiSubscriptionWebSearch(private val client: OpenAiSubscriptionResponse
                 Conversation.Message.Role.USER -> message.content.mapNotNull { it.userInputTextOrNull() }.joinToString("\n")
                 Conversation.Message.Role.ASSISTANT -> message.content.filterIsInstance<ContentItem.AssistantMessage>()
                     .joinToString("\n") { it.structured.fullText }.take(assistantCharactersLeft).also { assistantCharactersLeft -= it.length }
-                else -> ""
+                Conversation.Message.Role.SYSTEM,
+                Conversation.Message.Role.RUNTIME,
+                -> ""
             }
             if (text.isBlank()) null else buildJsonObject {
                 put("role", if (message.role == Conversation.Message.Role.USER) "user" else "assistant")

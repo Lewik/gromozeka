@@ -28,6 +28,24 @@ import kotlin.test.assertTrue
 
 class OpenAiResponsesSdkRuntimeTest {
     @Test
+    fun `runtime role maps to user instructions without message content`() {
+        val runtimeMessage = userMessage().copy(
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(Conversation.Message.ContentItem.UserMessage("UI_ONLY_CONTENT")),
+            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("CURRENT_RUNTIME_STATE")),
+        )
+
+        val input = mapper.toCreateParams("gpt-5", false, request(messages = listOf(runtimeMessage)))
+            .input().orElseThrow().asResponse()
+        val payload = com.openai.core.jsonMapper().writeValueAsString(input.single())
+
+        assertTrue(payload.contains("\"role\":\"user\""))
+        assertTrue(payload.contains("CURRENT_RUNTIME_STATE"))
+        assertFalse(payload.contains("UI_ONLY_CONTENT"))
+    }
+
+    @Test
     fun `both OpenAI APIs project selective and foreign opaque compactions`() {
         val earlier = userMessage().copy(id = Conversation.Message.Id("a"), content = listOf(Conversation.Message.ContentItem.UserMessage("Earlier instruction")))
         val source = earlier.copy(id = Conversation.Message.Id("b"), content = listOf(Conversation.Message.ContentItem.UserMessage("Covered original")))

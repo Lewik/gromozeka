@@ -415,7 +415,7 @@ class TabViewModelRuntimeReplayTest {
     }
 
     @Test
-    fun `runtime observation shells keep paging positions but stay out of display and range selection`() = runTest {
+    fun `runtime observation shells remain visible timeline entries`() = runTest {
         val thread = Conversation.Thread.Id("thread-1")
         fun visible(id: String) = Conversation.Message(
             Conversation.Message.Id(id), Conversation.Id("conversation-1"),
@@ -424,6 +424,7 @@ class TabViewModelRuntimeReplayTest {
             createdAt = Instant.parse("2026-09-16T00:00:00Z"),
         )
         fun observation(id: String) = visible(id).copy(
+            role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
             content = emptyList(),
             instructions = emptyList(),
@@ -445,13 +446,13 @@ class TabViewModelRuntimeReplayTest {
         runCurrent()
 
         val displayed = model.historyContent.value
-        assertEquals(listOf(first.id, last.id), displayed.messages.map { it.id })
+        assertEquals(listOf(first.id, middle.id, last.id, rawTail.id), displayed.messages.map { it.id })
         assertEquals(first.id, displayed.firstLoadedMessageId)
         assertEquals(rawTail.id, displayed.lastLoadedMessageId)
 
         model.toggleMessageSelection(first.id)
         model.toggleMessageSelectionRange(last.id, isShiftPressed = true)
-        assertEquals(setOf(first.id, last.id), model.uiState.value.selectedMessageIds)
+        assertEquals(setOf(first.id, middle.id, last.id), model.uiState.value.selectedMessageIds)
     }
 
     @Test
@@ -470,6 +471,7 @@ class TabViewModelRuntimeReplayTest {
         )
         val initial = visible("initial")
         val observationShell = visible("runtime-observation").copy(
+            role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
             content = emptyList(),
             instructions = emptyList(),
@@ -510,7 +512,7 @@ class TabViewModelRuntimeReplayTest {
 
         assertEquals(1, model.historyActivityRevision.value)
         assertEquals(listOf(initial.id, observationShell.id, assistant.id), model.allMessages.value.map { it.id })
-        assertEquals(listOf(initial.id, assistant.id), model.historyContent.value.messages.map { it.id })
+        assertEquals(listOf(initial.id, observationShell.id, assistant.id), model.historyContent.value.messages.map { it.id })
         assertNull(model.newerHistory.value)
     }
 

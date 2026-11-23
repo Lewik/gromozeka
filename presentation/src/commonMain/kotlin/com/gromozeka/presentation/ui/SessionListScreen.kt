@@ -531,6 +531,7 @@ private fun ConversationItem(
                             Conversation.Message.Role.USER -> "search.role.user"
                             Conversation.Message.Role.ASSISTANT -> "search.role.assistant"
                             Conversation.Message.Role.SYSTEM -> "search.role.system"
+                            Conversation.Message.Role.RUNTIME -> "search.role.system"
                         }) }, hit.excerpt.takeIf(String::isNotBlank))
                             .joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,

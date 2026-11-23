@@ -39,6 +39,7 @@ class PostgresRuntimeMessageReadTest {
             f.save(first, thread, 0)
             List(3) { index ->
                 f.message("runtime-observation-$index").copy(
+                    role = Conversation.Message.Role.RUNTIME,
                     author = Conversation.Message.Author.Runtime(),
                     content = emptyList(),
                     instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
@@ -57,10 +58,12 @@ class PostgresRuntimeMessageReadTest {
                 page = f.history.page(thread, before = null, after = null, limit = 2)
             }
 
-            assertEquals(listOf(first.id, last.id), page.map { it.message.id })
-            assertEquals(2L, measurement.bodies)
+            assertEquals(listOf("runtime-observation-2", last.id.value), page.map { it.message.id.value })
+            assertEquals(1L, measurement.bodies)
             assertTrue(measurement.bytes < 10_000)
-            assertTrue(page.none { it.message.author is Conversation.Message.Author.Runtime })
+            assertEquals(Conversation.Message.Role.RUNTIME, page.first().message.role)
+            assertIs<Conversation.Message.Author.Runtime>(page.first().message.author)
+            assertTrue(page.first().message.instructions.isEmpty())
         }
     }
 
@@ -515,6 +518,7 @@ class PostgresRuntimeMessageReadTest {
                         put("openaiSubscriptionContextTokens", 1000); put("openaiSubscriptionContextEstimate", 900)
                     }),
                 f.message("runtime-boundary").copy(
+                    role = Conversation.Message.Role.RUNTIME,
                     content = emptyList(),
                     author = Conversation.Message.Author.Runtime(),
                     instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(

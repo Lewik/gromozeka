@@ -42,7 +42,7 @@ class ConversationRuntimeObservationServiceTest {
         val first = f.append("first", emptyList()).single()
 
         assertTrue(first.isDurableRuntimeObservationBoundary)
-        assertEquals(Conversation.Message.Role.USER, first.role)
+        assertEquals(Conversation.Message.Role.RUNTIME, first.role)
         assertIs<Conversation.Message.Author.Runtime>(first.author)
         assertTrue(first.content.isEmpty())
         assertEquals(

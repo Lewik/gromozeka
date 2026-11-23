@@ -122,7 +122,7 @@ class ConversationUnreadStateApplicationServiceTest {
         val observation = Conversation.Message(
             id = Conversation.Message.Id("runtime-observation"),
             conversationId = conversation.id,
-            role = Conversation.Message.Role.USER,
+            role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
             content = emptyList(),
             instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(

@@ -62,6 +62,7 @@ class ConversationContextSnapshotServiceTest {
         val f = Fixture(includeRuntimeObservations = true)
         val retained = f.user.copy(
             id = Conversation.Message.Id("retained-boundary"),
+            role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
             content = emptyList(),
             instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("old state", "state", "old")),

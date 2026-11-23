@@ -103,7 +103,7 @@ class ManualCompactionServiceTest {
         val boundary = f.third.copy(
             id = Conversation.Message.Id("runtime-boundary"),
             author = Conversation.Message.Author.Runtime(),
-            role = Conversation.Message.Role.USER,
+            role = Conversation.Message.Role.RUNTIME,
             content = emptyList(),
             instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("state", "state", "revision")),
         ).withDurableRuntimeObservationBoundary()
@@ -179,6 +179,7 @@ class ManualCompactionServiceTest {
         val f = Fixture()
         val observation = f.third.copy(
             id = Conversation.Message.Id("runtime-observation"),
+            role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
             content = emptyList(),
             instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
@@ -205,6 +206,7 @@ class ManualCompactionServiceTest {
         val f = Fixture()
         val boundary = f.third.copy(
             id = Conversation.Message.Id("runtime-observation"),
+            role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
             content = emptyList(),
             instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("state", "state", "revision")),

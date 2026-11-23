@@ -483,7 +483,7 @@ class TabViewModel(
                         true
                     } else {
                         applyHistoryEvent(event)
-                        if (runtimeReplayCompleted && !event.message.isRuntimeObservationHistoryShell()) {
+                        if (runtimeReplayCompleted && event.message.role != Conversation.Message.Role.RUNTIME) {
                             _historyActivityRevision.update { it + 1 }
                         }
                         false
@@ -1588,7 +1588,6 @@ private fun UIState.Tab.withSelectedMessageInstruction(
 
 /** Visible messages and their unfiltered loaded-window boundaries are one presentation snapshot. */
 private fun Conversation.Message.isVisibleHistoryMessage(settings: Settings): Boolean {
-    if (isRuntimeObservationHistoryShell()) return false
     val containsOnlyToolResults = content.isNotEmpty() &&
         content.all { it is Conversation.Message.ContentItem.ToolResult }
     if (containsOnlyToolResults) return false
@@ -1598,10 +1597,6 @@ private fun Conversation.Message.isVisibleHistoryMessage(settings: Settings): Bo
             item.level == Conversation.Message.ContentItem.System.SystemLevel.ERROR
     }
 }
-
-private fun Conversation.Message.isRuntimeObservationHistoryShell(): Boolean =
-    role == Conversation.Message.Role.USER && author is Conversation.Message.Author.Runtime &&
-        content.isEmpty() && instructions.all { it is Conversation.Message.Instruction.RuntimeObservation }
 
 data class ConversationHistoryContent(
     val messages: List<Conversation.Message> = emptyList(),

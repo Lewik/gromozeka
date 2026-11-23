@@ -582,7 +582,7 @@ private class GitHubCopilotRequestMapper {
 
     private fun messageToTranscript(message: Conversation.Message): String = buildString {
         append("<message role=\"")
-        append(message.role.name.lowercase())
+        append(message.providerTranscriptRole())
         append("\" id=\"")
         append(xmlEscape(message.id.value))
         appendLine("\">")
@@ -590,9 +590,21 @@ private class GitHubCopilotRequestMapper {
             .joinToString("\n") { it.toXmlLine() }
             .takeIf(String::isNotBlank)
             ?.let(::appendLine)
-        message.content.forEach { item -> appendLine(contentToTranscript(item)) }
+        if (message.role != Conversation.Message.Role.RUNTIME) {
+            message.content.forEach { item -> appendLine(contentToTranscript(item)) }
+        }
         append("</message>")
     }
+
+    private fun Conversation.Message.providerTranscriptRole(): String =
+        when (role) {
+            Conversation.Message.Role.USER,
+            Conversation.Message.Role.RUNTIME,
+            -> "user"
+
+            Conversation.Message.Role.ASSISTANT -> "assistant"
+            Conversation.Message.Role.SYSTEM -> "system"
+        }
 
     private fun contentToTranscript(item: Conversation.Message.ContentItem): String =
         when (item) {

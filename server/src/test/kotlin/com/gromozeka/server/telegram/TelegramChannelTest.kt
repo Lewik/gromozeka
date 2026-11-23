@@ -331,7 +331,7 @@ class TelegramChannelTest {
             Conversation.Message.ContentItem.Thinking("STALE_PRIVATE_REASONING", signature = "signature"),
             Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("visible old answer")),
         ))
-        val oldObservation = textMessage("old-runtime-observation", "", Conversation.Message.Role.USER).copy(
+        val oldObservation = textMessage("old-runtime-observation", "", Conversation.Message.Role.RUNTIME).copy(
             author = Conversation.Message.Author.Runtime(),
             content = emptyList(),
             instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
@@ -340,7 +340,7 @@ class TelegramChannelTest {
                 revision = "old-revision",
             )),
         )
-        val observation = textMessage("runtime-observation", "", Conversation.Message.Role.USER).copy(
+        val observation = textMessage("runtime-observation", "", Conversation.Message.Role.RUNTIME).copy(
             author = Conversation.Message.Author.Runtime(),
             content = emptyList(),
             instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
@@ -406,7 +406,7 @@ class TelegramChannelTest {
             Mockito.mock(ConversationRuntimeCoordinator::class.java), TelegramBindingAccess { error("Not used in materialization") })
         val root = textMessage("root", "@grz current", Conversation.Message.Role.USER)
         fun observation(id: String, revision: String, boundary: Boolean = false): Conversation.Message {
-            val message = textMessage(id, "", Conversation.Message.Role.USER).copy(
+            val message = textMessage(id, "", Conversation.Message.Role.RUNTIME).copy(
                 author = Conversation.Message.Author.Runtime(),
                 content = emptyList(),
                 instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
@@ -470,7 +470,7 @@ class TelegramChannelTest {
             Mockito.mock(ConversationRuntimeCoordinator::class.java), TelegramBindingAccess { error("Not used in materialization") })
         val root = textMessage("root", "@grz current", Conversation.Message.Role.USER)
         fun observation(id: String, marker: String, boundary: Boolean = false): Conversation.Message {
-            val message = textMessage(id, "", Conversation.Message.Role.USER).copy(
+            val message = textMessage(id, "", Conversation.Message.Role.RUNTIME).copy(
                 author = Conversation.Message.Author.Runtime(),
                 content = emptyList(),
                 instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(

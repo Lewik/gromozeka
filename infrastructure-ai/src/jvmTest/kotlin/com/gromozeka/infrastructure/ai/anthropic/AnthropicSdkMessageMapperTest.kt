@@ -31,6 +31,23 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class AnthropicSdkMessageMapperTest {
+    @Test
+    fun `runtime role maps to user instructions without message content`() {
+        val runtimeMessage = userMessage("UI_ONLY_CONTENT").copy(
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("CURRENT_RUNTIME_STATE")),
+        )
+
+        val message = mapper(AiConnection.Kind.ANTHROPIC_API)
+            .toCreateParams("claude-sonnet-4-20250514", requestWithoutJsonSchema().copy(messages = listOf(runtimeMessage)))
+            .messages().single()
+        val payload = com.anthropic.core.jsonMapper().writeValueAsString(message)
+
+        assertTrue(payload.contains("\"role\":\"user\""))
+        assertTrue(payload.contains("CURRENT_RUNTIME_STATE"))
+        assertFalse(payload.contains("UI_ONLY_CONTENT"))
+    }
 
     @Test
     fun `API and Bedrock project selective summaries without dropping earlier context`() {

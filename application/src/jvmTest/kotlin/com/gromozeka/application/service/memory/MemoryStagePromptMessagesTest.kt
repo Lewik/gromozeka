@@ -19,6 +19,7 @@ class MemoryStagePromptMessagesTest {
     fun runtimeObservationsAreExcludedFromMemoryThreadContextPlanning() {
         val conversationId = Conversation.Id("conversation")
         val observation = userMessage(conversationId, "runtime-observation", "unused").copy(
+            role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
             content = emptyList(),
             instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(

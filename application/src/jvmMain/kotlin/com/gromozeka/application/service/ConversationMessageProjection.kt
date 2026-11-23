@@ -2,7 +2,6 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationHistoryMessage
-import com.gromozeka.domain.model.isDurableRuntimeObservationMessage
 import com.gromozeka.domain.repository.PositionedConversationMessage
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
@@ -10,15 +9,24 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 object ConversationMessageProjection {
-    /** Runtime events need the durable row identity and cursor position, never its hidden state payload. */
+    /** Runtime timeline events expose only row identity; their model context stays on the Server. */
     fun projectEvent(message: Conversation.Message): Conversation.Message =
-        if (message.isDurableRuntimeObservationMessage) {
-            message.copy(instructions = emptyList(), providerMetadata = JsonObject(emptyMap()))
+        if (message.role == Conversation.Message.Role.RUNTIME) {
+            message.copy(
+                content = emptyList(),
+                instructions = emptyList(),
+                originalIds = emptyList(),
+                providerMetadata = JsonObject(emptyMap()),
+                error = null,
+            )
         } else {
             message
         }
 
     fun project(entry: PositionedConversationMessage, textBudget: Int = 16_384): ConversationHistoryMessage {
+        if (entry.message.role == Conversation.Message.Role.RUNTIME) {
+            return ConversationHistoryMessage(entry.position, projectEvent(entry.message), hasMoreContent = false)
+        }
         var remaining = textBudget
         var deferred = entry.message.content.size > MAX_CONTENT_BLOCKS
         fun preview(text: String): String {

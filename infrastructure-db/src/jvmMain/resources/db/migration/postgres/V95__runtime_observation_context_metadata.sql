@@ -18,8 +18,8 @@ BEGIN
             ELSE '[]'::json END)
     ), facts AS (
         SELECT
+            COALESCE(document ->> 'role' = 'RUNTIME', false) AND
             COALESCE(document #>> '{author,type}' = 'runtime', false) AND
-            NOT EXISTS (SELECT 1 FROM content) AND
             EXISTS (SELECT 1 FROM instructions) AND
             NOT EXISTS (
                 SELECT 1 FROM instructions

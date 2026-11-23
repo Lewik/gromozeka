@@ -200,9 +200,16 @@ class OpenAiSubscriptionRequestMapper {
     ): List<JsonObject> {
         return when (message.role) {
             Conversation.Message.Role.USER -> message.toUserInputItems()
+            Conversation.Message.Role.RUNTIME -> message.toRuntimeInputItems()
             Conversation.Message.Role.ASSISTANT -> message.toAssistantInputItems(replayCompactionOnly, replayReasoning)
             Conversation.Message.Role.SYSTEM -> message.toSystemInputItems()
         }
+    }
+
+    private fun Conversation.Message.toRuntimeInputItems(): List<JsonObject> {
+        val text = instructions.joinToString("\n") { it.toXmlLine() }.trim()
+        if (text.isBlank()) return emptyList()
+        return listOf(messageItem(role = "user", content = buildJsonArray { add(inputTextItem(text)) }))
     }
 
     private fun Conversation.Message.toUserInputItems(): List<JsonObject> {

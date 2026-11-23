@@ -35,6 +35,29 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class OpenAiSubscriptionRequestMapperTest {
+    @Test
+    fun `runtime role maps to user instructions without message content`() {
+        val runtimeMessage = Conversation.Message(
+            id = Conversation.Message.Id("runtime-observation"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(Conversation.Message.ContentItem.UserMessage("UI_ONLY_CONTENT")),
+            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("CURRENT_RUNTIME_STATE")),
+            createdAt = createdAt,
+        )
+
+        val message = mapper.toRequest(
+            request = AiRuntimeRequest(systemPrompts = emptyList(), messages = listOf(runtimeMessage)),
+            modelName = "gpt-5",
+            conversationKey = "runtime-role",
+        ).input.single()
+
+        assertEquals("user", message.getValue("role").jsonPrimitive.content)
+        assertTrue(message.toString().contains("CURRENT_RUNTIME_STATE"))
+        assertFalse(message.toString().contains("UI_ONLY_CONTENT"))
+    }
+
     @Test fun `synthetic async completion uses native function output with model visible provenance`() {
         val source = Conversation.Message.ContentItem.ToolCall.Id("source-call")
         val completion = com.gromozeka.domain.model.syntheticToolCallId("async-tool:operation:completion")

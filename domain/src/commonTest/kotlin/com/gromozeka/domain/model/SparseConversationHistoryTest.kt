@@ -122,6 +122,7 @@ class SparseConversationHistoryTest {
             providerScope = Compaction.ProviderScope(provider),
         )))
         val boundary = text("boundary").copy(
+            role = Message.Role.RUNTIME,
             author = Message.Author.Runtime(),
             content = emptyList(),
             instructions = listOf(Message.Instruction.RuntimeObservation("current state", "state", "revision")),

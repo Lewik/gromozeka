@@ -126,7 +126,7 @@ class AiRequestResponseGatewayCodecTest {
         val observation = Conversation.Message(
             id = Conversation.Message.Id("runtime-observation"),
             conversationId = Conversation.Id("conversation"),
-            role = Conversation.Message.Role.USER,
+            role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
             content = emptyList(),
             instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(

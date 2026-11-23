@@ -1089,7 +1089,8 @@ class ConversationEngineDeliveryTest {
         assertFalse(f.requests.single().toString().contains("PRIVATE_COMMAND"))
         assertEquals(root, f.messages.single { it.id == root.id })
         val observation = f.messages.single { message ->
-            message.author is Conversation.Message.Author.Runtime &&
+            message.role == Conversation.Message.Role.RUNTIME &&
+                message.author is Conversation.Message.Author.Runtime &&
                 message.instructions.filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>()
                     .any { it.key == ConversationRuntimeObservationService.COMMANDS_KEY }
         }

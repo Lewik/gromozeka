@@ -13,6 +13,7 @@ class ConversationMessageMemorySourceMapper {
         threadId: Conversation.Thread.Id,
         message: Conversation.Message,
     ): MemorySource.ChatTurn? {
+        if (message.role == Conversation.Message.Role.RUNTIME) return null
         val contentText = message.extractMemoryText()
         if (contentText.isBlank()) {
             return null
@@ -53,6 +54,8 @@ class ConversationMessageMemorySourceMapper {
                     is Conversation.Message.ContentItem.System -> "[${item.level.name}] ${item.content}"
                     else -> null
                 }
+
+                Conversation.Message.Role.RUNTIME -> null
             }
         }.joinToString("\n").trim()
 
@@ -68,6 +71,7 @@ class ConversationMessageMemorySourceMapper {
             Conversation.Message.Role.USER -> MemorySource.ActorRole.USER
             Conversation.Message.Role.ASSISTANT -> MemorySource.ActorRole.ASSISTANT
             Conversation.Message.Role.SYSTEM -> MemorySource.ActorRole.SYSTEM
+            Conversation.Message.Role.RUNTIME -> error("Runtime messages are not memory chat turns")
         }
 
     private fun String.sha256(): String {

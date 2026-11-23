@@ -2129,6 +2129,7 @@ class ClaudeCodeCliRuntimeTest {
         )
 
     private fun runtimeObservationBoundary(): Conversation.Message = userMessage("").copy(
+        role = Conversation.Message.Role.RUNTIME,
         author = Conversation.Message.Author.Runtime(),
         content = emptyList(),
         instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
