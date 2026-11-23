@@ -9,6 +9,7 @@ import com.gromozeka.application.service.backgroundWorkloadOrNull
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.RuntimeEnvironmentContext
+import com.gromozeka.domain.model.isDurableRuntimeObservationMessage
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteRequest
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
@@ -709,9 +710,6 @@ class MemoryMessageRoutingApplicationService(
     private fun Conversation.Message.isMemoryRouteableTarget(): Boolean =
         role != Conversation.Message.Role.SYSTEM && error == null
 
-    private fun Conversation.Message.isMemoryStageContextMessage(): Boolean =
-        role != Conversation.Message.Role.SYSTEM && error == null
-
     private fun memoryIdFactory(
         prefix: String,
         source: MemorySource,
@@ -722,6 +720,9 @@ class MemoryMessageRoutingApplicationService(
         return SequentialMemoryIdFactory("$prefix-${source.id.value.sha256().take(12)}")
     }
 }
+
+internal fun Conversation.Message.isMemoryStageContextMessage(): Boolean =
+    role != Conversation.Message.Role.SYSTEM && error == null && !isDurableRuntimeObservationMessage
 
 private fun MemoryWriteRetrievalPlan.describeForLog(): String =
     "need=$needRetrieval types=${memoryTypes.joinToString { it.name }} " +

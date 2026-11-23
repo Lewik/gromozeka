@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationHistoryMessage
+import com.gromozeka.domain.model.isDurableRuntimeObservationMessage
 import com.gromozeka.domain.repository.PositionedConversationMessage
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
@@ -9,6 +10,14 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 object ConversationMessageProjection {
+    /** Runtime events need the durable row identity and cursor position, never its hidden state payload. */
+    fun projectEvent(message: Conversation.Message): Conversation.Message =
+        if (message.isDurableRuntimeObservationMessage) {
+            message.copy(instructions = emptyList(), providerMetadata = JsonObject(emptyMap()))
+        } else {
+            message
+        }
+
     fun project(entry: PositionedConversationMessage, textBudget: Int = 16_384): ConversationHistoryMessage {
         var remaining = textBudget
         var deferred = entry.message.content.size > MAX_CONTENT_BLOCKS

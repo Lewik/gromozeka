@@ -58,12 +58,31 @@ class AgentResponseReviewServiceTest {
             turnId = ConversationRuntimeTurnId("turn"), parentTaskId = ConversationRuntimeTask.Id("root"),
             payload = payload, placement = QueuedMessagePlacement.END_OF_TURN, idempotencyKey = "call",
             requirements = ConversationRuntimeTaskRequirements(setOf(ConversationRuntimeCapability.AI_REQUEST_RESPONSE, ConversationRuntimeCapability.MEMORY_PIPELINE), ConversationRuntimeTaskTarget.Server), createdAt = now)
+        val readableContext = Conversation.Message(
+            Conversation.Message.Id("readable-context"), conversation.id,
+            role = Conversation.Message.Role.USER,
+            author = Conversation.Message.Author.User(user, "User"),
+            content = listOf(ContentItem.UserMessage("Keep this recent dialogue")),
+            createdAt = now,
+        )
+        val observationNoise = List(20) { index ->
+            readableContext.copy(
+                id = Conversation.Message.Id("runtime-observation-$index"),
+                author = Conversation.Message.Author.Runtime(),
+                content = emptyList(),
+                instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
+                    text = "NOISE_$index", key = "visual:$index", revision = "revision-$index",
+                )),
+            )
+        }
         val prepared = assertNotNull(reviewer.prepare(
-            task, payload, conversation, emptyList(), listOf(message)))
+            task, payload, conversation, listOf(readableContext) + observationNoise, listOf(message)))
         assertEquals(next, prepared.endpoint)
         assertEquals(listOf(incoming), prepared.incoming)
         assertEquals(listOf(outgoing), prepared.outgoing)
         assertEquals(listOf(outgoing.id), prepared.waitableIds)
+        assertContains(prepared.contextText, "Keep this recent dialogue")
+        assertFalse(prepared.contextText.contains("runtime-observation"))
         Mockito.verify(repository).saveDraft(prepared)
     }
 

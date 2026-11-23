@@ -21,10 +21,15 @@ class ConversationMessageProjectionTest {
         )
 
         val view = ConversationMessageProjection.project(PositionedConversationMessage(1, original))
+        val event = ConversationMessageProjection.projectEvent(original)
 
         assertTrue(view.message.instructions.isEmpty())
         assertFalse(view.hasMoreContent)
         assertFalse(Json.encodeToString(view).contains("private-state"))
+        assertEquals(original.id, event.id)
+        assertTrue(event.instructions.isEmpty())
+        assertFalse(Json.encodeToString(event).contains("private-state"))
+        assertTrue(Json.encodeToString(event).encodeToByteArray().size < 2_000)
         assertEquals(observation, original.instructions.single())
     }
 

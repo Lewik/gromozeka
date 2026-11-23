@@ -1366,7 +1366,7 @@ class ConversationEngineService(
             val appended = runtimeObservations.appendChanged(conversation, task.id, loadedMessages) {
                 ensureRuntimeTaskOwner(conversation.id, task.id, executor)
             }
-            appended.forEach { emitPersistedMessage(it) }
+            appended.map(ConversationMessageProjection::projectEvent).forEach { emitPersistedMessage(it) }
             loadedMessages + appended
         }
         val runtimeMessages = stickyMessageInstructionService.materialize(

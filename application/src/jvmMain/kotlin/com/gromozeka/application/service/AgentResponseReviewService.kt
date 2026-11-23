@@ -38,11 +38,12 @@ class AgentResponseReviewService(
             id = "${task.id.value}:review", endpoint = endpoint, actorUserId = actor,
             rootMessageId = payload.rootUserMessageId, turnId = task.turnId.value, iteration = payload.iteration,
             messages = messages, incoming = incoming, outgoing = outgoing, waitableIds = waitable,
-            contextText = input.takeLast(16).joinToString("\n\n") { m ->
-                "${m.author?.displayName ?: m.role.name} [${m.id.value}]: " + m.content.mapNotNull {
+            contextText = input.mapNotNull { m ->
+                val text = m.content.mapNotNull {
                     when (it) { is ContentItem.UserMessage -> it.text; is ContentItem.VisualInteraction -> it.modelText(); is ContentItem.AssistantMessage -> it.structured.fullText; else -> null }
-                }.joinToString("\n").take(4000)
-            }.takeLast(32_000),
+                }.joinToString("\n").take(4000).takeIf(String::isNotBlank) ?: return@mapNotNull null
+                "${m.author?.displayName ?: m.role.name} [${m.id.value}]: $text"
+            }.takeLast(16).joinToString("\n\n").takeLast(32_000),
             inputMessageIds = input.map { it.id.value }, createdAt = Clock.System.now(),
         )
         repository.saveDraft(draft)

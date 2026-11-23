@@ -16,6 +16,23 @@ import kotlinx.serialization.json.JsonPrimitive
 class MemoryStagePromptMessagesTest {
 
     @Test
+    fun runtimeObservationsAreExcludedFromMemoryThreadContextPlanning() {
+        val conversationId = Conversation.Id("conversation")
+        val observation = userMessage(conversationId, "runtime-observation", "unused").copy(
+            author = Conversation.Message.Author.Runtime(),
+            content = emptyList(),
+            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
+                text = "LARGE_PRIVATE_STATE", key = "visual:one", revision = "revision",
+            )),
+        )
+        val target = userMessage(conversationId, "target", "Remember this fact.")
+
+        val planned = listOf(observation, target).filter { it.isMemoryStageContextMessage() }
+
+        assertEquals(listOf(target), planned)
+    }
+
+    @Test
     fun memoryStageMessagesDropUnpairedToolItemsFromContext() {
         val pairedCallId = Conversation.Message.ContentItem.ToolCall.Id("paired-call")
         val orphanCallId = Conversation.Message.ContentItem.ToolCall.Id("orphan-call")

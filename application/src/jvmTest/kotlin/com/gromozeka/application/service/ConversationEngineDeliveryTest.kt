@@ -13,6 +13,7 @@ import com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.encodeToString
 import org.mockito.Mockito
 import org.mockito.invocation.InvocationOnMock
 import kotlin.test.*
@@ -1092,7 +1093,9 @@ class ConversationEngineDeliveryTest {
                 message.instructions.filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>()
                     .any { it.key == ConversationRuntimeObservationService.COMMANDS_KEY }
         }
-        assertEquals(observation, f.emitted.first())
+        assertEquals(observation.id, f.emitted.first().id)
+        assertTrue(f.emitted.first().instructions.isEmpty())
+        assertFalse(Json.encodeToString(f.emitted.first()).contains("recorded_running_commands"))
         assertEquals(Conversation.Message.Role.ASSISTANT, f.emitted.last().role)
         assertTrue(f.coordinator.completeActiveTask(conversation.id, running.id, executor, outcome))
         f.coordinator.upsertCommandTask(command.copy(status = CommandTask.Status.COMPLETED, completedAt = now, updatedAt = now))
