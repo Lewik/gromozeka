@@ -9,12 +9,18 @@ data class CompactionNode(val id: Message.Id, val compactions: List<CompactionCo
 internal fun Message.compactionNode() = CompactionNode(id, compactions().map(::CompactionCoverage))
 
 /** Coverage and recovery depend on ordered IDs and checkpoints, not ordinary message bodies. */
-class ConversationCompactionIndex(private val history: List<CompactionNode>) {
+class ConversationCompactionIndex(
+    private val history: List<CompactionNode>,
+    private val excludedRecoveryMessageIds: Set<Message.Id> = emptySet(),
+) {
     private val byId = history.associateBy { it.id }
     private val positions = history.mapIndexed { index, node -> node.id to index }.toMap()
 
     init {
         require(positions.size == history.size) { "Duplicate message IDs in conversation history" }
+        require(excludedRecoveryMessageIds.all(byId::containsKey)) {
+            "Recovery exclusions must belong to the indexed history"
+        }
     }
 
     fun project(input: List<CompactionNode> = history): List<CompactionNode> {
@@ -82,7 +88,7 @@ class ConversationCompactionIndex(private val history: List<CompactionNode>) {
         sourceIds.forEach { sourceId ->
             check(sourceId in byId) { "Missing compaction source message: ${sourceId.value}" }
         }
-        return sourceIds
+        return sourceIds.filterNot(excludedRecoveryMessageIds::contains)
     }
 
     class RecoveryWindow(val nodes: List<CompactionNode>, val invalidatedReplay: Set<Message.Id>)

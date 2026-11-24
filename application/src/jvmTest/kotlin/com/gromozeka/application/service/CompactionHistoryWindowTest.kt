@@ -9,6 +9,7 @@ import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import org.mockito.Mockito
 import kotlin.test.*
 import kotlin.time.Instant
@@ -120,5 +121,47 @@ class CompactionHistoryWindowTest {
         assertEquals(listOf(old.id, currentBaseline.id), selection.map { it.id })
         assertEquals(listOf(old), readable)
         Mockito.verify(repository).compactionBodies(thread, listOf(old.id, currentBaseline.id))
+    }
+
+    @Test fun `opaque recovery never loads superseded Runtime generations`(): Unit = runBlocking {
+        fun observation(id: String, boundary: Boolean = false): Conversation.Message {
+            val value = message(id, "").copy(
+                role = Conversation.Message.Role.RUNTIME,
+                author = Conversation.Message.Author.Runtime(),
+                content = emptyList(),
+                instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(id, "state", id)),
+            )
+            return if (boundary) value.withDurableRuntimeObservationBoundary() else value
+        }
+        val dialogue = message("dialogue", "portable dialogue")
+        val oldBaseline = observation("old-baseline", boundary = true)
+        val oldDelta = observation("old-delta")
+        val currentBaseline = observation("current-baseline", boundary = true)
+        val checkpoint = message("foreign-checkpoint", "").copy(
+            role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(ContentItem.ContextCompactionResult(
+                payload = ContentItem.ContextCompactionResult.Payload.OpaqueProviderState(
+                    JsonObject(mapOf("encrypted_content" to JsonPrimitive("opaque"))),
+                ),
+                origin = ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO,
+                coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                providerScope = ContentItem.ContextCompactionResult.ProviderScope("OPENAI_SUBSCRIPTION"),
+            )),
+        )
+        val history = listOf(dialogue, oldBaseline, oldDelta, currentBaseline, checkpoint)
+        val window = window(history)
+        val selection = window.headers.filter { it.id == checkpoint.id }
+        val expectedReads = listOf(dialogue.id, currentBaseline.id, checkpoint.id)
+        val repository = Mockito.mock(ThreadMessageRepository::class.java)
+        val thread = Conversation.Thread.Id("thread")
+        Mockito.`when`(repository.compactionBodies(thread, expectedReads)).thenReturn(
+            history.filter { it.id in expectedReads },
+        )
+
+        val readable = window.messages(repository, thread, selection, provider = null)
+
+        assertEquals(listOf(dialogue), readable)
+        Mockito.verify(repository).compactionBodies(thread, expectedReads)
+        Mockito.verifyNoMoreInteractions(repository)
     }
 }

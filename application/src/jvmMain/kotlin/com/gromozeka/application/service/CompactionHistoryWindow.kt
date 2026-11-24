@@ -11,14 +11,21 @@ import com.gromozeka.domain.repository.ThreadMessageRepository
 
 /** Coverage and pair boundaries use immutable headers; only projected input needs bodies. */
 internal class CompactionHistoryWindow(val headers: List<CompactionMessageHeader>) {
-    private val index = ConversationCompactionIndex(headers.map { it.node })
     private val positions = headers.mapIndexed { i, header -> header.id to i }.toMap()
     private val latestRuntimeBaseline = headers.indexOfLast {
         it.role == Message.Role.RUNTIME && it.durableRuntimeObservationBoundary
     }
+    private val supersededRuntimeObservationIds = if (latestRuntimeBaseline > 0) {
+        headers.take(latestRuntimeBaseline)
+            .filter { it.role == Message.Role.RUNTIME }
+            .mapTo(hashSetOf(), CompactionMessageHeader::id)
+    } else emptySet()
+    private val index = ConversationCompactionIndex(
+        headers.map { it.node },
+        excludedRecoveryMessageIds = supersededRuntimeObservationIds,
+    )
     private fun isSupersededRuntimeObservation(header: CompactionMessageHeader): Boolean =
-        latestRuntimeBaseline > 0 && header.role == Message.Role.RUNTIME &&
-            positions.getValue(header.id) < latestRuntimeBaseline
+        header.id in supersededRuntimeObservationIds
     private val visible by lazy {
         index.project().map { headers[positions.getValue(it.id)] }
             .filterNot(::isSupersededRuntimeObservation)
@@ -71,7 +78,7 @@ internal class CompactionHistoryWindow(val headers: List<CompactionMessageHeader
             retainedBoundary >= 0 -> retainedBoundary
             else -> -1
         }
-        val nodes = index.project(selection.map { it.node })
+        val nodes = index.project(selection.filterNot(::isSupersededRuntimeObservation).map { it.node })
         val visibleIds = nodes.mapTo(linkedSetOf()) { it.id }
         // Foreign opaque checkpoints may need their original canonical sources for recursive recovery.
         val required = visibleIds.toMutableSet()
