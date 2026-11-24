@@ -2,6 +2,8 @@ package db.migration.postgres
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
+import com.gromozeka.domain.model.CompactionMessageHeader
+import com.gromozeka.domain.model.ToolSequenceFacts
 import com.gromozeka.domain.model.compactions
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult as Compaction
 import com.gromozeka.domain.service.ConversationRuntimeEvent
@@ -189,11 +191,48 @@ class CompactionCoverageMigrationTest {
     }
 
     private fun insertMessage(connection: Connection, message: JsonObject) {
-        connection.prepareStatement("INSERT INTO messages(id,conversation_id,role,created_at,message_json) VALUES (?,'conversation',?,now(),?)").use {
-            it.setString(1, message["id"]!!.jsonPrimitive.content)
-            it.setString(2, message["role"]!!.jsonPrimitive.content)
-            it.setString(3, message.toString())
-            it.executeUpdate()
+        val hasToolSequenceFacts = connection.prepareStatement("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_schema = current_schema() AND table_name = 'messages' AND column_name = 'tool_call_ids'
+            )
+        """.trimIndent()).use { statement ->
+            statement.executeQuery().use { rows -> check(rows.next()); rows.getBoolean(1) }
+        }
+        if (!hasToolSequenceFacts) {
+            connection.prepareStatement("INSERT INTO messages(id,conversation_id,role,created_at,message_json) VALUES (?,'conversation',?,now(),?)").use {
+                it.setString(1, message["id"]!!.jsonPrimitive.content)
+                it.setString(2, message["role"]!!.jsonPrimitive.content)
+                it.setString(3, message.toString())
+                it.executeUpdate()
+            }
+            return
+        }
+        val decoded = Json.decodeFromJsonElement<Conversation.Message>(message)
+        val facts = ToolSequenceFacts.from(decoded)
+        val calls = connection.createArrayOf("text", facts.callIds.toTypedArray())
+        val results = connection.createArrayOf("text", facts.resultIds.toTypedArray())
+        try {
+            connection.prepareStatement("""
+                INSERT INTO messages(
+                    id, conversation_id, role, created_at, message_json, compaction_header,
+                    tool_call_ids, tool_result_ids, provider_managed_tool, tool_results_only, full_compaction_anchor
+                ) VALUES (?, 'conversation', ?, now(), ?, ?, ?, ?, ?, ?, ?)
+            """.trimIndent()).use {
+                it.setString(1, decoded.id.value)
+                it.setString(2, decoded.role.name)
+                it.setString(3, message.toString())
+                it.setString(4, Json.encodeToString(CompactionMessageHeader.from(decoded)))
+                it.setArray(5, calls)
+                it.setArray(6, results)
+                it.setBoolean(7, facts.providerManaged)
+                it.setBoolean(8, facts.toolResultsOnly)
+                it.setBoolean(9, facts.fullCompactionAnchor)
+                it.executeUpdate()
+            }
+        } finally {
+            calls.free()
+            results.free()
         }
     }
 

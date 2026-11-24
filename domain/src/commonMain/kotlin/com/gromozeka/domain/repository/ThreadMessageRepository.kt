@@ -2,6 +2,7 @@ package com.gromozeka.domain.repository
 
 import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ToolSequenceMessageHeader
 import kotlinx.serialization.Serializable
 
 /**
@@ -119,6 +120,34 @@ interface ThreadMessageRepository {
 
     /** Read exactly these immutable versions in the requested order, including current author attribution. */
     suspend fun compactionBodies(threadId: Conversation.Thread.Id, ids: List<Conversation.Message.Id>): List<Conversation.Message>
+
+    /** Most recent visible user/assistant bodies ending at an included message, bounded in SQL. */
+    suspend fun recentVisibleMessagesThrough(
+        threadId: Conversation.Thread.Id,
+        throughMessageId: Conversation.Message.Id,
+        limit: Int,
+    ): List<Conversation.Message>
+
+    /** Normal provider-aware model context, bounded at and including one message in the thread. */
+    suspend fun getContextMessagesThrough(
+        threadId: Conversation.Thread.Id,
+        throughMessageId: Conversation.Message.Id,
+        nativeProvider: String?,
+    ): ThreadContextMessages
+
+    /**
+     * Returns an empty list when the post-checkpoint tool sequence is valid. When invalid, returns the
+     * complete body-free window after the latest full checkpoint so the caller can plan a targeted repair.
+     */
+    suspend fun invalidToolSequenceWindow(threadId: Conversation.Thread.Id): List<ToolSequenceMessageHeader>
+
+    /** Copy an unchanged prefix in SQL and append a replacement suffix without materializing prefix IDs. */
+    suspend fun copyPrefixAndAddSuffix(
+        sourceThreadId: Conversation.Thread.Id,
+        targetThreadId: Conversation.Thread.Id,
+        suffixStartPosition: Int,
+        suffixMessageIds: List<Conversation.Message.Id>,
+    )
 
     /**
      * Sufficient sparse raw history for the normal agent-model path, selected before body reads.

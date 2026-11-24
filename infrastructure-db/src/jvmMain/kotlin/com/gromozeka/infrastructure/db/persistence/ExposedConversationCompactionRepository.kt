@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.db.persistence
 
 import com.gromozeka.domain.model.CompactionMessageHeader
+import com.gromozeka.domain.model.ToolSequenceFacts
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.repository.ConversationCompactionRepository
 import com.gromozeka.infrastructure.db.persistence.tables.Conversations
@@ -79,6 +80,7 @@ class ExposedConversationCompactionRepository(
         val lastTurnNumber = Threads.selectAll().where { Threads.id eq expectedThreadId.value }
             .single()[Threads.lastTurnNumber]
 
+        val toolSequence = ToolSequenceFacts.from(compactionMessage)
         Messages.insert {
             it[id] = compactionMessage.id.value
             it[conversationId] = compactionMessage.conversationId.value
@@ -88,6 +90,11 @@ class ExposedConversationCompactionRepository(
             it[createdAt] = compactionMessage.createdAt
             it[searchText] = compactionMessage.searchText()
             it[compactionHeader] = Json.encodeToString(CompactionMessageHeader.from(compactionMessage))
+            it[toolCallIds] = toolSequence.callIds
+            it[toolResultIds] = toolSequence.resultIds
+            it[providerManagedTool] = toolSequence.providerManaged
+            it[toolResultsOnly] = toolSequence.toolResultsOnly
+            it[fullCompactionAnchor] = toolSequence.fullCompactionAnchor
             it[messageJson] = json.encodeToString(compactionMessage)
         }
         Threads.insert {

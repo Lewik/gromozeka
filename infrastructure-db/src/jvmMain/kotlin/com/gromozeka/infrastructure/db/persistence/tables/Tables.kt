@@ -463,6 +463,11 @@ internal object Messages : Table("messages") {
     val searchText = text("search_text")
     val messageText = text("message_text")
     val compactionHeader = text("compaction_header").nullable()
+    val toolCallIds = array<String>("tool_call_ids")
+    val toolResultIds = array<String>("tool_result_ids")
+    val providerManagedTool = bool("provider_managed_tool")
+    val toolResultsOnly = bool("tool_results_only")
+    val fullCompactionAnchor = bool("full_compaction_anchor")
     val messageJson = text("message_json")
     val contextMetadataJson = text("context_metadata_json").nullable().databaseGenerated()
 

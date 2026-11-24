@@ -6,10 +6,15 @@ import com.gromozeka.infrastructure.db.persistence.tables.ThreadMessages
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageContextHeader
 import com.gromozeka.domain.model.MessageContextMetadata
+import com.gromozeka.domain.model.ToolSequenceFacts
+import com.gromozeka.domain.model.ToolSequenceMessageHeader
 import com.gromozeka.domain.model.selectModelHistoryMessageIds
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.v1.jdbc.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.IntegerColumnType
+import org.jetbrains.exposed.v1.core.TextColumnType
+import org.jetbrains.exposed.v1.core.statements.StatementType
 import java.sql.Connection
 import com.gromozeka.domain.repository.ThreadMessageLink
 import com.gromozeka.domain.repository.ThreadContextMessages
@@ -19,7 +24,9 @@ import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.max
+import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.jdbc.*
+import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.springframework.stereotype.Service
 
 @Service
@@ -113,13 +120,130 @@ class ExposedThreadMessageRepository(
         resolveCurrentMessageAuthors(ids.map(found::getValue))
     }
 
+    override suspend fun recentVisibleMessagesThrough(
+        threadId: Conversation.Thread.Id,
+        throughMessageId: Conversation.Message.Id,
+        limit: Int,
+    ): List<Conversation.Message> = newSuspendedTransaction(
+        Dispatchers.IO,
+        transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ,
+        readOnly = true,
+    ) {
+        require(limit in 1..100)
+        val newestFirst = TransactionManager.current().exec(
+            RECENT_VISIBLE_MESSAGES_SQL,
+            listOf(
+                TextColumnType() to threadId.value,
+                TextColumnType() to throughMessageId.value,
+                TextColumnType() to threadId.value,
+                IntegerColumnType() to limit,
+            ),
+            StatementType.SELECT,
+        ) { rows ->
+            buildList {
+                while (rows.next()) {
+                    add(json.decodeFromString<Conversation.Message>(rows.getString("message_json")))
+                }
+            }
+        }.orEmpty()
+        resolveCurrentMessageAuthors(newestFirst.asReversed())
+    }
+
+    override suspend fun invalidToolSequenceWindow(
+        threadId: Conversation.Thread.Id,
+    ): List<ToolSequenceMessageHeader> = newSuspendedTransaction(
+        Dispatchers.IO,
+        transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ,
+        readOnly = true,
+    ) {
+        TransactionManager.current().exec(
+            TOOL_SEQUENCE_VALIDATION_SQL,
+            listOf(
+                TextColumnType() to threadId.value,
+                TextColumnType() to threadId.value,
+            ),
+            StatementType.SELECT,
+        ) { rows ->
+            buildList {
+                while (rows.next()) {
+                    fun ids(column: String): List<String> = (rows.getArray(column).array as Array<*>)
+                        .map { value -> value as String }
+                    add(
+                        ToolSequenceMessageHeader(
+                            position = rows.getInt("position"),
+                            id = Conversation.Message.Id(rows.getString("message_id")),
+                            role = Conversation.Message.Role.valueOf(rows.getString("role")),
+                            facts = ToolSequenceFacts(
+                                callIds = ids("tool_call_ids"),
+                                resultIds = ids("tool_result_ids"),
+                                providerManaged = rows.getBoolean("provider_managed_tool"),
+                                toolResultsOnly = rows.getBoolean("tool_results_only"),
+                                fullCompactionAnchor = rows.getBoolean("full_compaction_anchor"),
+                            ),
+                        ),
+                    )
+                }
+            }
+        } ?: emptyList()
+    }
+
+    override suspend fun copyPrefixAndAddSuffix(
+        sourceThreadId: Conversation.Thread.Id,
+        targetThreadId: Conversation.Thread.Id,
+        suffixStartPosition: Int,
+        suffixMessageIds: List<Conversation.Message.Id>,
+    ): Unit = dbQuery {
+        require(suffixStartPosition >= 0)
+        require(suffixMessageIds.distinct().size == suffixMessageIds.size) { "Replacement suffix has duplicate message IDs" }
+        check(ThreadMessages.selectAll().where { ThreadMessages.threadId eq targetThreadId.value }.empty()) {
+            "Replacement thread must be empty"
+        }
+        TransactionManager.current().exec(
+            """
+            INSERT INTO thread_messages(thread_id, message_id, position)
+            SELECT ?, message_id, position
+            FROM thread_messages
+            WHERE thread_id = ? AND position < ?
+            ORDER BY position
+            """.trimIndent(),
+            listOf(
+                TextColumnType() to targetThreadId.value,
+                TextColumnType() to sourceThreadId.value,
+                IntegerColumnType() to suffixStartPosition,
+            ),
+        )
+        ThreadMessages.batchInsert(suffixMessageIds.withIndex(), shouldReturnGeneratedValues = false) { indexed ->
+            this[ThreadMessages.threadId] = targetThreadId.value
+            this[ThreadMessages.messageId] = indexed.value.value
+            this[ThreadMessages.position] = suffixStartPosition + indexed.index
+        }
+    }
+
     override suspend fun getContextMessagesByThread(
         threadId: Conversation.Thread.Id,
         nativeProvider: String?,
     ): ThreadContextMessages = newSuspendedTransaction(
         Dispatchers.IO, transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ, readOnly = true,
     ) {
-        val captured = readContextHeaders(threadId)
+        readContextMessages(threadId, throughMessageId = null, nativeProvider)
+    }
+
+    override suspend fun getContextMessagesThrough(
+        threadId: Conversation.Thread.Id,
+        throughMessageId: Conversation.Message.Id,
+        nativeProvider: String?,
+    ): ThreadContextMessages = newSuspendedTransaction(
+        Dispatchers.IO, transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ, readOnly = true,
+    ) {
+        readContextMessages(threadId, throughMessageId, nativeProvider)
+    }
+
+    private fun readContextMessages(
+        threadId: Conversation.Thread.Id,
+        throughMessageId: Conversation.Message.Id?,
+        nativeProvider: String?,
+    ): ThreadContextMessages {
+        val captured = readContextHeaders(threadId, throughMessageId)
         val checkpointIds = captured.headers.filter { it.metadata.hasCompaction }.map { it.id }
         readContextBodies(threadId, checkpointIds.filterNot(captured.bodies::containsKey)).forEach {
             captured.bodies[it.id] = it
@@ -130,16 +254,35 @@ class ExposedThreadMessageRepository(
             checkpoints,
             nativeProvider,
         )
-        ThreadContextMessages(
+        return ThreadContextMessages(
             messages = materializeContextSelection(threadId, captured, required),
             sourceMessageCount = captured.headers.size,
         )
     }
 
-    private fun readContextHeaders(threadId: Conversation.Thread.Id): CapturedContextHeaders {
+    private fun readContextHeaders(
+        threadId: Conversation.Thread.Id,
+        throughMessageId: Conversation.Message.Id?,
+    ): CapturedContextHeaders {
+        val throughPosition = throughMessageId?.let { messageId ->
+            ThreadMessages
+                .select(ThreadMessages.position)
+                .where {
+                    (ThreadMessages.threadId eq threadId.value) and
+                        (ThreadMessages.messageId eq messageId.value)
+                }
+                .singleOrNull()
+                ?.get(ThreadMessages.position)
+                ?: error("Message ${messageId.value} is not in thread ${threadId.value}")
+        }
+        val bounds = if (throughPosition == null) {
+            ThreadMessages.threadId eq threadId.value
+        } else {
+            (ThreadMessages.threadId eq threadId.value) and (ThreadMessages.position lessEq throughPosition)
+        }
         val stored = (ThreadMessages innerJoin Messages)
             .select(ThreadMessages.messageId, Messages.contextMetadataJson)
-            .where { ThreadMessages.threadId eq threadId.value }
+            .where { bounds }
             .orderBy(ThreadMessages.position, SortOrder.ASC)
             .map { row -> Conversation.Message.Id(row[ThreadMessages.messageId]) to row[Messages.contextMetadataJson] }
         val bodies = readContextBodies(threadId, stored.filter { it.second == null }.map { it.first })
@@ -189,4 +332,87 @@ class ExposedThreadMessageRepository(
         val headers: List<MessageContextHeader>,
         val bodies: MutableMap<Conversation.Message.Id, Conversation.Message>,
     )
+
+    private companion object {
+        val RECENT_VISIBLE_MESSAGES_SQL = """
+            WITH source AS (
+                SELECT position
+                FROM thread_messages
+                WHERE thread_id = ? AND message_id = ?
+            )
+            SELECT m.message_json
+            FROM thread_messages tm
+            JOIN messages m ON m.id = tm.message_id
+            CROSS JOIN source s
+            WHERE tm.thread_id = ?
+                AND tm.position <= s.position
+                AND m.role IN ('USER', 'ASSISTANT')
+                AND btrim(m.message_text) <> ''
+            ORDER BY tm.position DESC
+            LIMIT ?
+        """.trimIndent()
+
+        val TOOL_SEQUENCE_VALIDATION_SQL = """
+            WITH boundary AS (
+                SELECT COALESCE((
+                    SELECT tm.position
+                    FROM thread_messages tm
+                    JOIN messages m ON m.id = tm.message_id
+                    WHERE tm.thread_id = ? AND m.full_compaction_anchor
+                    ORDER BY tm.position DESC
+                    LIMIT 1
+                ), -1) AS position
+            ), history AS (
+                SELECT tm.position, tm.message_id, m.role, m.tool_call_ids, m.tool_result_ids,
+                    m.provider_managed_tool, m.tool_results_only, m.full_compaction_anchor
+                FROM thread_messages tm
+                JOIN messages m ON m.id = tm.message_id
+                CROSS JOIN boundary b
+                WHERE tm.thread_id = ? AND tm.position > b.position
+            ), provider_calls AS (
+                SELECT DISTINCT call_id
+                FROM history h
+                CROSS JOIN LATERAL unnest(h.tool_call_ids) AS call(call_id)
+                WHERE h.provider_managed_tool
+            ), classified AS (
+                SELECT h.*,
+                    h.provider_managed_tool OR (
+                        h.tool_results_only AND NOT EXISTS (
+                            SELECT 1
+                            FROM unnest(h.tool_result_ids) AS result(call_id)
+                            WHERE NOT EXISTS (
+                                SELECT 1 FROM provider_calls p WHERE p.call_id = result.call_id
+                            )
+                        )
+                    ) AS provider_row
+                FROM history h
+            ), ordinary AS (
+                SELECT c.*,
+                    lead(c.tool_result_ids) OVER (ORDER BY c.position) AS next_results,
+                    lag(c.tool_call_ids) OVER (ORDER BY c.position) AS previous_calls
+                FROM classified c
+                WHERE NOT c.provider_row
+            ), all_results AS (
+                SELECT DISTINCT call_id
+                FROM history h
+                CROSS JOIN LATERAL unnest(h.tool_result_ids) AS result(call_id)
+            ), violations AS (
+                SELECT 1
+                FROM ordinary
+                WHERE (cardinality(tool_call_ids) > 0 AND tool_call_ids IS DISTINCT FROM next_results)
+                    OR (cardinality(tool_result_ids) > 0 AND tool_result_ids IS DISTINCT FROM previous_calls)
+                UNION ALL
+                SELECT 1
+                FROM history h
+                CROSS JOIN LATERAL unnest(h.tool_call_ids) AS call(call_id)
+                WHERE h.provider_managed_tool
+                    AND NOT EXISTS (SELECT 1 FROM all_results r WHERE r.call_id = call.call_id)
+            )
+            SELECT h.position, h.message_id, h.role, h.tool_call_ids, h.tool_result_ids,
+                h.provider_managed_tool, h.tool_results_only, h.full_compaction_anchor
+            FROM history h
+            WHERE EXISTS (SELECT 1 FROM violations)
+            ORDER BY h.position
+        """.trimIndent()
+    }
 }

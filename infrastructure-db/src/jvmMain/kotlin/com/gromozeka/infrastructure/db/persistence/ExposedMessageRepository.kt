@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.db.persistence
 
 import com.gromozeka.domain.model.CompactionMessageHeader
+import com.gromozeka.domain.model.ToolSequenceFacts
 import com.gromozeka.infrastructure.db.persistence.tables.Artifacts
 import com.gromozeka.infrastructure.db.persistence.tables.Messages
 import com.gromozeka.domain.model.safeToolOutputText
@@ -44,6 +45,7 @@ class ExposedMessageRepository(
                     .map { it[Artifacts.id] to it[Artifacts.searchText] } }.toMap()
             Messages.batchInsert(batch, shouldReturnGeneratedValues = false) { message ->
                 val toolText = artifactIdsByMessage.getValue(message.id).mapNotNull(artifactText::get).joinToString("\n")
+                val toolSequence = ToolSequenceFacts.from(message)
                 this[Messages.id] = message.id.value
                 this[Messages.conversationId] = message.conversationId.value
                 this[Messages.originalIdsJson] = json.encodeToString(message.originalIds.map { it.value })
@@ -53,6 +55,11 @@ class ExposedMessageRepository(
                 this[Messages.searchText] = listOf(message.searchText(), toolText).filter(String::isNotBlank).joinToString("\n")
                 this[Messages.messageText] = message.searchText(includeToolResults = false)
                 this[Messages.compactionHeader] = Json.encodeToString(CompactionMessageHeader.from(message))
+                this[Messages.toolCallIds] = toolSequence.callIds
+                this[Messages.toolResultIds] = toolSequence.resultIds
+                this[Messages.providerManagedTool] = toolSequence.providerManaged
+                this[Messages.toolResultsOnly] = toolSequence.toolResultsOnly
+                this[Messages.fullCompactionAnchor] = toolSequence.fullCompactionAnchor
                 this[Messages.messageJson] = json.encodeToString(message)
             }
         }

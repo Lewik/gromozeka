@@ -1011,6 +1011,24 @@ private class InMemoryThreadMessageRepository(
         bodyReads += ids
         return ids.map(messages(threadId).associateBy { it.id }::getValue)
     }
+    override suspend fun recentVisibleMessagesThrough(
+        threadId: Conversation.Thread.Id,
+        throughMessageId: Conversation.Message.Id,
+        limit: Int,
+    ) = error("Suggested replies are outside this compaction fixture")
+    override suspend fun getContextMessagesThrough(
+        threadId: Conversation.Thread.Id,
+        throughMessageId: Conversation.Message.Id,
+        nativeProvider: String?,
+    ) = error("Suggested replies are outside this compaction fixture")
+    override suspend fun invalidToolSequenceWindow(threadId: Conversation.Thread.Id) =
+        error("Tool sequence repair is outside this compaction fixture")
+    override suspend fun copyPrefixAndAddSuffix(
+        sourceThreadId: Conversation.Thread.Id,
+        targetThreadId: Conversation.Thread.Id,
+        suffixStartPosition: Int,
+        suffixMessageIds: List<Conversation.Message.Id>,
+    ) = error("Tool sequence repair is outside this compaction fixture")
     override suspend fun getContextMessagesByThread(
         threadId: Conversation.Thread.Id,
         nativeProvider: String?,

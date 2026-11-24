@@ -6,6 +6,8 @@ import com.gromozeka.domain.model.ai.AI_PROVIDER_MANAGED_TOOL_METADATA_KEY
 import java.lang.reflect.Proxy
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
 import kotlin.time.Clock
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -33,7 +35,45 @@ class ProviderManagedToolSequenceTest {
         assertEquals(0, repeated.convertedResults)
     }
 
-    private fun fixer() = ToolCallSequenceFixerService(unused(), unused(), unused(), unused(), unused())
+    @Test
+    fun mergedToolCallsGetANewImmutableIdWithSourceProvenance() {
+        val first = call("first", false)
+        val second = call("second", false)
+
+        val fixed = fixer().buildFixedMessageSequence(listOf(first, second), conversationId)
+
+        val merged = fixed.messages.first()
+        assertNotEquals(first.id, merged.id)
+        assertNotEquals(second.id, merged.id)
+        assertEquals(listOf(first.id, second.id), merged.originalIds)
+        assertEquals(2, merged.content.filterIsInstance<ContentItem.ToolCall>().size)
+    }
+
+    @Test
+    fun splittingAnOrphanedResultNeverReusesItsImmutableId() {
+        val source = Conversation.Message(
+            id = Conversation.Message.Id("mixed"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.USER,
+            content = listOf(
+                ContentItem.UserMessage("Keep me"),
+                ContentItem.ToolResult(
+                    ContentItem.ToolCall.Id("missing"),
+                    "missing",
+                    listOf(ContentItem.ToolResult.Data.Text("orphan")),
+                ),
+            ),
+            createdAt = Clock.System.now(),
+        )
+
+        val fixed = fixer().buildFixedMessageSequence(listOf(source), conversationId)
+
+        assertEquals(2, fixed.messages.size)
+        assertTrue(fixed.messages.none { it.id == source.id })
+        assertTrue(fixed.messages.all { source.id in it.originalIds })
+    }
+
+    private fun fixer() = ToolCallSequenceFixerService(unused(), unused(), unused(), unused())
     private inline fun <reified T> unused(): T = Proxy.newProxyInstance(T::class.java.classLoader, arrayOf(T::class.java)) { _, _, _ ->
         error("Sequence calculation must not access persistence")
     } as T
