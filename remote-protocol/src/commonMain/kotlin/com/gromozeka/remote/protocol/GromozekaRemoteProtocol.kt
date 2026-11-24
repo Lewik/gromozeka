@@ -656,12 +656,6 @@ data class ForkConversationRequest(
 ) : ClientRequest
 
 @Serializable
-@SerialName("load_current_messages")
-data class LoadCurrentMessagesRequest(
-    val conversationId: Conversation.Id,
-) : ClientRequest
-
-@Serializable
 @SerialName("regenerate_suggested_replies")
 data class RegenerateSuggestedRepliesRequest(
     val conversationId: Conversation.Id,
@@ -1372,12 +1366,6 @@ data class OperationResultResponse(
 @SerialName("conversation")
 data class ConversationResponse(
     val conversation: Conversation?,
-) : ServerResponse
-
-@Serializable
-@SerialName("messages")
-data class MessagesResponse(
-    val messages: List<Conversation.Message>,
 ) : ServerResponse
 
 @Serializable

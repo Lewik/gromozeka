@@ -13,8 +13,6 @@ import com.gromozeka.remote.protocol.FindConversationRequest
 import com.gromozeka.remote.protocol.FindConversationsByProjectRequest
 import com.gromozeka.remote.protocol.ForkConversationRequest
 import com.gromozeka.remote.protocol.GetProjectRequest
-import com.gromozeka.remote.protocol.LoadCurrentMessagesRequest
-import com.gromozeka.remote.protocol.MessagesResponse
 import com.gromozeka.remote.protocol.ProjectResponse
 import com.gromozeka.remote.protocol.RegenerateSuggestedRepliesRequest
 import com.gromozeka.remote.protocol.SavedResponse
@@ -91,10 +89,6 @@ internal class RemoteConversationService(
     override suspend fun fork(conversationId: Conversation.Id): Conversation =
         client.requestTyped<ForkConversationRequest, ConversationResponse>(ForkConversationRequest(conversationId))
             .conversation ?: error("Server returned null conversation after fork")
-
-    override suspend fun loadCurrentMessages(conversationId: Conversation.Id): List<Conversation.Message> =
-        client.requestTyped<LoadCurrentMessagesRequest, MessagesResponse>(LoadCurrentMessagesRequest(conversationId))
-            .messages
 
     override suspend fun regenerateSuggestedReplies(
         conversationId: Conversation.Id,

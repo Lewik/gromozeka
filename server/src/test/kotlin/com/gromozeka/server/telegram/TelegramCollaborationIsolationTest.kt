@@ -1,6 +1,7 @@
 package com.gromozeka.server.telegram
 
 import com.gromozeka.application.service.AgentCollaborationService
+import com.gromozeka.application.service.ConversationHistoryReadService
 import com.gromozeka.application.service.DistributedAiToolCatalog
 import com.gromozeka.domain.model.*
 import com.gromozeka.domain.model.ai.*
@@ -67,6 +68,7 @@ class TelegramCollaborationIsolationTest {
                         .map { ToolSelector.ByName(QualifiedToolName("gromozeka", it)) }.toSet()),
                 )
                 val conversations = context.getBean(ConversationDomainService::class.java)
+                val history = context.getBean(ConversationHistoryReadService::class.java)
                 val participants = setOf(Conversation.Participant.User(owner.id), Conversation.Participant.Agent(agent.id))
                 val telegram = conversations.create(project.id, participants, "Telegram")
                 val route = TelegramAgentRoute(agent.id)
@@ -80,7 +82,7 @@ class TelegramCollaborationIsolationTest {
                 val ingress = context.getBean(ExternalConversationIngressService::class.java)
                 assertTrue(ingress.importMessage(connection.channel(binding), root))
                 withTimeout(15_000) {
-                    while (conversations.loadCurrentMessages(telegram.id).none { it.id == root.id }) delay(20)
+                    while (!history.containsMessage(telegram.id, root.id)) delay(20)
                 }
                 val invocation = TelegramInvocation("telegram-isolation-turn", connection.id, owner.id, binding, route, root.id, 1,
                     activationRevision = connection.activationRevision)
@@ -92,7 +94,8 @@ class TelegramCollaborationIsolationTest {
                     while (true) {
                         val state = coordinator.snapshot(id)
                         assertTrue(state.incidents.isEmpty(), state.incidents.toString())
-                        val answer = conversations.loadCurrentMessages(id).flatMap { it.content }
+                        val answer = history.page(id, ConversationHistoryPageRequest(limit = 100), owner.id)
+                            .messages.flatMap { it.message.content }
                             .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>().any { it.structured.fullText == "CHANNEL_OK" }
                         if (answer && state.activeTask == null && state.pendingTasks.isEmpty()) break
                         delay(20)

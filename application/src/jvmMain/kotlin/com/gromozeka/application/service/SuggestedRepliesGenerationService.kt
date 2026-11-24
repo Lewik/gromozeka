@@ -10,6 +10,7 @@ import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.ai.AiToolChoice
+import com.gromozeka.domain.model.ai.nativeCompactionProvider
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiRuntimeProvider
 import kotlin.time.Clock
@@ -24,6 +25,9 @@ class SuggestedRepliesGenerationService(
     fun requireConfiguredRuntimeSelection(): AiRuntimeSelection =
         aiConfigurationProvider.requireAvailableRuntimeSelectionFor(AiRuntimeAssignment.Purpose.SUGGESTED_REPLIES)
 
+    fun nativeContextProvider(runtimeSelection: AiRuntimeSelection): String? =
+        aiConfigurationProvider.resolveAiRuntime(runtimeSelection).connection.kind.nativeCompactionProvider()
+
     suspend fun generate(
         conversation: Conversation,
         messages: List<Conversation.Message>,
@@ -35,13 +39,17 @@ class SuggestedRepliesGenerationService(
         settings: SuggestedRepliesSettings,
     ): List<String> {
         val runtime = aiRuntimeProvider.getRuntime(runtimeSelection, workspaceRootPath = null)
-        val requestMessage = Conversation.Message(
+        val instructionMessage = Conversation.Message(
             id = Conversation.Message.Id("$usageId:request"),
             conversationId = conversation.id,
             role = Conversation.Message.Role.USER,
             content = listOf(
                 Conversation.Message.ContentItem.UserMessage(
-                    buildSuggestionPrompt(messages, settings),
+                    if (settings.contextMode == SuggestedRepliesSettings.ContextMode.FULL_THREAD) {
+                        buildGenerationInstruction(settings)
+                    } else {
+                        buildRecentSuggestionPrompt(messages, settings)
+                    },
                 )
             ),
             createdAt = Clock.System.now(),
@@ -49,7 +57,10 @@ class SuggestedRepliesGenerationService(
         val response = runtime.call(
             AiRuntimeRequest(
                 systemPrompts = conversationPins.append(conversation.id, listOf(SYSTEM_PROMPT)),
-                messages = listOf(requestMessage),
+                messages = when (settings.contextMode) {
+                    SuggestedRepliesSettings.ContextMode.RECENT_MESSAGES -> listOf(instructionMessage)
+                    SuggestedRepliesSettings.ContextMode.FULL_THREAD -> messages + instructionMessage
+                },
                 options = AiRuntimeOptions(
                     maxOutputTokens = 256,
                     toolChoice = AiToolChoice.None,
@@ -77,17 +88,16 @@ class SuggestedRepliesGenerationService(
         return suggestions
     }
 
-    private fun buildSuggestionPrompt(messages: List<Conversation.Message>, settings: SuggestedRepliesSettings): String {
-        val fullThread = settings.contextMode == SuggestedRepliesSettings.ContextMode.FULL_THREAD
+    private fun buildRecentSuggestionPrompt(messages: List<Conversation.Message>, settings: SuggestedRepliesSettings): String {
         val context = messages.asSequence()
             .filter { it.role == Conversation.Message.Role.USER || it.role == Conversation.Message.Role.ASSISTANT }
             .mapNotNull { message ->
                 message.visibleText().takeIf(String::isNotBlank)?.let { text ->
-                    "${message.role.name}: ${if (fullThread) text else text.take(MAX_MESSAGE_CHARACTERS)}"
+                    "${message.role.name}: ${text.take(MAX_MESSAGE_CHARACTERS)}"
                 }
             }
             .toList()
-            .let { if (fullThread) it else it.takeLast(MAX_CONTEXT_MESSAGES) }
+            .takeLast(MAX_CONTEXT_MESSAGES)
             .joinToString("\n\n")
         return buildString {
             appendLine("Conversation context:")
@@ -95,9 +105,13 @@ class SuggestedRepliesGenerationService(
             appendLine(context)
             appendLine("</conversation>")
             appendLine()
-            appendLine(settings.separatePrompt)
-            append("Return only <suggested_replies><reply>First reply</reply></suggested_replies>.")
+            append(buildGenerationInstruction(settings))
         }
+    }
+
+    private fun buildGenerationInstruction(settings: SuggestedRepliesSettings): String = buildString {
+        appendLine(settings.separatePrompt)
+        append("Return only <suggested_replies><reply>First reply</reply></suggested_replies>.")
     }
 
     private fun Conversation.Message.visibleText(): String = content.mapNotNull { item ->

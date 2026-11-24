@@ -136,7 +136,7 @@ class ConversationCreationE2eTest {
                 val tab = components.appViewModel.tabs.value.single { it.conversationId == conversation.id }
                 fun awaitMessages(users: Int, assistants: Int) {
                     waitUntilRemote {
-                        val messages = components.conversationService.loadCurrentMessages(conversation.id)
+                        val messages = components.loadRecentHistoryMessages(conversation.id)
                         messages.count { it.role == Conversation.Message.Role.USER } == users &&
                             messages.count { it.role == Conversation.Message.Role.ASSISTANT } == assistants &&
                             tab.runtimeSnapshot.value?.let { it.state == null && it.pendingTasks.isEmpty() } == true
@@ -145,7 +145,7 @@ class ConversationCreationE2eTest {
                 runBlocking { tab.sendMessageToSession("Both agents, please reply") }
                 awaitMessages(1, 2)
                 assertEquals(2, requests.get())
-                val messages = runBlocking { components.conversationService.loadCurrentMessages(conversation.id) }
+                val messages = runBlocking { components.loadRecentHistoryMessages(conversation.id) }
                 assertEquals(agents.map { it.id }.toSet(), messages.mapNotNull {
                     (it.author as? Conversation.Message.Author.Agent)?.agentDefinitionId
                 }.toSet())
@@ -153,7 +153,7 @@ class ConversationCreationE2eTest {
                 awaitMessages(2, 3)
                 assertEquals(3, requests.get())
                 assertEquals(agents.last().id, (runBlocking {
-                    components.conversationService.loadCurrentMessages(conversation.id)
+                    components.loadRecentHistoryMessages(conversation.id)
                 }.last { it.role == Conversation.Message.Role.ASSISTANT }.author as Conversation.Message.Author.Agent).agentDefinitionId)
                 runBlocking {
                     components.conversationService.updateAutoRespondAgentIds(conversation.id, emptySet())

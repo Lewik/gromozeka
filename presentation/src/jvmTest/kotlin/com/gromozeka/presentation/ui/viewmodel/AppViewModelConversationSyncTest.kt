@@ -263,7 +263,6 @@ class AppViewModelConversationSyncTest {
                     val id = args.first().toString()
                     records.getValue(id).copy(displayName = args[1] as String).also { records[id] = it }
                 }
-                name.startsWith("loadCurrentMessages") -> emptyList<Conversation.Message>()
                 else -> error(name)
             }
         }

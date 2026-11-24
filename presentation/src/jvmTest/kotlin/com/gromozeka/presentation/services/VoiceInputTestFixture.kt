@@ -46,7 +46,6 @@ internal class VoiceInputTestFixture(scope: CoroutineScope, autoSend: Boolean) {
             when {
                 name.startsWith("findById") -> conversation(args.first().toString())
                 name.startsWith("observeByProject") -> emptyFlow<Nothing>()
-                name.startsWith("loadCurrentMessages") -> emptyList<Conversation.Message>()
                 else -> error(name)
             }
         },

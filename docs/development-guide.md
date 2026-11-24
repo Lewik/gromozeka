@@ -465,13 +465,12 @@ The existing `grz_user_profile_get` and `grz_user_profile_update` tools expose t
 settings; updates still replace the complete shared profile, not a partial patch.
 
 `contextMode` selects `RECENT_MESSAGES` (the last ten nonblank readable messages,
-up to 4000 characters each) or `FULL_THREAD` (all readable user/assistant content
-in the current thread, without those limits). Initial full-thread generation loads
-actual thread history rather than the main model's compacted context projection,
-and includes the newly generated answer. Manual regeneration ends at the selected
-source answer. Full-thread mode does not silently shorten history to fit the model;
-provider context limits and the existing generation-failure behavior still apply.
-It does not change provider caching settings or guarantee a cache hit.
+up to 4000 characters each) or `FULL_THREAD`. Despite the user-facing name,
+`FULL_THREAD` uses the same provider-aware compacted model context as an ordinary
+turn: the latest effective checkpoint plus its current tail, not every archived
+message body. The suggestion instruction is appended as one request message, so
+the context prefix remains stable between compactions. Initial generation includes
+the newly generated answer; manual regeneration ends at the selected source answer.
 
 The Settings editor keeps both instructions adjacent and offers the context choice
 for separate calls. Blank local drafts show validation and are not persisted.

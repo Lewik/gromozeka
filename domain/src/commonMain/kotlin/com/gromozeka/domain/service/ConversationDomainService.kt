@@ -134,17 +134,6 @@ interface ConversationDomainService {
      */
     suspend fun fork(conversationId: Conversation.Id): Conversation
 
-    /**
-     * Loads messages from current thread.
-     *
-     * Messages returned in thread order (by position).
-     *
-     * @param conversationId conversation identifier
-     * @return messages in current thread
-     * @throws IllegalStateException if conversation not found
-     */
-    suspend fun loadCurrentMessages(conversationId: Conversation.Id): List<Conversation.Message>
-
     suspend fun regenerateSuggestedReplies(
         conversationId: Conversation.Id,
         sourceMessageId: Conversation.Message.Id,

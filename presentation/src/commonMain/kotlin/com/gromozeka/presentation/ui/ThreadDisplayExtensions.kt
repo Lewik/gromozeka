@@ -6,7 +6,7 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 
 fun Conversation.displayPreview(translation: Translation): String {
-    // Messages are loaded separately via ConversationService.loadCurrentMessages()
+    // Messages are loaded separately through bounded conversation-history pages.
     // so we can only show displayName here
     return effectiveDisplayName(translation)
 }

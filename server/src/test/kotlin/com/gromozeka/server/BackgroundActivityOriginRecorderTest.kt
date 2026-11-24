@@ -340,7 +340,6 @@ class BackgroundActivityOriginRecorderTest {
         val outcome = engine.runRuntimeTask(task, executor) {}
         assertEquals(batch.messages.map { it.id }, appended.map { it.id })
         assertTrue(coordinator.completeActiveTask(conversation.id, task.id, executor, outcome))
-        Mockito.verify(conversations, Mockito.never()).loadCurrentMessages(conversation.id)
         return outcome
     }
 

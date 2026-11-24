@@ -62,15 +62,22 @@ class SuggestedRepliesGenerationServiceTest {
     }
 
     @Test
-    fun `full thread keeps all readable messages and does not clip long message text`() = runBlocking {
+    fun `full thread preserves the normal append only model context and adds one instruction`() = runBlocking {
         val f = Fixture()
         val history = (1..12).map { message("$it", "MESSAGE_$it", assistant = it % 2 == 0) } +
             message("long", "Z".repeat(5_000) + "READABLE_TAIL", assistant = true)
         f.generate(history, SuggestedRepliesSettings(contextMode = SuggestedRepliesSettings.ContextMode.FULL_THREAD))
-        val text = f.requests.single().text()
-        for (i in 1..12) assertContains(text, "MESSAGE_$i")
-        assertContains(text, "Z".repeat(5_000) + "READABLE_TAIL")
-        assertEquals(1, f.requests.size)
+        val request = f.requests.single()
+        assertEquals(history.map { it.id }, request.messages.dropLast(1).map { it.id })
+        assertContains(
+            (request.messages.last().content.single() as Conversation.Message.ContentItem.UserMessage).text,
+            SuggestedRepliesSettings.DEFAULT_PROMPT,
+        )
+        assertContains(
+            (request.messages[request.messages.lastIndex - 1].content.single() as Conversation.Message.ContentItem.AssistantMessage)
+                .structured.fullText,
+            "READABLE_TAIL",
+        )
     }
 
     @Test

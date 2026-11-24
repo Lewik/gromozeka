@@ -61,12 +61,6 @@ class PostgresConversationHistoryRepository(
         ).sortedBy { it.position }
     }
 
-    override suspend fun clientMessages(threadId: Conversation.Thread.Id): List<PositionedConversationMessage> =
-        query(
-            "$JOIN WHERE tm.thread_id = ? ORDER BY tm.position ASC",
-            listOf(threadId.value),
-        )
-
     override suspend fun clientMessage(
         threadId: Conversation.Thread.Id,
         messageId: Conversation.Message.Id,

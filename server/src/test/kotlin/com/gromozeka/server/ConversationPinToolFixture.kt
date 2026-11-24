@@ -68,7 +68,6 @@ internal class ConversationPinToolFixture {
         }
         val input = Conversation.Message(Conversation.Message.Id("pin-existing-input-$suffix"), b.conversationId,
             role = Conversation.Message.Role.USER, content = listOf(Conversation.Message.ContentItem.UserMessage("PRIVATE_HISTORY_SENTINEL")), createdAt = now)
-        Mockito.`when`(history.loadCurrentMessages(b.conversationId)).thenReturn(listOf(input))
         Mockito.`when`(outbox.pendingDeliveries()).thenReturn(listOf(delivery))
         val task = ConversationRuntimeTask(ConversationRuntimeTask.Id("pin-existing-task-$suffix"), b.conversationId, actorUserId = actor.id,
             payload = ConversationRuntimeTask.Payload.AgentInvocation(input, b.agentId), placement = QueuedMessagePlacement.END_OF_TURN,

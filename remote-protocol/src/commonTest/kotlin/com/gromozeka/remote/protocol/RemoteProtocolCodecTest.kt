@@ -665,8 +665,11 @@ class RemoteProtocolCodecTest {
     fun cborRoundTripSupportsConversationMessageJsonFields() {
         val envelope = GromozekaServerEnvelope(
             id = "response-1",
-            payload = MessagesResponse(
-                messages = listOf(Conversation.Message(
+            payload = MessageUpsertedEvent(
+                subscriptionId = "subscription-1",
+                conversationId = Conversation.Id("conversation-1"),
+                taskId = null,
+                message = Conversation.Message(
                     id = Conversation.Message.Id("message-1"),
                     conversationId = Conversation.Id("conversation-1"),
                     role = Conversation.Message.Role.ASSISTANT,
@@ -681,12 +684,12 @@ class RemoteProtocolCodecTest {
                     ),
                     providerMetadata = JsonObject(mapOf("provider" to JsonPrimitive("test"))),
                     createdAt = Instant.parse("2026-05-11T00:00:00Z"),
-                )),
+                ),
             )
         )
 
         val decoded = RemoteProtocolCodec.decodeServerBinary(RemoteProtocolCodec.encodeServerBinary(envelope))
-        val message = (decoded.payload as MessagesResponse).messages.single()
+        val message = (decoded.payload as MessageUpsertedEvent).message
         val toolCall = message.content.single() as Conversation.Message.ContentItem.ToolCall
 
         assertEquals(JsonPrimitive("test"), message.providerMetadata["provider"])

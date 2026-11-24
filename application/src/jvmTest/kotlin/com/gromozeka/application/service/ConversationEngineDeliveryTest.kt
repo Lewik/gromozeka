@@ -536,38 +536,39 @@ class ConversationEngineDeliveryTest {
         assertTrue(f.suggestionRequests.isEmpty())
     }
 
-    @Test fun `full suggestions context loads actual thread history rather than the compacted model prefix`() = runBlocking {
-        for (mode in UserProfile.SuggestedRepliesSettings.ContextMode.entries) {
-            val f = Fixture()
-            f.profile = UserProfile(suggestedRepliesSettings = UserProfile.SuggestedRepliesSettings(
-                mode = UserProfile.SuggestedRepliesSettings.Mode.SEPARATE_RUNTIME,
-                separatePrompt = "CUSTOM_SEPARATE_INSTRUCTION", contextMode = mode,
-            ))
-            f.allowFullHistoryLoad = mode == UserProfile.SuggestedRepliesSettings.ContextMode.FULL_THREAD
-            val root = f.messages.single()
-            val old = root.copy(id = Conversation.Message.Id("archived"), content = listOf(ContentItem.UserMessage("ARCHIVE_VISIBLE_SENTINEL")))
-            val checkpoint = root.copy(id = Conversation.Message.Id("checkpoint"), role = Conversation.Message.Role.ASSISTANT,
-                content = listOf(ContentItem.ContextCompactionResult(
-                    ContentItem.ContextCompactionResult.Payload.ReadableSummary("summary"), ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
-                    coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
-                )))
-            val replayAnchor = old.copy(id = Conversation.Message.Id("replay-anchor"), content = listOf(ContentItem.UserMessage("REPLAY_ANCHOR")))
-            f.messages.clear(); f.messages += listOf(old, replayAnchor, checkpoint, root)
-            val task = f.begin()
-            assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(f.engine.runRuntimeTask(task, executor) {})
-            assertFalse(f.requests.single().messages.any { it.id == old.id })
-            val request = f.suggestionRequests.single()
-            val text = (request.messages.single().content.single() as ContentItem.UserMessage).text
-            assertEquals(mode == UserProfile.SuggestedRepliesSettings.ContextMode.FULL_THREAD, "ARCHIVE_VISIBLE_SENTINEL" in text)
-            assertContains(text, "CUSTOM_SEPARATE_INSTRUCTION")
-            assertContains(text, "ASSISTANT: Answer")
-            assertFalse("CUSTOM_SEPARATE_INSTRUCTION" in f.requests.single().systemPrompts.joinToString("\n"))
-            assertEquals(listOf("Next"), f.messages.last().content.filterIsInstance<ContentItem.AssistantMessage>().single().structured.suggestedReplies)
-        }
+    @Test fun `full thread suggestions use the normal compacted model context rather than the archive`() = runBlocking {
+        val f = Fixture()
+        f.profile = UserProfile(suggestedRepliesSettings = UserProfile.SuggestedRepliesSettings(
+            mode = UserProfile.SuggestedRepliesSettings.Mode.SEPARATE_RUNTIME,
+            separatePrompt = "CUSTOM_SEPARATE_INSTRUCTION",
+            contextMode = UserProfile.SuggestedRepliesSettings.ContextMode.FULL_THREAD,
+        ))
+        val root = f.messages.single()
+        val old = root.copy(id = Conversation.Message.Id("archived"), content = listOf(ContentItem.UserMessage("ARCHIVE_VISIBLE_SENTINEL")))
+        val checkpoint = root.copy(id = Conversation.Message.Id("checkpoint"), role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(ContentItem.ContextCompactionResult(
+                ContentItem.ContextCompactionResult.Payload.ReadableSummary("summary"), ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+            )))
+        val replayAnchor = old.copy(id = Conversation.Message.Id("replay-anchor"), content = listOf(ContentItem.UserMessage("REPLAY_ANCHOR")))
+        f.messages.clear(); f.messages += listOf(old, replayAnchor, checkpoint, root)
+        val task = f.begin()
+        assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(f.engine.runRuntimeTask(task, executor) {})
+        assertFalse(f.requests.single().messages.any { it.id == old.id })
+        val request = f.suggestionRequests.single()
+        val projected = request.projectedMessages("OPENAI_SUBSCRIPTION")
+        assertEquals(checkpoint.id, projected.first().id)
+        assertFalse(projected.any { message -> message.content.any { it is ContentItem.UserMessage && "ARCHIVE_VISIBLE_SENTINEL" in it.text } })
+        assertTrue(projected.any { message -> message.content.any { it is ContentItem.AssistantMessage && it.structured.fullText == "Answer" } })
+        assertContains((projected.last().content.single() as ContentItem.UserMessage).text, "CUSTOM_SEPARATE_INSTRUCTION")
+        assertFalse("CUSTOM_SEPARATE_INSTRUCTION" in f.requests.single().systemPrompts.joinToString("\n"))
+        assertEquals(0, f.rawContextReads)
+        assertEquals(listOf<String?>("OPENAI_SUBSCRIPTION", "OPENAI_SUBSCRIPTION"), f.contextReads)
+        assertEquals(listOf("Next"), f.messages.last().content.filterIsInstance<ContentItem.AssistantMessage>().single().structured.suggestedReplies)
     }
 
     @Test fun `model preparation loads checkpoint context rather than the archive`() = runBlocking {
-        val f = Fixture(); f.allowFullHistoryLoad = false
+        val f = Fixture()
         val root = f.messages.single()
         val archive = (0 until 100).map { root.copy(id = Conversation.Message.Id("old-$it")) }
         val checkpoint = root.copy(id = Conversation.Message.Id("checkpoint"), role = Conversation.Message.Role.ASSISTANT,
@@ -628,7 +629,7 @@ class ConversationEngineDeliveryTest {
     }
 
     @Test fun `point append and replay never load the archive`() = runBlocking {
-        val f = Fixture(); f.allowFullHistoryLoad = false
+        val f = Fixture()
         val task = input("new-message")
         assertTrue(f.coordinator.submit(task)); f.claim(task)
         repeat(2) {
@@ -640,7 +641,7 @@ class ConversationEngineDeliveryTest {
     }
 
     @Test fun `point tool result processing never loads the archive or reapplies the result`() = runBlocking {
-        val f = Fixture(); f.allowFullHistoryLoad = false
+        val f = Fixture()
         val result = Conversation.Message(Conversation.Message.Id("tool-result"), conversation.id,
             role = Conversation.Message.Role.USER, content = listOf(ContentItem.ToolResult(
                 ContentItem.ToolCall.Id("call"), "synthetic", listOf(ContentItem.ToolResult.Data.Text("result")))), createdAt = now)
@@ -658,7 +659,7 @@ class ConversationEngineDeliveryTest {
     }
 
     @Test fun `point tool execution replays the stored result without repeating effects or loading history`() = runBlocking {
-        val f = Fixture(); f.allowFullHistoryLoad = false
+        val f = Fixture()
         val running = f.begin()
         val call = ContentItem.ToolCall(ContentItem.ToolCall.Id("synthetic-call"),
             ContentItem.ToolCall.Data("synthetic", kotlinx.serialization.json.JsonObject(emptyMap())))
@@ -718,7 +719,7 @@ class ConversationEngineDeliveryTest {
     }
 
     @Test fun `point tool result processing fails when the result is absent from the current thread`() = runBlocking {
-        val f = Fixture(); f.allowFullHistoryLoad = false
+        val f = Fixture()
         val running = f.begin()
         val task = running.copy(id = ConversationRuntimeTask.Id("missing-result"), parentTaskId = running.id,
             payload = ConversationRuntimeTask.Payload.ToolResultProcessing(
@@ -909,7 +910,7 @@ class ConversationEngineDeliveryTest {
     }
 
     @Test fun `background replay preserves an old call ID when only its call was stored before upgrade`() = runBlocking {
-        val f = Fixture(); f.allowFullHistoryLoad = false
+        val f = Fixture()
         val oldId = ContentItem.ToolCall.Id("cmd_legacy_long_identifier_status")
         val shortId = syntheticToolCallId(oldId.value)
         val call = f.messages.single().copy(id = Conversation.Message.Id("completion-call"), role = Conversation.Message.Role.ASSISTANT,
@@ -933,7 +934,7 @@ class ConversationEngineDeliveryTest {
 
     @Test fun `synthetic memory pairs use short IDs and retain stored legacy IDs on replay`() = runBlocking {
         for (withLegacyCall in listOf(false, true)) {
-            val f = Fixture(); f.allowFullHistoryLoad = false
+            val f = Fixture()
             val runId = MemoryRun.Id("memory-run")
             val toolName = "memory_run_status"
             val phase = "completed_async"
@@ -1171,7 +1172,6 @@ class ConversationEngineDeliveryTest {
         var historyMutationFailure: Throwable? = null
         var captureNativeCompactRequest = false
         var nativeCompactRequest: AiRuntimeRequest? = null
-        var allowFullHistoryLoad = true
         var backgroundBatch: BackgroundActivityCompletionApplicationService.Batch? = null
         val backgroundOrigins = TestBackgroundActivityOrigins()
         private val backgroundActivities = if (realBackground) BackgroundActivityCompletionApplicationService(
@@ -1224,10 +1224,6 @@ class ConversationEngineDeliveryTest {
         private val conversations = responding<ConversationDomainService> {
             when (it.method.name.substringBefore('-')) {
                 "findById" -> currentConversation; "getProject" -> project
-                "loadCurrentMessages" -> {
-                    check(allowFullHistoryLoad) { "Point operation must not load the archive" }
-                    messages.toList()
-                }
                 else -> Mockito.RETURNS_DEFAULTS.answer(it)
             }
         }
@@ -1372,7 +1368,13 @@ class ConversationEngineDeliveryTest {
                         )))))
                     }
                     override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = error("Unexpected suggestions stream")
-                } }, ConversationPinnedPrompt(pins), responding { agent.runtimeSelection },
+                } }, ConversationPinnedPrompt(pins), responding { invocation ->
+                    when (invocation.method.name.substringBefore('-')) {
+                        "requireAvailableRuntimeSelectionFor" -> agent.runtimeSelection
+                        "resolveAiRuntime" -> resolved
+                        else -> Mockito.RETURNS_DEFAULTS.answer(invocation)
+                    }
+                },
             ),
             conversationPins = ConversationPinnedPrompt(pins),
             requestEnrichers = buildList {

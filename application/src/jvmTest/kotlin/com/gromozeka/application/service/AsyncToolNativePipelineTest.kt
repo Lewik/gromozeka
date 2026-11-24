@@ -313,7 +313,6 @@ class AsyncToolNativePipelineTest {
             when (it.method.name.substringBefore('-')) {
                 "findById" -> conversation
                 "getProject" -> project
-                "loadCurrentMessages" -> messages.toList()
                 else -> error("Unexpected conversation call ${it.method.name}")
             }
         }

@@ -94,6 +94,7 @@ data class AppComponents(
     val workspaceManagementService: WorkspaceManagementService,
     val workerCatalogService: WorkerCatalogService,
     val conversationService: ConversationDomainService,
+    val conversationHistoryService: com.gromozeka.domain.service.ConversationHistoryService,
     val visualService: com.gromozeka.domain.visual.VisualService,
     val conversationPinService: com.gromozeka.domain.service.ConversationPinService,
     val slotService: com.gromozeka.domain.slot.SlotService,

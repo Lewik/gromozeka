@@ -143,9 +143,13 @@ class ConversationApplicationService(
         val conversation = findById(conversationId)
             ?: error("Conversation not found: ${conversationId.value}")
         require(conversation.externalChannel == null) { "Suggested replies are unavailable in an external channel" }
-        val messages = threadMessageRepo.getMessagesByThread(conversation.currentThread)
-        val sourceMessage = messages.firstOrNull { it.id == sourceMessageId }
-            ?: error("Suggested reply source message not found: ${sourceMessageId.value}")
+        require(threadMessageRepo.contains(conversation.currentThread, sourceMessageId)) {
+            "Suggested reply source message not found: ${sourceMessageId.value}"
+        }
+        val sourceMessage = threadMessageRepo.compactionBodies(
+            conversation.currentThread,
+            listOf(sourceMessageId),
+        ).single()
         require(sourceMessage.role == Conversation.Message.Role.ASSISTANT) {
             "Suggested replies require an assistant source message"
         }
@@ -168,9 +172,23 @@ class ConversationApplicationService(
 
             UserProfile.SuggestedRepliesSettings.Mode.DISABLED -> error("Unreachable")
         }
+        val messages = when (settings.contextMode) {
+            UserProfile.SuggestedRepliesSettings.ContextMode.RECENT_MESSAGES ->
+                threadMessageRepo.recentVisibleMessagesThrough(
+                    conversation.currentThread,
+                    sourceMessageId,
+                    SUGGESTED_REPLIES_CONTEXT_MESSAGES,
+                )
+            UserProfile.SuggestedRepliesSettings.ContextMode.FULL_THREAD ->
+                threadMessageRepo.getContextMessagesThrough(
+                    conversation.currentThread,
+                    sourceMessageId,
+                    suggestedRepliesGenerationService.nativeContextProvider(runtimeSelection),
+                ).messages
+        }
         return suggestedRepliesGenerationService.generate(
             conversation = conversation,
-            messages = messages.takeWhile { it.id != sourceMessageId } + sourceMessage,
+            messages = messages,
             sourceMessage = sourceMessage,
             agentDefinitionId = sourceAgentId,
             runtimeSelection = runtimeSelection,
@@ -460,20 +478,6 @@ class ConversationApplicationService(
     }
 
     /**
-     * Loads messages from current thread in order.
-     *
-     * @param conversationId conversation to query
-     * @return ordered list of messages in current thread
-     * @throws IllegalStateException if conversation doesn't exist
-     */
-    override suspend fun loadCurrentMessages(conversationId: Conversation.Id): List<Conversation.Message> {
-        val conversation = conversationRepo.findById(conversationId)
-            ?: throw IllegalStateException("Conversation not found: $conversationId")
-
-        return threadMessageRepo.getMessagesByThread(conversation.currentThread)
-    }
-
-    /**
      * Edits message by creating new thread with updated message.
      *
      * Creates new message with updated content, creates new thread with all
@@ -635,3 +639,5 @@ class ConversationApplicationService(
 }
 
 private infix fun <T> Set<T>.xor(other: Set<T>): Set<T> = (this - other) + (other - this)
+
+private const val SUGGESTED_REPLIES_CONTEXT_MESSAGES = 10

@@ -82,10 +82,6 @@ class ConversationHistoryReadService(
             }.message,
         )
 
-    /** Canonical client archive in thread order. */
-    suspend fun clientMessages(conversationId: Conversation.Id): List<Conversation.Message> =
-        messages.clientMessages(currentThread(conversationId)).map { it.message }
-
     /** Full persisted message, not the timeline projection; absent outside the current thread. */
     suspend fun findMessage(conversationId: Conversation.Id, messageId: Conversation.Message.Id): Conversation.Message? =
         messages.message(currentThread(conversationId), messageId)?.message

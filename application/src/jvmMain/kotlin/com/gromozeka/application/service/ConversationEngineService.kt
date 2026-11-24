@@ -1584,16 +1584,21 @@ class ConversationEngineService(
             }
         } ?: return assistantMessages.withSuggestedReplies(emptyList())
         return try {
+            val runtimeSelection = suggestedRepliesGenerationService.requireConfiguredRuntimeSelection()
+            val suggestionContext = when (settings.contextMode) {
+                UserProfile.SuggestedRepliesSettings.ContextMode.RECENT_MESSAGES -> currentMessages
+                UserProfile.SuggestedRepliesSettings.ContextMode.FULL_THREAD ->
+                    contextHistory.getContextMessagesByThread(
+                        conversation.currentThread,
+                        suggestedRepliesGenerationService.nativeContextProvider(runtimeSelection),
+                    ).messages
+            }
             val suggestions = suggestedRepliesGenerationService.generate(
                 conversation = conversation,
-                messages = when (settings.contextMode) {
-                    UserProfile.SuggestedRepliesSettings.ContextMode.RECENT_MESSAGES -> currentMessages
-                    UserProfile.SuggestedRepliesSettings.ContextMode.FULL_THREAD ->
-                        contextHistory.getMessagesByThread(conversation.currentThread)
-                } + assistantMessages,
+                messages = suggestionContext + assistantMessages,
                 sourceMessage = sourceMessage,
                 agentDefinitionId = agentDefinitionId,
-                runtimeSelection = suggestedRepliesGenerationService.requireConfiguredRuntimeSelection(),
+                runtimeSelection = runtimeSelection,
                 actorUserId = actorUserId,
                 usageId = "suggested-replies:${sourceMessage.id.value}:initial",
                 settings = settings,

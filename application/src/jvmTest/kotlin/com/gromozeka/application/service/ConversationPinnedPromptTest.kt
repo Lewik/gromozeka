@@ -95,7 +95,6 @@ class ConversationPinnedPromptTest {
             currentThread = Conversation.Thread.Id("thread"), createdAt = now, updatedAt = now)
         val conversations = Mockito.mock(ConversationDomainService::class.java)
         Mockito.`when`(conversations.findById(owner)).thenReturn(conversation)
-        Mockito.`when`(conversations.loadCurrentMessages(owner)).thenReturn(emptyList())
         Mockito.`when`(conversations.getProject(owner)).thenReturn(project)
         val defaults = Mockito.mock(DefaultAgentProvider::class.java)
         Mockito.`when`(defaults.getDefault()).thenReturn(agent)

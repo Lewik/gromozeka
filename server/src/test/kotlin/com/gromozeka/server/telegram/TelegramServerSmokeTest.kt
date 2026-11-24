@@ -1,5 +1,6 @@
 package com.gromozeka.server.telegram
 
+import com.gromozeka.application.service.ConversationHistoryReadService
 import com.gromozeka.domain.repository.TelegramChannelRepository
 import com.gromozeka.domain.repository.TelegramConnectionRepository
 import com.gromozeka.domain.repository.IdentityRepository
@@ -17,6 +18,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
 import kotlin.time.Clock
 
 @EnabledIfEnvironmentVariable(named = "GROMOZEKA_POSTGRES_RUNTIME_TEST", matches = "true")
@@ -54,6 +56,7 @@ class TelegramServerSmokeTest {
                     .observeTelegramIdentity(UserIdentity.Telegram(42, "Friend"), Clock.System.now())
                 val project = context.getBean(ProjectAccessService::class.java).create(owner.id, "Mirroring")
                 val conversations = context.getBean(ConversationDomainService::class.java)
+                val historyRead = context.getBean(ConversationHistoryReadService::class.java)
                 val conversation = conversations.create(project.id, setOf(Conversation.Participant.User(owner.id)), "Mirror")
                 val binding = TelegramConversationBinding(-123, conversationId = conversation.id, initiatorTelegramUserId = 1,
                     routes = listOf(TelegramAgentRoute(AgentDefinition.Id("unused-passive-agent"))))
@@ -65,17 +68,17 @@ class TelegramServerSmokeTest {
                     content = listOf(Conversation.Message.ContentItem.UserMessage("@grz this friend cannot trigger AI")), createdAt = Clock.System.now())
                 assertTrue(ingress.importMessage(connection.channel(binding), original))
                 suspend fun awaitMessage(id: Conversation.Message.Id) = withTimeout(15000) {
-                    while (conversations.loadCurrentMessages(conversation.id).none { it.id == id }) delay(20)
+                    while (!historyRead.containsMessage(conversation.id, id)) delay(20)
                 }
                 awaitMessage(original.id)
                 assertTrue(ingress.importMessage(connection.channel(binding), original))
                 val edited = original.copy(id = Conversation.Message.Id("edited"), content = listOf(Conversation.Message.ContentItem.UserMessage("Edited by its real author")))
                 assertTrue(ingress.importMessage(connection.channel(binding), edited, original.id))
                 awaitMessage(edited.id)
-                val history = conversations.loadCurrentMessages(conversation.id)
-                assertEquals(1, history.size)
-                assertEquals(listOf(original.id), history.single().originalIds)
-                assertEquals(friend.id, (history.single().author as Conversation.Message.Author.User).userId)
+                assertEquals(listOf(edited.id), historyRead.selectedIds(conversation.id, ConversationMessageSelection.ALL))
+                val current = assertNotNull(historyRead.findMessage(conversation.id, edited.id))
+                assertEquals(listOf(original.id), current.originalIds)
+                assertEquals(friend.id, (current.author as Conversation.Message.Author.User).userId)
                 val runtime = context.getBean(ConversationRuntimeIngressService::class.java)
                 assertFailsWith<IllegalArgumentException> {
                     runtime.submitMessage(
