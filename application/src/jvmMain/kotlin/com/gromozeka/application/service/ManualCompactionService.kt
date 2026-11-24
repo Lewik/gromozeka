@@ -61,6 +61,9 @@ class ManualCompactionService internal constructor(
         require(selection.none { it.streaming }) { "Wait for selected messages to finish streaming before compaction" }
         log.info { "COMPACTION phase=start id=${checkpointId.value} mode=manual full=$full sources=${selection.size} retained=${headers.size - selection.size}" }
         val checkpoint = if (full && strategy == SquashType.COMPACT) {
+            require(selection.any { it.role != Conversation.Message.Role.RUNTIME }) {
+                "Need at least one readable message to compact"
+            }
             val agent = currentAgent(conversation)
             val request = try {
                 nativeRequest(conversation, agent)
@@ -85,6 +88,9 @@ class ManualCompactionService internal constructor(
                 provider = null,
                 prepareRuntimeObservationBoundary = true,
             )
+            require(readableMessages.size >= minimum) {
+                "Need at least $minimum readable message(s) to compact"
+            }
             val generated = when (strategy) {
                 SquashType.CONCATENATE -> CompactionTextService.GeneratedCompaction(
                     text = MessageCompactionTextRenderer.render(readableMessages),

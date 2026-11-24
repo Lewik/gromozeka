@@ -595,6 +595,55 @@ class ManualCompactionServiceTest {
     }
 
     @Test
+    fun `Runtime rows do not satisfy the manual compaction minimum`() = runBlocking {
+        for (strategy in listOf(SquashType.COMPACT, SquashType.DISTILL)) {
+            val fixture = Fixture()
+            val runtime = fixture.third.copy(
+                id = Conversation.Message.Id("runtime-${strategy.name.lowercase()}"),
+                role = Conversation.Message.Role.RUNTIME,
+                author = Conversation.Message.Author.Runtime(),
+                content = emptyList(),
+                instructions = listOf(
+                    Conversation.Message.Instruction.RuntimeObservation("state", "visual:one", "revision"),
+                ),
+            )
+            fixture.append(runtime)
+            val counts = fixture.storageCounts()
+
+            assertFailsWith<IllegalArgumentException> {
+                fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(runtime.id), strategy)
+            }
+
+            assertEquals(counts, fixture.storageCounts())
+            assertTrue(fixture.runtimeProvider.requests.isEmpty())
+        }
+
+        val fixture = Fixture()
+        val runtime = fixture.third.copy(
+            id = Conversation.Message.Id("runtime-concatenate"),
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = emptyList(),
+            instructions = listOf(
+                Conversation.Message.Instruction.RuntimeObservation("state", "visual:one", "revision"),
+            ),
+        )
+        fixture.append(runtime)
+        val counts = fixture.storageCounts()
+
+        assertFailsWith<IllegalArgumentException> {
+            fixture.service().compactRuntimeHistory(
+                fixture.conversation.id,
+                listOf(fixture.third.id, runtime.id),
+                SquashType.CONCATENATE,
+            )
+        }
+
+        assertEquals(counts, fixture.storageCounts())
+        assertTrue(fixture.runtimeProvider.requests.isEmpty())
+    }
+
+    @Test
     fun `opaque checkpoint without active originals fails without reading unrelated archives`() = runBlocking {
         val fixture = Fixture()
         val checkpoint = fixture.checkpoint(opaque = true)
