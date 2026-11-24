@@ -53,11 +53,12 @@ class ConversationContextSnapshotService(
             it.establishesRuntimeObservationBoundaryInSnapshot
         }
         // A single ordered repository read pins the history prefix. Later appends/compacts are not admitted.
-        val original = history.getContextMessagesByThread(
+        val selectedHistory = history.getContextMessagesByThread(
             target.threadId,
             nativeProvider,
             prepareRuntimeObservationBoundary,
         )
+        val original = selectedHistory.messages
         val project = conversations.getProject(conversation.id)
         val context = RuntimeEnvironmentContext.ProjectBound(
             project = project,
@@ -168,7 +169,7 @@ class ConversationContextSnapshotService(
             request = request,
             lastIncludedMessageId = prefix.lastOrNull()?.id,
             capturedAt = capturedAt,
-            sourceMessageCount = original.size,
+            sourceMessageCount = selectedHistory.sourceMessageCount,
             omittedTrailingMessageCount = projected.size - prefix.size,
         )
     }

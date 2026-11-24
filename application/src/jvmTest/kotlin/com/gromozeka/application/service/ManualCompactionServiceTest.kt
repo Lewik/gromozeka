@@ -1133,14 +1133,17 @@ private class InMemoryThreadMessageRepository(
         threadId: Conversation.Thread.Id,
         nativeProvider: String?,
         prepareRuntimeObservationBoundary: Boolean,
-    ): List<Conversation.Message> {
+    ): com.gromozeka.domain.repository.ThreadContextMessages {
         val history = messages(threadId)
         val selected = com.gromozeka.domain.model.selectModelHistoryMessageIds(
             history.map { com.gromozeka.domain.model.MessageContextHeader(it.id, com.gromozeka.domain.model.MessageContextMetadata.from(it)) },
             history.filter { com.gromozeka.domain.model.MessageContextMetadata.from(it).hasCompaction }, nativeProvider,
             prepareRuntimeObservationBoundary,
         )
-        return history.filter { it.id in selected }
+        return com.gromozeka.domain.repository.ThreadContextMessages(
+            messages = history.filter { it.id in selected },
+            sourceMessageCount = history.size,
+        )
     }
     override suspend fun deleteByThread(threadId: Conversation.Thread.Id) {
         links.remove(threadId)

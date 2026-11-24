@@ -237,10 +237,11 @@ class PostgresRuntimeMessageReadTest {
             val history = listOf(root, oldBaseline, oldDelta, currentBaseline, currentDelta, tail)
             history.forEachIndexed { index, message -> f.save(message, thread, index) }
 
-            lateinit var selected: List<Conversation.Message>
+            lateinit var selected: com.gromozeka.domain.repository.ThreadContextMessages
             val measurement = f.measure { selected = f.links.getContextMessagesByThread(thread, null) }
 
-            assertEquals(listOf(root, currentBaseline, currentDelta, tail), selected)
+            assertEquals(listOf(root, currentBaseline, currentDelta, tail), selected.messages)
+            assertEquals(history.size, selected.sourceMessageCount)
             assertEquals(4L, measurement.bodies)
             assertTrue(measurement.bytes < 30_000)
         }
@@ -756,7 +757,8 @@ class PostgresRuntimeMessageReadTest {
                 else assertEquals(com.gromozeka.domain.model.MessageContextMetadata.from(message), f.metadata(message.id))
             }
             val selected = f.links.getContextMessagesByThread(f.conversation.currentThread, null)
-            assertTrue(selected.any { it == messages.single { message -> message.id.value == "binary" } })
+            assertTrue(selected.messages.any { it == messages.single { message -> message.id.value == "binary" } })
+            assertEquals(messages.size, selected.sourceMessageCount)
             val replacement = messages[0].copy(providerMetadata = buildJsonObject { put("synthetic", true) }, instructions = emptyList())
             f.source.connection.use { connection ->
                 connection.prepareStatement("UPDATE messages SET message_json = ? WHERE id = ?").use {
@@ -785,12 +787,13 @@ class PostgresRuntimeMessageReadTest {
             for (provider in listOf(null, "OPENAI_SUBSCRIPTION", "CLAUDE_CODE")) {
                 val selected = f.links.getContextMessagesByThread(thread, provider)
                 assertEquals(com.gromozeka.domain.model.ConversationContext(archive).messagesForProvider(provider),
-                    com.gromozeka.domain.model.ConversationContext(selected).messagesForProvider(provider))
+                    com.gromozeka.domain.model.ConversationContext(selected.messages).messagesForProvider(provider))
+                assertEquals(archive.size, selected.sourceMessageCount)
             }
             val fork = Conversation.Thread.Id("fork")
             ExposedThreadRepository().save(Conversation.Thread(fork, f.conversation.id, originalThread = thread, createdAt = f.now, updatedAt = f.now))
             f.links.add(fork, source.id, 0); f.links.add(fork, tail.id, 1)
-            assertEquals(listOf(source, tail), f.links.getContextMessagesByThread(fork, null))
+            assertEquals(listOf(source, tail), f.links.getContextMessagesByThread(fork, null).messages)
             val bad = checkpoint.copy(id = Conversation.Message.Id("foreign-source"), content = listOf(
                 (checkpoint.content.single() as ContentItem.ContextCompactionResult).copy(
                     coverage = ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES,
@@ -851,7 +854,8 @@ class PostgresRuntimeMessageReadTest {
                 }
                 val sparseContext = sample("sparse_context") {
                     val selected = f.links.getContextMessagesByThread(thread, null)
-                    assertEquals(listOf(summary), com.gromozeka.domain.model.ConversationContext(selected).messagesForProvider(null))
+                    assertEquals(count, selected.sourceMessageCount)
+                    assertEquals(listOf(summary), com.gromozeka.domain.model.ConversationContext(selected.messages).messagesForProvider(null))
                 }
                 assertEquals(count.toLong(), fullContext.bodies)
                 assertEquals(3, sparseContext.bodies)

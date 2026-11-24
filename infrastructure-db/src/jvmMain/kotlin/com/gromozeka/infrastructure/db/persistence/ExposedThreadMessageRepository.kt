@@ -13,6 +13,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.experimental.newSuspendedTrans
 import org.jetbrains.exposed.v1.core.inList
 import java.sql.Connection
 import com.gromozeka.domain.repository.ThreadMessageLink
+import com.gromozeka.domain.repository.ThreadContextMessages
 import com.gromozeka.domain.repository.ThreadMessageRepository
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.SortOrder
@@ -143,7 +144,7 @@ class ExposedThreadMessageRepository(
         threadId: Conversation.Thread.Id,
         nativeProvider: String?,
         prepareRuntimeObservationBoundary: Boolean,
-    ): List<Conversation.Message> = newSuspendedTransaction(
+    ): ThreadContextMessages = newSuspendedTransaction(
         Dispatchers.IO, transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ, readOnly = true,
     ) {
         val captured = readContextHeaders(threadId)
@@ -158,7 +159,10 @@ class ExposedThreadMessageRepository(
             nativeProvider,
             prepareRuntimeObservationBoundary,
         )
-        materializeContextSelection(threadId, captured, required)
+        ThreadContextMessages(
+            messages = materializeContextSelection(threadId, captured, required),
+            sourceMessageCount = captured.headers.size,
+        )
     }
 
     private fun readContextHeaders(threadId: Conversation.Thread.Id): CapturedContextHeaders {

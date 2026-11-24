@@ -43,6 +43,17 @@ class ConversationContextSnapshotServiceTest {
         Mockito.verifyNoInteractions(f.artifactRepository, f.contentStore)
     }
 
+    @Test fun `sparse snapshot preserves the physical source message count`() = runBlocking<Unit> {
+        val f = Fixture()
+        f.historyMessages = listOf(f.user)
+        f.sourceMessageCount = 10_000
+
+        val snapshot = f.capture()
+
+        assertEquals(listOf(f.user.id), snapshot.request.messages.map { it.id })
+        assertEquals(10_000, snapshot.sourceMessageCount)
+    }
+
     @Test fun `ephemeral runtime observations do not replace the durable prefix boundary`() = runBlocking<Unit> {
         val f = Fixture(includeRuntimeObservations = true)
         f.historyMessages = listOf(f.user)
@@ -375,6 +386,7 @@ class ConversationContextSnapshotServiceTest {
         val conversations = Mockito.mock(ConversationDomainService::class.java)
         val history = Mockito.mock(ThreadMessageRepository::class.java)
         var historyMessages = emptyList<Conversation.Message>()
+        var sourceMessageCount: Int? = null
         private val nativeProvider: String?
         private val prepareRuntimeObservationBoundary = includeRuntimeObservations
         val configuration = Mockito.mock(AiConfigurationProvider::class.java)
@@ -420,7 +432,12 @@ class ConversationContextSnapshotServiceTest {
                     target.threadId,
                     nativeProvider,
                     prepareRuntimeObservationBoundary,
-                )).thenAnswer { historyMessages }
+                )).thenAnswer {
+                    com.gromozeka.domain.repository.ThreadContextMessages(
+                        messages = historyMessages,
+                        sourceMessageCount = sourceMessageCount ?: historyMessages.size,
+                    )
+                }
                 Mockito.`when`(conversations.getProject(conversation.id)).thenReturn(project)
                 Mockito.`when`(catalog.readSnapshot(project, agent.toolAccess, conversation)).thenReturn(baseCatalog)
                 Mockito.`when`(skills.prepare(agent, project.id, baseCatalog)).thenReturn(AgentSkillRuntimeCatalog(baseCatalog, "skills"))

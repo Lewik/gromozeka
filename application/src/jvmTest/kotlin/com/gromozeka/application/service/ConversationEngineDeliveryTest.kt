@@ -1412,7 +1412,10 @@ class ConversationEngineDeliveryTest {
                         messages.map { message -> MessageContextHeader(message.id, MessageContextMetadata.from(message)) },
                         messages.filter { message -> MessageContextMetadata.from(message).hasCompaction }, provider,
                     )
-                    messages.filter { message -> message.id in selected }
+                    com.gromozeka.domain.repository.ThreadContextMessages(
+                        messages = messages.filter { message -> message.id in selected },
+                        sourceMessageCount = messages.size,
+                    )
                 }
                 "getMessagesByThreadWithoutRuntime" -> messages.filter { message ->
                     message.role != Conversation.Message.Role.RUNTIME

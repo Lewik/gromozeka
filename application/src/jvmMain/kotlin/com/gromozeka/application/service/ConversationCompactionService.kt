@@ -213,8 +213,12 @@ class ConversationCompactionService internal constructor(
         val actor = task.actorUserId ?: return false
         if (runtimeCoordinator.proactiveCompaction(conversation.id)?.cancellable == true) return false
         // Use the active request window to trigger preparation. Fetch archived sources only when needed.
-        val inspectionWindow = if (request.messages.isEmpty())
-            history.getContextMessagesByThread(conversation.currentThread, resolved.connection.kind.nativeCompactionProvider()) else request.messages
+        val inspectionWindow = if (request.messages.isEmpty()) {
+            history.getContextMessagesByThread(
+                conversation.currentThread,
+                resolved.connection.kind.nativeCompactionProvider(),
+            ).messages
+        } else request.messages
         val pins = preparationScope.pinPrompts(conversation)
         val inspectionRequest = request.copy(systemPrompts = request.systemPrompts + pins, messages = textCompactions.materializeSnapshot(conversation.id, inspectionWindow))
         val estimate = AiContextMeasurement.portableInspection(resolved, inspectionRequest)?.inputTokens

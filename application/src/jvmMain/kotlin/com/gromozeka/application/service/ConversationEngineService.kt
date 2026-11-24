@@ -1475,7 +1475,7 @@ class ConversationEngineService(
                 conversation.currentThread,
                 kind.nativeCompactionProvider(),
                 prepareRuntimeObservationBoundary = true,
-            )
+            ).messages
         }
 
     private suspend fun buildConversationRuntimeContext(

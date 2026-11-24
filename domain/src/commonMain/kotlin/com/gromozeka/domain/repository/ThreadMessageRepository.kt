@@ -21,6 +21,18 @@ data class ThreadMessageLink(
     val position: Int
 )
 
+/** Selected sparse bodies and the physical size of the same captured thread prefix. */
+data class ThreadContextMessages(
+    val messages: List<Conversation.Message>,
+    val sourceMessageCount: Int,
+) {
+    init {
+        require(sourceMessageCount >= messages.size) {
+            "Source message count cannot be smaller than the selected context"
+        }
+    }
+}
+
 /**
  * Repository for managing thread-message relationships.
  *
@@ -123,7 +135,7 @@ interface ThreadMessageRepository {
         threadId: Conversation.Thread.Id,
         nativeProvider: String?,
         prepareRuntimeObservationBoundary: Boolean = false,
-    ): List<Conversation.Message>
+    ): ThreadContextMessages
 
     /**
      * Deletes all links for thread (CASCADE on thread deletion).
