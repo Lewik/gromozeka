@@ -2067,7 +2067,7 @@
     "client.delivery.title": "Messages envoyés pendant le travail",
     "client.delivery.description": "S’applique aux nouveaux messages dans toutes vos conversations et sur tous vos appareils. Steer attend un point sûr sans annuler l’appel en cours. Les messages déjà en attente conservent leur moment de remise.",
     "client.delivery.steer": "Steer — prochain point sûr",
-    "client.delivery.afterTurn": "Après le tour actuel",
+    "client.delivery.queue": "Après le tour actuel",
     "client.delivery.saveFailed": "Impossible d’enregistrer la préférence de remise des messages.",
     "slots.automatic": "Sélection automatique",
     "pins.title": "Textes épinglés",

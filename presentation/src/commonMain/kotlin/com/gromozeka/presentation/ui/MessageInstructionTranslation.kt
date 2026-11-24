@@ -7,10 +7,10 @@ import com.gromozeka.presentation.services.translation.data.Translation
 
 internal val liveSteeringInstruction = com.gromozeka.domain.model.liveSteeringInstruction
 
-internal fun com.gromozeka.domain.model.UserMessageDeliveryMode.displayLabel(translation: Translation): String =
+internal fun com.gromozeka.domain.model.MessageDelivery.displayLabel(translation: Translation): String =
     translation.text(when (this) {
-        com.gromozeka.domain.model.UserMessageDeliveryMode.STEER -> "client.delivery.steer"
-        com.gromozeka.domain.model.UserMessageDeliveryMode.AFTER_CURRENT_TURN -> "client.delivery.afterTurn"
+        com.gromozeka.domain.model.MessageDelivery.STEER -> "client.delivery.steer"
+        com.gromozeka.domain.model.MessageDelivery.QUEUE -> "client.delivery.queue"
     })
 
 private val defaultInstructionGroups = MessageInstructionGroup.defaults()

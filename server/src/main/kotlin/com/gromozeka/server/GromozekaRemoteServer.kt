@@ -205,10 +205,7 @@ class GromozekaRemoteServer(
                             is ReportClientActivityCommand ->
                                 clientPresentationRegistry.activate(connectionId, payload.kind)
                             is ClientRequest -> {
-                                if (payload is PostMessageRequest ||
-                                    payload is InvokeAgentRequest ||
-                                    payload is EnqueueAgentInvocationRequest
-                                ) {
+                                if (payload is SubmitMessageRequest) {
                                     clientPresentationRegistry.activate(
                                         connectionId,
                                         ClientActivityKind.USER_INTERACTION,
@@ -850,28 +847,13 @@ class GromozekaRemoteServer(
                     runMemoryAction(request.conversationId, request.action)
                     MemoryActionAcceptedResponse()
                 }
-                is PostMessageRequest -> OperationResultResponse(
-                    conversationRuntimeIngressService.postMessage(
+                is SubmitMessageRequest -> OperationResultResponse(
+                    conversationRuntimeIngressService.submitMessage(
                         user,
                         request.conversationId,
-                        request.userMessage,
-                    )
-                )
-                is InvokeAgentRequest -> OperationResultResponse(
-                    conversationRuntimeIngressService.invokeAgent(
-                        user,
-                        request.conversationId,
-                        request.userMessage,
+                        request.message,
                         request.agentDefinitionId,
-                    )
-                )
-                is EnqueueAgentInvocationRequest -> OperationResultResponse(
-                    conversationRuntimeIngressService.enqueueAgentInvocation(
-                        user,
-                        request.conversationId,
-                        request.userMessage,
-                        request.agentDefinitionId,
-                        request.placement
+                        request.delivery,
                     )
                 )
                 is CancelQueuedMessageRequest -> OperationResultResponse(

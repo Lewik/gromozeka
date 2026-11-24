@@ -130,19 +130,19 @@ class InMemoryConversationRuntimeCoordinator(
     override suspend fun submit(task: ConversationRuntimeTask, acceptPreviouslySubmitted: Boolean): Boolean =
         submitInternal(task, acceptPreviouslySubmitted, null)
 
-    override suspend fun submitUserInput(task: ConversationRuntimeTask, mode: com.gromozeka.domain.model.UserMessageDeliveryMode): Boolean =
-        submitInternal(task, false, mode)
+    override suspend fun submitMessage(task: ConversationRuntimeTask, delivery: com.gromozeka.domain.model.MessageDelivery): Boolean =
+        submitInternal(task, false, delivery)
 
     override suspend fun submitBackgroundActivity(task: ConversationRuntimeTask, agentDefinitionId: com.gromozeka.domain.model.AgentDefinition.Id): Boolean =
         submitInternal(task, false, null, agentDefinitionId)
 
     private suspend fun submitInternal(task: ConversationRuntimeTask, acceptPreviouslySubmitted: Boolean,
-        userDeliveryMode: com.gromozeka.domain.model.UserMessageDeliveryMode?,
+        messageDelivery: com.gromozeka.domain.model.MessageDelivery?,
         backgroundActivityAgentId: com.gromozeka.domain.model.AgentDefinition.Id? = null): Boolean =
         mutex.withLock {
             val current = schedulingByConversation[task.conversationId]
                 ?: ConversationRuntimeSchedulingState(task.conversationId)
-            val transition = current.submit(task, Clock.System.now(), acceptPreviouslySubmitted, userDeliveryMode, backgroundActivityAgentId)
+            val transition = current.submit(task, Clock.System.now(), acceptPreviouslySubmitted, messageDelivery, backgroundActivityAgentId)
             if (!transition.changed) return@withLock transition.result
             if (!transition.result) return@withLock false
             schedulingByConversation[task.conversationId] = transition.state
@@ -158,10 +158,13 @@ class InMemoryConversationRuntimeCoordinator(
             true
         }
 
-    override suspend fun updatePendingMessageSubmission(task: ConversationRuntimeTask): Boolean =
+    override suspend fun updatePendingMessageSubmission(
+        task: ConversationRuntimeTask,
+        delivery: com.gromozeka.domain.model.MessageDelivery,
+    ): Boolean =
         mutex.withLock {
             val current = schedulingByConversation[task.conversationId] ?: return@withLock false
-            val transition = current.updatePendingMessageSubmission(task)
+            val transition = current.updatePendingMessageSubmission(task, delivery)
             if (!transition.result) return@withLock false
             schedulingByConversation[task.conversationId] = transition.state
             appendTrace(
@@ -169,7 +172,7 @@ class InMemoryConversationRuntimeCoordinator(
                 taskId = task.id,
                 kind = ConversationRuntimeTraceEntry.Kind.TASK_SUBMITTED,
                 status = ConversationRuntimeTraceEntry.Status.UPDATED,
-                message = "Queued message submission updated: placement=${task.placement}",
+                message = "Queued message submission updated: delivery=$delivery",
             )
             scheduleNextRunnableTaskIfReady(task.conversationId)
             bumpRevision(task.conversationId)

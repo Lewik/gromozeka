@@ -2,11 +2,11 @@ package com.gromozeka.domain.model
 
 import kotlinx.serialization.Serializable
 
-/** Timing of newly submitted human input; never a cancellation policy. */
+/** How newly submitted conversation input should relate to an active turn. */
 @Serializable
-enum class UserMessageDeliveryMode {
+enum class MessageDelivery {
     STEER,
-    AFTER_CURRENT_TURN,
+    QUEUE,
 }
 
 val liveSteeringInstruction = Conversation.Message.Instruction.UserInstruction(

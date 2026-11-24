@@ -4,7 +4,7 @@ import com.gromozeka.domain.model.syntheticKind
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.UserMessageDeliveryMode
+import com.gromozeka.domain.model.MessageDelivery
 import com.gromozeka.domain.model.WorkspaceMount
 import kotlin.time.Instant
 import kotlinx.serialization.Serializable
@@ -154,7 +154,7 @@ data class ConversationRuntimeSchedulingState(
         task: ConversationRuntimeTask,
         now: Instant,
         acceptPreviouslySubmitted: Boolean = false,
-        userDeliveryMode: UserMessageDeliveryMode? = null,
+        messageDelivery: MessageDelivery? = null,
         backgroundActivityAgentId: AgentDefinition.Id? = null,
     ): ConversationRuntimeStateTransition<Boolean> {
         require(task.conversationId == conversationId) {
@@ -172,11 +172,11 @@ data class ConversationRuntimeSchedulingState(
         ) {
             return unchanged(false)
         }
-        // Resolve human preference once, atomically with admission. Runtime-owned inputs keep
+        // Resolve requested delivery once, atomically with admission. Runtime-owned inputs keep
         // their explicit placement, and later preference changes never revisit queued tasks.
-        require(userDeliveryMode == null || backgroundActivityAgentId == null)
+        require(messageDelivery == null || backgroundActivityAgentId == null)
         val submissions = when {
-            userDeliveryMode != null -> prepareUserInput(task, userDeliveryMode)
+            messageDelivery != null -> prepareMessage(task, messageDelivery)
             backgroundActivityAgentId != null -> {
                 val background = task.payload as? ConversationRuntimeTask.Payload.BackgroundActivityCompletion
                     ?: error("Background admission requires a completion input")
@@ -193,7 +193,7 @@ data class ConversationRuntimeSchedulingState(
         }
         val submitted = submissions.first()
         if (submitted.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT && activeTask == null &&
-            !((userDeliveryMode != null || backgroundActivityAgentId != null) && continuationTask != null)) {
+            !((messageDelivery != null || backgroundActivityAgentId != null) && continuationTask != null)) {
             return unchanged(false)
         }
 
@@ -231,9 +231,9 @@ data class ConversationRuntimeSchedulingState(
         else -> null
     }
 
-    private fun prepareUserInput(task: ConversationRuntimeTask, mode: UserMessageDeliveryMode): List<ConversationRuntimeTask> {
-        require(task.actorUserId != null && task.externalChannel == null && task.userMessageOrNull()?.role == Conversation.Message.Role.USER) {
-            "User delivery preferences apply only to authenticated local human input"
+    private fun prepareMessage(task: ConversationRuntimeTask, delivery: MessageDelivery): List<ConversationRuntimeTask> {
+        require(task.externalChannel == null && task.userMessageOrNull() != null) {
+            "Message delivery applies only to local conversation input"
         }
         val activeAgent = activeAgentId()
         val targetsActiveAgent = activeAgent != null && when (val payload = task.payload) {
@@ -241,7 +241,7 @@ data class ConversationRuntimeSchedulingState(
             is ConversationRuntimeTask.Payload.PostMessage -> activeAgent in payload.autoRespondAgentIds
             else -> false
         }
-        if (mode != UserMessageDeliveryMode.STEER || !targetsActiveAgent) {
+        if (delivery != MessageDelivery.STEER || !targetsActiveAgent) {
             return listOf(task.copy(placement = QueuedMessagePlacement.END_OF_TURN))
         }
         val post = task.payload as? ConversationRuntimeTask.Payload.PostMessage
@@ -264,7 +264,10 @@ data class ConversationRuntimeSchedulingState(
         return listOf(steering) + otherResponses
     }
 
-    fun updatePendingMessageSubmission(task: ConversationRuntimeTask): ConversationRuntimeStateTransition<Boolean> {
+    fun updatePendingMessageSubmission(
+        task: ConversationRuntimeTask,
+        delivery: MessageDelivery,
+    ): ConversationRuntimeStateTransition<Boolean> {
         require(task.conversationId == conversationId) {
             "Conversation runtime task belongs to another conversation"
         }
@@ -272,22 +275,30 @@ data class ConversationRuntimeSchedulingState(
             "Only a pending root message submission can be updated"
         }
         if (executionState?.controlState == ConversationExecutionState.ControlState.STOPPING ||
-            executionState?.controlState == ConversationExecutionState.ControlState.INTERRUPTING ||
-            (task.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT && activeTask == null)
+            executionState?.controlState == ConversationExecutionState.ControlState.INTERRUPTING
         ) {
             return unchanged(false)
         }
         val index = pendingTasks.indexOfFirst { it.userMessageIdOrNull() == task.userMessageIdOrNull() }
         if (index < 0) return unchanged(false)
 
+        val submissions = prepareMessage(task, delivery)
+        if (submissions.size != 1) return unchanged(false)
+        val submitted = submissions.single()
+        if (submitted.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT &&
+            activeTask == null && continuationTask == null
+        ) {
+            return unchanged(false)
+        }
+
         val existing = pendingTasks[index]
-        require(existing.id == task.id &&
-            existing.idempotencyKey == task.idempotencyKey &&
-            existing.turnId == task.turnId
+        require(existing.id == submitted.id &&
+            existing.idempotencyKey == submitted.idempotencyKey &&
+            existing.turnId == submitted.turnId
         ) {
             "Updating a queued message submission cannot change its runtime identity"
         }
-        val updatedTask = task.withTurnTerminationInstructions(existing.turnTerminationInstructions())
+        val updatedTask = submitted.withTurnTerminationInstructions(existing.turnTerminationInstructions())
         return changed(
             copy(pendingTasks = pendingTasks.toMutableList().apply { this[index] = updatedTask }),
             true,

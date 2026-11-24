@@ -197,14 +197,18 @@ class VisualBoundaryTest {
         val input = Conversation.Message.ContentItem.VisualInteraction(visual.id, visual.title, visual.documentRevision, "event-123456", "submit", "Submit", state)
         var received: Conversation.Message? = null
         val ingress = object : ConversationRuntimeIngressService {
-            override suspend fun postMessage(actorUser: User, conversationId: Conversation.Id, userMessage: Conversation.Message): Boolean = error("Must route to owning agent")
-            override suspend fun invokeAgent(actorUser: User, conversationId: Conversation.Id, userMessage: Conversation.Message, agentDefinitionId: AgentDefinition.Id): Boolean = error("Must queue safely")
-            override suspend fun enqueueAgentInvocation(actorUser: User, conversationId: Conversation.Id, userMessage: Conversation.Message, agentDefinitionId: AgentDefinition.Id, placement: QueuedMessagePlacement): Boolean {
+            override suspend fun submitMessage(
+                actorUser: User,
+                conversationId: Conversation.Id,
+                message: Conversation.Message,
+                agentDefinitionId: AgentDefinition.Id?,
+                delivery: MessageDelivery,
+            ): Boolean {
                 assertEquals(user, actorUser)
                 assertEquals(conversation.id, conversationId)
                 assertEquals(visual.agentDefinitionId, agentDefinitionId)
-                assertEquals(QueuedMessagePlacement.AFTER_TOOL_RESULT, placement)
-                received = userMessage
+                assertEquals(MessageDelivery.STEER, delivery)
+                received = message
                 return true
             }
         }

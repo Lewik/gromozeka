@@ -136,17 +136,17 @@ class PostgresConversationRuntimeCoordinator(
     override suspend fun submit(task: ConversationRuntimeTask, acceptPreviouslySubmitted: Boolean): Boolean =
         submitInternal(task, acceptPreviouslySubmitted, null)
 
-    override suspend fun submitUserInput(task: ConversationRuntimeTask, mode: com.gromozeka.domain.model.UserMessageDeliveryMode): Boolean =
-        submitInternal(task, false, mode)
+    override suspend fun submitMessage(task: ConversationRuntimeTask, delivery: com.gromozeka.domain.model.MessageDelivery): Boolean =
+        submitInternal(task, false, delivery)
 
     override suspend fun submitBackgroundActivity(task: ConversationRuntimeTask, agentDefinitionId: com.gromozeka.domain.model.AgentDefinition.Id): Boolean =
         submitInternal(task, false, null, agentDefinitionId)
 
     private suspend fun submitInternal(task: ConversationRuntimeTask, acceptPreviouslySubmitted: Boolean,
-        userDeliveryMode: com.gromozeka.domain.model.UserMessageDeliveryMode?,
+        messageDelivery: com.gromozeka.domain.model.MessageDelivery?,
         backgroundActivityAgentId: com.gromozeka.domain.model.AgentDefinition.Id? = null): Boolean =
         mutateRecord(task.conversationId, createIfMissing = true) { record ->
-            val transition = record.scheduling.submit(task, Clock.System.now(), acceptPreviouslySubmitted, userDeliveryMode, backgroundActivityAgentId)
+            val transition = record.scheduling.submit(task, Clock.System.now(), acceptPreviouslySubmitted, messageDelivery, backgroundActivityAgentId)
             if (!transition.changed) return@mutateRecord transition.result
             if (!transition.result) return@mutateRecord false
             record.scheduling = transition.state
@@ -161,9 +161,12 @@ class PostgresConversationRuntimeCoordinator(
             true
         }
 
-    override suspend fun updatePendingMessageSubmission(task: ConversationRuntimeTask): Boolean =
+    override suspend fun updatePendingMessageSubmission(
+        task: ConversationRuntimeTask,
+        delivery: com.gromozeka.domain.model.MessageDelivery,
+    ): Boolean =
         mutateRecord(task.conversationId, createIfMissing = false) { record ->
-            val transition = record.scheduling.updatePendingMessageSubmission(task)
+            val transition = record.scheduling.updatePendingMessageSubmission(task, delivery)
             if (!transition.result) return@mutateRecord false
             record.scheduling = transition.state
             record.appendTrace(
@@ -171,7 +174,7 @@ class PostgresConversationRuntimeCoordinator(
                 taskId = task.id,
                 kind = ConversationRuntimeTraceEntry.Kind.TASK_SUBMITTED,
                 status = ConversationRuntimeTraceEntry.Status.UPDATED,
-                message = "Queued message submission updated: placement=${task.placement}",
+                message = "Queued message submission updated: delivery=$delivery",
             )
             record.bumpRevision()
             true

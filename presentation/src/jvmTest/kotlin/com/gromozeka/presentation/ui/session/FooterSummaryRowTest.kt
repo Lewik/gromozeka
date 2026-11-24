@@ -156,7 +156,7 @@ internal fun footerRuntime(count: Int = 0): ConversationRuntimeSnapshot {
 internal fun footerPending(count: Int) = (0 until count).map { index -> PendingUserMessage(
     Conversation.Message(Conversation.Message.Id("pending-$index"), Conversation.Id("footer"), role = Conversation.Message.Role.USER,
         content = listOf(Conversation.Message.ContentItem.UserMessage("Queued instruction $index")), createdAt = footerNow),
-    null, QueuedMessagePlacement.END_OF_TURN) }
+    null, com.gromozeka.domain.model.MessageDelivery.QUEUE) }
 
 internal fun footerTokenStats(percent: Int = 24) = TokenUsageStatistics.ThreadTotals(
     totalPromptTokens = 1_000_000, totalCompletionTokens = 0, totalCacheReadTokens = 0, totalCacheCreationTokens = 0,

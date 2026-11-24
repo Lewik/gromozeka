@@ -82,7 +82,7 @@ internal fun ConversationFooterSummary(
         append(translation.text("chat.footer.queued", "count" to pending.size))
         pending.orderedForDisplay().take(3).forEachIndexed { index, message ->
             val text = message.text.ifBlank { message.artifacts.joinToString { it.fileName } }
-            append("\n${index + 1}. ${queuePlacementDescription(message.placement, translation.runtime)}: ${footerPreview(text)}")
+            append("\n${index + 1}. ${messageDeliveryDescription(message.delivery, translation.runtime)}: ${footerPreview(text)}")
         }
         if (pending.size > 3) append("\n" + translation.text("chat.activity.more", "count" to pending.size - 3))
     }

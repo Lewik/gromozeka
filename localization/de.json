@@ -2030,7 +2030,7 @@
     "client.delivery.title": "Während der Arbeit gesendete Nachrichten",
     "client.delivery.description": "Gilt für neue Nachrichten in allen Unterhaltungen und auf allen deinen Geräten. Steer wartet auf einen sicheren Zeitpunkt, ohne den laufenden Aufruf abzubrechen. Bereits eingereihte Nachrichten behalten ihren Zustellzeitpunkt.",
     "client.delivery.steer": "Steer — nächster sicherer Zeitpunkt",
-    "client.delivery.afterTurn": "Nach dem aktuellen Turn",
+    "client.delivery.queue": "Nach dem aktuellen Turn",
     "client.delivery.saveFailed": "Die Einstellung zur Nachrichtenzustellung konnte nicht gespeichert werden.",
     "slots.automatic": "Automatische Auswahl",
     "pins.title": "Angeheftete Texte",

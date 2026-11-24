@@ -323,23 +323,23 @@ class PostgresConversationRuntimeCoordinatorTest {
                     payload = ConversationRuntimeTask.Payload.AgentInvocation(Conversation.Message(Conversation.Message.Id(id), conversation,
                         role = Conversation.Message.Role.USER, author = Conversation.Message.Author.User(actor, "User"), content = emptyList(), createdAt = now), AGENT_DEFINITION_ID),
                     placement = QueuedMessagePlacement.END_OF_TURN, idempotencyKey = id, requirements = requirements, createdAt = now)
-                val mode = if (placement == QueuedMessagePlacement.END_OF_TURN) com.gromozeka.domain.model.UserMessageDeliveryMode.AFTER_CURRENT_TURN
-                    else com.gromozeka.domain.model.UserMessageDeliveryMode.STEER
+                val mode = if (placement == QueuedMessagePlacement.END_OF_TURN) com.gromozeka.domain.model.MessageDelivery.QUEUE
+                    else com.gromozeka.domain.model.MessageDelivery.STEER
                 val root = input("root")
-                assertTrue(coordinator.submitUserInput(root, mode))
+                assertTrue(coordinator.submitMessage(root, mode))
                 if (placement == QueuedMessagePlacement.END_OF_TURN) {
-                    for (id in listOf("b", "c")) assertTrue(coordinator.submitUserInput(input(id), mode))
+                    for (id in listOf("b", "c")) assertTrue(coordinator.submitMessage(input(id), mode))
                 }
                 kotlin.test.assertNotNull(coordinator.claimDeliveredTask(conversation, root.id, executor, requirements.capabilities, emptySet()))
                 assertTrue(coordinator.markActiveTaskStarted(conversation, root.id, executor, now))
                 if (placement == QueuedMessagePlacement.AFTER_TOOL_RESULT) {
-                    for (id in listOf("b", "c")) assertTrue(coordinator.submitUserInput(input(id), mode))
+                    for (id in listOf("b", "c")) assertTrue(coordinator.submitMessage(input(id), mode))
                 }
                 val batch = coordinator.claimActiveInsertions(conversation, root.id, executor, placement)
                 assertEquals(listOf("b", "c"), batch.map { it.id.value })
                 val restarted = PostgresConversationRuntimeCoordinator(source, json)
                 assertEquals(batch, restarted.schedulingSnapshot(conversation).activeInsertions)
-                assertTrue(restarted.submitUserInput(input("late"), mode))
+                assertTrue(restarted.submitMessage(input("late"), mode))
                 assertEquals(batch, restarted.claimActiveInsertions(conversation, root.id, executor, placement))
                 assertEquals(listOf("late"), restarted.listPending(conversation).map { it.id.value })
                 val next = root.copy(id = ConversationRuntimeTask.Id("model"), parentTaskId = root.id, idempotencyKey = "model",
@@ -347,7 +347,7 @@ class PostgresConversationRuntimeCoordinatorTest {
                 assertTrue(restarted.completeActiveTask(conversation, root.id, executor, ConversationRuntimeTaskOutcome.Continue(next)))
                 assertFalse(restarted.completeActiveTask(conversation, root.id, executor, ConversationRuntimeTaskOutcome.Continue(next)))
                 assertTrue(restarted.schedulingSnapshot(conversation).activeInsertions.isEmpty())
-                for (id in listOf("root", "b", "c")) assertFalse(restarted.submitUserInput(input(id), mode))
+                for (id in listOf("root", "b", "c")) assertFalse(restarted.submitMessage(input(id), mode))
                 assertEquals(listOf("model", "late"), restarted.listPending(conversation).map { it.id.value })
             }
         }
@@ -365,13 +365,13 @@ class PostgresConversationRuntimeCoordinatorTest {
                 payload = ConversationRuntimeTask.Payload.AgentInvocation(Conversation.Message(Conversation.Message.Id(id), conversation,
                     role = Conversation.Message.Role.USER, author = Conversation.Message.Author.User(actor, "User"), content = emptyList(), createdAt = now), AGENT_DEFINITION_ID),
                 placement = QueuedMessagePlacement.END_OF_TURN, idempotencyKey = id, requirements = requirements, createdAt = now)
-            val mode = com.gromozeka.domain.model.UserMessageDeliveryMode.AFTER_CURRENT_TURN
+            val mode = com.gromozeka.domain.model.MessageDelivery.QUEUE
             val root = input("root")
-            assertTrue(coordinator.submitUserInput(root, mode))
+            assertTrue(coordinator.submitMessage(root, mode))
             val peer = PostgresConversationRuntimeCoordinator(source, json)
             val claim = async { kotlin.test.assertNotNull(coordinator.claimDeliveredTask(conversation, root.id, executor, requirements.capabilities, emptySet())) }
             val ids = (1..24).map { "message-$it" }
-            ids.map { id -> async { assertTrue(peer.submitUserInput(input(id), mode)) } }.awaitAll()
+            ids.map { id -> async { assertTrue(peer.submitMessage(input(id), mode)) } }.awaitAll()
             claim.await()
             val state = peer.schedulingSnapshot(conversation)
             val reservedIds = state.activeInsertions.map { it.id.value }
@@ -379,7 +379,7 @@ class PostgresConversationRuntimeCoordinatorTest {
             assertEquals(ids.toSet(), (reservedIds + pendingIds).toSet())
             assertEquals(ids.size, reservedIds.size + pendingIds.size)
             assertTrue(reservedIds.toSet().intersect(pendingIds.toSet()).isEmpty())
-            assertTrue(peer.submitUserInput(input("after-snapshot"), mode))
+            assertTrue(peer.submitMessage(input("after-snapshot"), mode))
             assertEquals(reservedIds, peer.claimActiveInsertions(conversation, root.id, executor, QueuedMessagePlacement.END_OF_TURN).map { it.id.value })
             assertEquals(pendingIds + "after-snapshot", peer.listPending(conversation).map { it.id.value })
         }
@@ -408,12 +408,12 @@ class PostgresConversationRuntimeCoordinatorTest {
             assertTrue(coordinator.submit(root))
             kotlin.test.assertNotNull(coordinator.claimDeliveredTask(conversation, root.id, executor, requirements.capabilities, emptySet()))
             assertTrue(coordinator.markActiveTaskStarted(conversation, root.id, executor, now))
-            assertTrue(coordinator.submitUserInput(input("later"), com.gromozeka.domain.model.UserMessageDeliveryMode.AFTER_CURRENT_TURN))
+            assertTrue(coordinator.submitMessage(input("later"), com.gromozeka.domain.model.MessageDelivery.QUEUE))
             val next = root.copy(id = ConversationRuntimeTask.Id("model"), parentTaskId = root.id, idempotencyKey = "model",
                 payload = ConversationRuntimeTask.Payload.LlmCall(Conversation.Message.Id("root"), agent, 1))
             assertTrue(coordinator.completeActiveTask(conversation, root.id, executor, ConversationRuntimeTaskOutcome.Continue(next)))
             val restarted = PostgresConversationRuntimeCoordinator(source, Json { encodeDefaults = true })
-            assertTrue(restarted.submitUserInput(input("steer"), com.gromozeka.domain.model.UserMessageDeliveryMode.STEER))
+            assertTrue(restarted.submitMessage(input("steer"), com.gromozeka.domain.model.MessageDelivery.STEER))
             val queued = restarted.listPending(conversation)
             assertEquals(listOf("model", "later", "steer"), queued.map { it.id.value })
             assertEquals(QueuedMessagePlacement.END_OF_TURN, queued[1].placement)

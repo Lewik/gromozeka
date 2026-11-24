@@ -346,7 +346,7 @@ so transcripts arriving out of order retain their original destinations.
 ## Personal Message Delivery
 
 The authenticated User owns one delivery preference across conversations and clients:
-`STEER` (default when unset) or `AFTER_CURRENT_TURN`. It is stored separately in
+`STEER` (default when unset) or `QUEUE`. It is stored separately in
 `user_message_delivery_preferences`, not in the legacy Server-wide `UserProfile`.
 Get/set requests have no client-supplied user ID; StateSync invalidations use the
 same authenticated user's scope. The setting applies only to newly submitted

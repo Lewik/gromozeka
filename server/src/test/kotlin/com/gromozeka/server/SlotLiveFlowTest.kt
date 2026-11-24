@@ -141,7 +141,7 @@ class SlotLiveFlowTest {
                         val message = Conversation.Message(Conversation.Message.Id(uuid7()), conversation.id,
                             role = Conversation.Message.Role.USER, author = Conversation.Message.Author.User(user.id, user.displayName),
                             content = listOf(Conversation.Message.ContentItem.UserMessage(text)), createdAt = Clock.System.now())
-                        check(ingress.invokeAgent(user, conversation.id, message, agent.id))
+                        check(ingress.submitMessage(user, conversation.id, message, agent.id, MessageDelivery.STEER))
                     }
                     suspend fun held(slot: Slot, conversation: Conversation) = repository.snapshot(slot.number)?.leases?.singleOrNull { it.conversationId == conversation.id }
                     suspend fun idle(conversation: Conversation) {

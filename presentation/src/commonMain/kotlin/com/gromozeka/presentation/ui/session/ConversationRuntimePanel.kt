@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.MessageDelivery
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiConnection
@@ -51,7 +52,6 @@ import com.gromozeka.domain.service.AiSubscriptionQuotaService
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
-import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.presentation.services.translation.data.Translation
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.TokenStatisticsTable
@@ -911,8 +911,8 @@ private fun PendingMessagesSection(
 
     val translation = LocalTranslation.current.runtime
     val orderedMessages = pendingMessages.orderedForDisplay()
-    val steeringMessages = orderedMessages.filter { it.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT }
-    val queuedMessages = orderedMessages.filter { it.placement == QueuedMessagePlacement.END_OF_TURN }
+    val steeringMessages = orderedMessages.filter { it.delivery == MessageDelivery.STEER }
+    val queuedMessages = orderedMessages.filter { it.delivery == MessageDelivery.QUEUE }
 
     Spacer(modifier = Modifier.height(12.dp))
     Card(
@@ -979,7 +979,7 @@ private fun PendingMessageGroup(
                 style = MaterialTheme.typography.bodySmall,
             )
             Text(
-                text = queuePlacementDescription(message.placement, translation.runtime),
+                text = messageDeliveryDescription(message.delivery, translation.runtime),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.labelSmall,
@@ -990,7 +990,7 @@ private fun PendingMessageGroup(
                     if (
                         isWaitingForResponse &&
                         message.steeringAgentId != null &&
-                        message.placement == QueuedMessagePlacement.END_OF_TURN
+                        message.delivery == MessageDelivery.QUEUE
                     ) {
                         TextButton(onClick = { onSendInCurrentTurn(message.id) }) {
                             Text(translation.runtime.currentTurnLabel)
@@ -1102,19 +1102,19 @@ private fun ConversationRuntimeTraceEntry.runtimeTraceText(localization: Transla
     } ?: label
 }
 
-internal fun queuePlacementDescription(
-    placement: QueuedMessagePlacement,
+internal fun messageDeliveryDescription(
+    delivery: MessageDelivery,
     translation: Translation.RuntimeTranslation,
-): String = when (placement) {
-    QueuedMessagePlacement.AFTER_TOOL_RESULT -> translation.nearestToolResultPlacement
-    QueuedMessagePlacement.END_OF_TURN -> translation.currentResponsePlacement
+): String = when (delivery) {
+    MessageDelivery.STEER -> translation.nearestToolResultPlacement
+    MessageDelivery.QUEUE -> translation.currentResponsePlacement
 }
 
 internal fun List<PendingUserMessage>.orderedForDisplay(): List<PendingUserMessage> =
     withIndex()
         .sortedWith(
             compareBy(
-                { if (it.value.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT) 0 else 1 },
+                { if (it.value.delivery == MessageDelivery.STEER) 0 else 1 },
                 { it.index },
             )
         )

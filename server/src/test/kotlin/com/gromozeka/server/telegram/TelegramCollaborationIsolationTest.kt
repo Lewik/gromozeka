@@ -111,8 +111,13 @@ class TelegramCollaborationIsolationTest {
                     s.executeQuery("SELECT count(*) FROM $schema.agent_response_drafts").use { rows -> rows.next(); assertEquals(0, rows.getInt(1)) }
                 } }
                 val ordinary = conversations.create(project.id, participants, "Ordinary conversation")
-                assertTrue(context.getBean(ConversationRuntimeIngressService::class.java).invokeAgent(owner, ordinary.id,
-                    root.copy(id = Conversation.Message.Id("ordinary-isolation-root"), conversationId = ordinary.id), agent.id))
+                assertTrue(context.getBean(ConversationRuntimeIngressService::class.java).submitMessage(
+                    owner,
+                    ordinary.id,
+                    root.copy(id = Conversation.Message.Id("ordinary-isolation-root"), conversationId = ordinary.id),
+                    agent.id,
+                    MessageDelivery.QUEUE,
+                ))
                 awaitAnswer(ordinary.id)
                 assertEquals(2, model.requests.size)
                 val normal = model.requests.last()

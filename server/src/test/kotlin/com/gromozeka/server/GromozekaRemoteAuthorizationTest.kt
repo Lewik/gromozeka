@@ -63,7 +63,7 @@ class GromozekaRemoteAuthorizationTest {
             val user = testUser(role)
             authorization.authorize(user, com.gromozeka.remote.protocol.GetMessageDeliveryModeRequest)
             authorization.authorize(user, com.gromozeka.remote.protocol.SetMessageDeliveryModeRequest(
-                com.gromozeka.domain.model.UserMessageDeliveryMode.AFTER_CURRENT_TURN))
+                com.gromozeka.domain.model.MessageDelivery.QUEUE))
             val own = PullStateSyncRequest(DeclarativeStateRevisionQuery(
                 RemoteDeclarativeStateResource.MESSAGE_DELIVERY_PREFERENCE, user.id.value),
                 RemoteStateSyncCursor("server", streamEpoch = 1, generation = 2))

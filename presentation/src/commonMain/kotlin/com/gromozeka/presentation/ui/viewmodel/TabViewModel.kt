@@ -30,6 +30,7 @@ import kotlinx.coroutines.Job
 import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.domain.model.MessageInstructionTextShortcut
 import com.gromozeka.domain.model.MessageInputContext
+import com.gromozeka.domain.model.MessageDelivery
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
@@ -80,7 +81,7 @@ class TabViewModel(
     private val messageInputClientPlatform: MessageInputContext.ClientPlatform,
     private val turnCompletionNotificationService: TurnCompletionNotificationService,
     private val conversationTitle: () -> String,
-    val messageDeliveryMode: StateFlow<com.gromozeka.domain.model.UserMessageDeliveryMode> = MutableStateFlow(com.gromozeka.domain.model.UserMessageDeliveryMode.STEER),
+    val messageDeliveryMode: StateFlow<com.gromozeka.domain.model.MessageDelivery> = MutableStateFlow(com.gromozeka.domain.model.MessageDelivery.STEER),
 ) {
     private val log = KLoggers.logger(this)
     private val settingsFlow: StateFlow<Settings> = settingsService.settingsFlow
@@ -895,7 +896,7 @@ class TabViewModel(
     fun sendPendingMessageInCurrentTurn(messageId: String) {
         val pendingMessage = _pendingMessages.value.firstOrNull { it.id == messageId } ?: return
         val agentDefinitionId = pendingMessage.steeringAgentId
-        if (agentDefinitionId == null || pendingMessage.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT) {
+        if (agentDefinitionId == null || pendingMessage.delivery == MessageDelivery.STEER) {
             return
         }
 
@@ -907,11 +908,11 @@ class TabViewModel(
         }
         scope.launch {
             val runtimeAccepted = runCatching {
-                conversationRuntimeService.enqueueAgentInvocation(
+                conversationRuntimeService.submitMessage(
                     conversationId = conversationId,
-                    userMessage = steeredMessage.userMessage,
+                    message = steeredMessage.userMessage,
                     agentDefinitionId = agentDefinitionId,
-                    placement = QueuedMessagePlacement.AFTER_TOOL_RESULT
+                    delivery = MessageDelivery.STEER,
                 )
             }.onFailure { error ->
                 log.warn(error) {
@@ -922,7 +923,7 @@ class TabViewModel(
             if (!runtimeAccepted) {
                 _pendingMessages.update { messages ->
                     messages.map { message ->
-                        if (message.id == messageId && message.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT) {
+                        if (message.id == messageId && message.delivery == MessageDelivery.STEER) {
                             pendingMessage
                         } else {
                             message
@@ -1001,10 +1002,7 @@ class TabViewModel(
             agentDefinitionId = agentDefinitionId,
             autoRespondAgentIds = agentMentionCandidates.value.filter { it.connected && it.autoRespond }
                 .mapTo(linkedSetOf()) { it.agentDefinitionId },
-            placement = when (messageDeliveryMode.value) {
-                com.gromozeka.domain.model.UserMessageDeliveryMode.STEER -> QueuedMessagePlacement.AFTER_TOOL_RESULT
-                com.gromozeka.domain.model.UserMessageDeliveryMode.AFTER_CURRENT_TURN -> QueuedMessagePlacement.END_OF_TURN
-            },
+            delivery = messageDeliveryMode.value,
         )
     }
 
@@ -1061,17 +1059,12 @@ class TabViewModel(
     }
 
     private suspend fun submitPendingMessage(pendingMessage: PendingUserMessage): Boolean = try {
-        val accepted =
-            pendingMessage.agentDefinitionId?.let { agentDefinitionId ->
-                conversationRuntimeService.invokeAgent(
-                    conversationId = conversationId,
-                    userMessage = pendingMessage.userMessage,
-                    agentDefinitionId = agentDefinitionId,
-                )
-            } ?: conversationRuntimeService.postMessage(
-                conversationId = conversationId,
-                userMessage = pendingMessage.userMessage,
-            )
+        val accepted = conversationRuntimeService.submitMessage(
+            conversationId = conversationId,
+            message = pendingMessage.userMessage,
+            agentDefinitionId = pendingMessage.agentDefinitionId,
+            delivery = pendingMessage.delivery,
+        )
         if (!accepted) {
             _messageSubmissionError.value = localizedText("client.message.rejected")
         }
@@ -1109,7 +1102,7 @@ class TabViewModel(
 
         return copy(
             userMessage = userMessage.copy(instructions = instructions),
-            placement = QueuedMessagePlacement.AFTER_TOOL_RESULT,
+            delivery = MessageDelivery.STEER,
         )
     }
 
@@ -1601,7 +1594,7 @@ data class ConversationHistoryContent(
 data class PendingUserMessage(
     val userMessage: Conversation.Message,
     val agentDefinitionId: AgentDefinition.Id?,
-    val placement: QueuedMessagePlacement,
+    val delivery: MessageDelivery,
     val autoRespondAgentIds: Set<AgentDefinition.Id> = emptySet(),
 ) {
     val steeringAgentId: AgentDefinition.Id? get() = agentDefinitionId ?: autoRespondAgentIds.singleOrNull()
@@ -1640,15 +1633,20 @@ private fun ConversationRuntimeTask.toPendingUserMessageOrNull(): PendingUserMes
         is ConversationRuntimeTask.Payload.AgentInvocation -> PendingUserMessage(
             userMessage = taskPayload.userMessage,
             agentDefinitionId = taskPayload.agentDefinitionId,
-            placement = placement,
+            delivery = placement.toMessageDelivery(),
         )
 
         is ConversationRuntimeTask.Payload.PostMessage -> PendingUserMessage(
             userMessage = taskPayload.userMessage,
             agentDefinitionId = null,
             autoRespondAgentIds = taskPayload.autoRespondAgentIds,
-            placement = placement,
+            delivery = placement.toMessageDelivery(),
         )
 
         else -> null
     }
+
+private fun QueuedMessagePlacement.toMessageDelivery(): MessageDelivery = when (this) {
+    QueuedMessagePlacement.AFTER_TOOL_RESULT -> MessageDelivery.STEER
+    QueuedMessagePlacement.END_OF_TURN -> MessageDelivery.QUEUE
+}

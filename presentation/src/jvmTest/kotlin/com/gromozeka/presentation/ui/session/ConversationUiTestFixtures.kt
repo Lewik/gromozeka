@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageInstructionGroup
-import com.gromozeka.domain.model.UserMessageDeliveryMode
+import com.gromozeka.domain.model.MessageDelivery
 import com.gromozeka.presentation.services.*
 import com.gromozeka.presentation.ui.AgentMentionCandidate
 import com.gromozeka.presentation.ui.ClientPlatform
@@ -30,7 +30,7 @@ internal fun TestMessageInput(
     liveService: LiveVoiceInputService = NoOpLiveVoiceInputService(),
     liveUnavailableReason: String? = null,
     platform: ClientPlatform = ClientPlatform.DESKTOP,
-    deliveryMode: UserMessageDeliveryMode = UserMessageDeliveryMode.STEER,
+    deliveryMode: MessageDelivery = MessageDelivery.STEER,
     onSend: () -> Unit = {},
     submitting: Boolean = false,
     onPick: () -> Unit = {},

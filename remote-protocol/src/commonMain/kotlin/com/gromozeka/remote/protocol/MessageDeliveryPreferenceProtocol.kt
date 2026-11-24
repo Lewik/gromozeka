@@ -1,6 +1,6 @@
 package com.gromozeka.remote.protocol
 
-import com.gromozeka.domain.model.UserMessageDeliveryMode
+import com.gromozeka.domain.model.MessageDelivery
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -10,8 +10,8 @@ data object GetMessageDeliveryModeRequest : ClientRequest
 
 @Serializable
 @SerialName("set_message_delivery_mode")
-data class SetMessageDeliveryModeRequest(val mode: UserMessageDeliveryMode) : ClientRequest
+data class SetMessageDeliveryModeRequest(val mode: MessageDelivery) : ClientRequest
 
 @Serializable
 @SerialName("message_delivery_mode")
-data class MessageDeliveryModeResponse(val mode: UserMessageDeliveryMode) : ServerResponse
+data class MessageDeliveryModeResponse(val mode: MessageDelivery) : ServerResponse

@@ -971,13 +971,16 @@ interface ConversationRuntimeCoordinator {
 
     suspend fun submit(task: ConversationRuntimeTask, acceptPreviouslySubmitted: Boolean = false): Boolean
 
-    /** Captures a human preference atomically with admission; never changes already queued input. */
-    suspend fun submitUserInput(task: ConversationRuntimeTask, mode: com.gromozeka.domain.model.UserMessageDeliveryMode): Boolean
+    /** Resolves requested message delivery atomically with admission. */
+    suspend fun submitMessage(task: ConversationRuntimeTask, delivery: com.gromozeka.domain.model.MessageDelivery): Boolean
 
     /** Resolve safe-point placement atomically against the current agent and authenticated actor. */
     suspend fun submitBackgroundActivity(task: ConversationRuntimeTask, agentDefinitionId: AgentDefinition.Id): Boolean
 
-    suspend fun updatePendingMessageSubmission(task: ConversationRuntimeTask): Boolean
+    suspend fun updatePendingMessageSubmission(
+        task: ConversationRuntimeTask,
+        delivery: com.gromozeka.domain.model.MessageDelivery,
+    ): Boolean
 
     /**
      * Atomically assigns a pending task to one executor session.

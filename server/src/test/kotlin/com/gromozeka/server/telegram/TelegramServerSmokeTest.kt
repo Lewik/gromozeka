@@ -77,7 +77,15 @@ class TelegramServerSmokeTest {
                 assertEquals(listOf(original.id), history.single().originalIds)
                 assertEquals(friend.id, (history.single().author as Conversation.Message.Author.User).userId)
                 val runtime = context.getBean(ConversationRuntimeIngressService::class.java)
-                assertFailsWith<IllegalArgumentException> { runtime.postMessage(owner, conversation.id, original.copy(id = Conversation.Message.Id("manual"))) }
+                assertFailsWith<IllegalArgumentException> {
+                    runtime.submitMessage(
+                        owner,
+                        conversation.id,
+                        original.copy(id = Conversation.Message.Id("manual")),
+                        null,
+                        MessageDelivery.QUEUE,
+                    )
+                }
                 withTimeout(15000) {
                     while (context.getBean(ConversationRuntimeCoordinator::class.java).snapshot(conversation.id).let {
                         it.activeTask != null || it.pendingTasks.isNotEmpty()

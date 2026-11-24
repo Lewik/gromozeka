@@ -42,7 +42,7 @@ open class AppViewModel(
     private val messageInputClientPlatform: MessageInputContext.ClientPlatform,
     private val turnCompletionNotificationService: TurnCompletionNotificationService,
     private val currentTranslation: () -> Translation,
-    private val messageDeliveryMode: StateFlow<UserMessageDeliveryMode> = MutableStateFlow(UserMessageDeliveryMode.STEER),
+    private val messageDeliveryMode: StateFlow<MessageDelivery> = MutableStateFlow(MessageDelivery.STEER),
 ) : TabManager {
     private val log = KLoggers.logger(this)
     private val mutex = Mutex()

@@ -3,7 +3,7 @@ package com.gromozeka.presentation.ui
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.v2.runDesktopComposeUiTest
-import com.gromozeka.domain.model.UserMessageDeliveryMode
+import com.gromozeka.domain.model.MessageDelivery
 import com.gromozeka.domain.service.CurrentUserMessageDeliveryPreferenceService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlin.test.*
@@ -11,10 +11,10 @@ import kotlin.test.*
 @OptIn(ExperimentalTestApi::class)
 class UserMessageDeliveryPreferenceSettingTest {
     private class Preference : CurrentUserMessageDeliveryPreferenceService {
-        override val mode = MutableStateFlow(UserMessageDeliveryMode.STEER)
+        override val mode = MutableStateFlow(MessageDelivery.STEER)
         var fail = false
-        val saved = mutableListOf<UserMessageDeliveryMode>()
-        override suspend fun setMode(mode: UserMessageDeliveryMode) {
+        val saved = mutableListOf<MessageDelivery>()
+        override suspend fun setMode(mode: MessageDelivery) {
             if (fail) error("Synthetic save failure")
             saved += mode; this.mode.value = mode
         }
@@ -29,9 +29,9 @@ class UserMessageDeliveryPreferenceSettingTest {
         onAllNodesWithText("Steer — next safe point")[0].performClick()
         onNodeWithText("After the current turn").performClick()
         waitForIdle()
-        assertEquals(listOf(UserMessageDeliveryMode.AFTER_CURRENT_TURN), service.saved)
+        assertEquals(listOf(MessageDelivery.QUEUE), service.saved)
         onAllNodesWithText("After the current turn").assertCountEquals(2)
-        runOnIdle { service.mode.value = UserMessageDeliveryMode.STEER }
+        runOnIdle { service.mode.value = MessageDelivery.STEER }
         onAllNodesWithText("Steer — next safe point").assertCountEquals(2)
     }
     @Test fun failedSaveIsVisibleAndDoesNotPretendPreferenceChanged() = runDesktopComposeUiTest {

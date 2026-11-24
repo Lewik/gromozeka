@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.MessageDelivery
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.service.CommandMonitor
@@ -45,60 +46,35 @@ class ConversationRuntimeDispatcher(
 ) {
     private val log = KLoggers.logger(this)
 
-    suspend fun enqueueAgentInvocation(
+    suspend fun submitMessage(
         conversationId: Conversation.Id,
-        userMessage: Conversation.Message,
-        agentDefinitionId: AgentDefinition.Id,
-        placement: QueuedMessagePlacement,
+        message: Conversation.Message,
+        agentDefinitionId: AgentDefinition.Id?,
+        delivery: MessageDelivery,
         actorUserId: User.Id? = null,
+        autoRespondAgentIds: Set<AgentDefinition.Id> = emptySet(),
     ): Boolean {
-        artifactReferenceValidator.validateReferences(conversationId, userMessage.content)
-        val state = runtimeCoordinator.find(conversationId)
-        val pendingTasks = runtimeCoordinator.listPending(conversationId)
-        val effectivePlacement = if (placement == QueuedMessagePlacement.AFTER_TOOL_RESULT && state?.activeTaskId == null) {
-            QueuedMessagePlacement.END_OF_TURN
-        } else {
-            placement
-        }
-        val canAcceptQueuedTask = state == null ||
-            state.controlState == ConversationExecutionState.ControlState.RUNNING ||
-            state.controlState == ConversationExecutionState.ControlState.PAUSE_REQUESTED ||
-            state.controlState == ConversationExecutionState.ControlState.PAUSED
-        val canQueue = when (effectivePlacement) {
-            QueuedMessagePlacement.AFTER_TOOL_RESULT -> canAcceptQueuedTask && state?.activeTaskId != null
-            QueuedMessagePlacement.END_OF_TURN ->
-                canAcceptQueuedTask &&
-                    (
-                        placement == QueuedMessagePlacement.AFTER_TOOL_RESULT ||
-                            state != null ||
-                            pendingTasks.any { it.placement == QueuedMessagePlacement.END_OF_TURN }
-                    )
-        }
-        if (!canQueue) {
-            log.info {
-                "Rejected queued message without active runtime: conversation=${conversationId.value} " +
-                    "message=${userMessage.id.value} placement=$placement"
-            }
-            return false
-        }
-
+        artifactReferenceValidator.validateReferences(conversationId, message.content)
         val task = messageSubmissionTask(
             conversationId = conversationId,
-            userMessage = userMessage,
+            userMessage = message,
             agentDefinitionId = agentDefinitionId,
-            placement = effectivePlacement,
+            placement = QueuedMessagePlacement.END_OF_TURN,
             actorUserId = actorUserId,
+            autoRespondAgentIds = autoRespondAgentIds,
         )
-        val updatesExistingTask = pendingTasks.any { it.userMessageIdOrNull() == userMessage.id }
+        val pendingTasks = runtimeCoordinator.listPending(conversationId)
+        val updatesExistingTask = pendingTasks.any { it.userMessageIdOrNull() == message.id }
         val accepted = if (updatesExistingTask) {
-            updatePendingRuntimeTask(task)
+            runtimeCoordinator.updatePendingMessageSubmission(task, delivery)
         } else {
-            submitRuntimeTask(task)
+            runtimeCoordinator.submitMessage(task, delivery)
         }
         if (accepted) {
+            publishRuntimeSnapshot(conversationId)
             log.info {
-                "Queued runtime message: conversation=${conversationId.value} message=${userMessage.id.value} " +
-                    "placement=$effectivePlacement requestedPlacement=$placement"
+                "Runtime message submitted: conversation=${conversationId.value} message=${message.id.value} " +
+                    "delivery=$delivery"
             }
         }
         return accepted
@@ -180,45 +156,6 @@ class ConversationRuntimeDispatcher(
             publishRuntimeSnapshot(conversationId)
         }
         return accepted
-    }
-
-    suspend fun postMessage(
-        conversationId: Conversation.Id,
-        userMessage: Conversation.Message,
-        actorUserId: User.Id? = null,
-        autoRespondAgentIds: Set<AgentDefinition.Id> = emptySet(),
-        userDeliveryMode: com.gromozeka.domain.model.UserMessageDeliveryMode? = null,
-    ): Boolean {
-        artifactReferenceValidator.validateReferences(conversationId, userMessage.content)
-        return submitRuntimeTask(
-            messageSubmissionTask(
-                conversationId = conversationId,
-                userMessage = userMessage,
-                agentDefinitionId = null,
-                placement = QueuedMessagePlacement.END_OF_TURN,
-                actorUserId = actorUserId,
-                autoRespondAgentIds = autoRespondAgentIds,
-            ),
-            userDeliveryMode = userDeliveryMode,
-        )
-    }
-
-    suspend fun invokeAgent(
-        conversationId: Conversation.Id,
-        userMessage: Conversation.Message,
-        agentDefinitionId: AgentDefinition.Id,
-        actorUserId: User.Id? = null,
-        userDeliveryMode: com.gromozeka.domain.model.UserMessageDeliveryMode? = null,
-    ): Boolean {
-        artifactReferenceValidator.validateReferences(conversationId, userMessage.content)
-        val task = messageSubmissionTask(
-            conversationId = conversationId,
-            userMessage = userMessage,
-            agentDefinitionId = agentDefinitionId,
-            placement = QueuedMessagePlacement.END_OF_TURN,
-            actorUserId = actorUserId,
-        )
-        return submitRuntimeTask(task, userDeliveryMode = userDeliveryMode)
     }
 
     internal suspend fun importChannelMessage(channel: com.gromozeka.domain.model.ExternalConversationChannel,
@@ -389,12 +326,10 @@ class ConversationRuntimeDispatcher(
     private suspend fun submitRuntimeTask(
         task: ConversationRuntimeTask,
         acceptPreviouslySubmitted: Boolean = false,
-        userDeliveryMode: com.gromozeka.domain.model.UserMessageDeliveryMode? = null,
         backgroundActivityAgentId: AgentDefinition.Id? = null,
     ): Boolean {
         val accepted = when {
             backgroundActivityAgentId != null -> runtimeCoordinator.submitBackgroundActivity(task, backgroundActivityAgentId)
-            userDeliveryMode != null -> runtimeCoordinator.submitUserInput(task, userDeliveryMode)
             else -> runtimeCoordinator.submit(task, acceptPreviouslySubmitted)
         }
         if (accepted) {
@@ -409,14 +344,6 @@ class ConversationRuntimeDispatcher(
         }
         publishRuntimeSnapshot(task.conversationId)
         return true
-    }
-
-    private suspend fun updatePendingRuntimeTask(task: ConversationRuntimeTask): Boolean {
-        val accepted = runtimeCoordinator.updatePendingMessageSubmission(task)
-        if (accepted) {
-            publishRuntimeSnapshot(task.conversationId)
-        }
-        return accepted
     }
 
     private suspend fun publishRuntimeSnapshot(conversationId: Conversation.Id) {

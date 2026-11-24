@@ -561,7 +561,7 @@ class AgentCollaborationServiceTest {
     @Test fun `stop and interrupt cancel durable waits even without an active foreground turn`() = runBlocking {
         setup()
         val dispatcher = mock<ConversationRuntimeDispatcher>()
-        val runtime = ConversationRuntimeApplicationService(dispatcher, sync, mock(), mock(), mock(), mock(), service)
+        val runtime = ConversationRuntimeApplicationService(dispatcher, sync, mock(), mock(), mock(), collaboration = service)
         for (action in listOf(ConversationRuntimeControlAction.STOP, ConversationRuntimeControlAction.INTERRUPT)) {
             val id = service.send(source, actor.id, "b", null, "Wait for a user choice", "idle-$action", AgentSendMode.REQUEST, Conversation.Message.Id("source-message"))
             repo.items[id] = requireNotNull(repo.items[id]).copy(state = AgentRequest.State.WAITING_USER)
@@ -809,7 +809,7 @@ class AgentCollaborationServiceTest {
     @Test fun `stop blocks undelivered activation even without an active task or request`() = runBlocking {
         setup()
         val dispatcher = mock<ConversationRuntimeDispatcher>()
-        val runtime = ConversationRuntimeApplicationService(dispatcher, sync, mock(), mock(), mock(), mock(), service)
+        val runtime = ConversationRuntimeApplicationService(dispatcher, sync, mock(), mock(), mock(), collaboration = service)
         for (action in listOf(ConversationRuntimeControlAction.STOP, ConversationRuntimeControlAction.INTERRUPT)) {
             val id = service.send(source, actor.id, "b", null, "Activate", "stopped-$action", AgentSendMode.ACTIVATE, Conversation.Message.Id("source-message"))
             Mockito.`when`(dispatcher.controlExecution(target.conversationId, action)).thenReturn(false)

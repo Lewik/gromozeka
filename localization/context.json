@@ -15166,7 +15166,7 @@
     "description": "Delivery mode label: insert new human input at the next safe execution boundary. Preserve Steer as the mode name; do not translate it as Stop or cancellation.",
     "args": []
   },
-  "client.delivery.afterTurn": {
+  "client.delivery.queue": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt",
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt",
