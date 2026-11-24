@@ -16,15 +16,12 @@ import kotlinx.serialization.json.JsonPrimitive
 class MemoryStagePromptMessagesTest {
 
     @Test
-    fun runtimeObservationsAreExcludedFromMemoryThreadContextPlanning() {
+    fun runtimeMessagesAreExcludedFromMemoryThreadContextPlanning() {
         val conversationId = Conversation.Id("conversation")
         val observation = userMessage(conversationId, "runtime-observation", "unused").copy(
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
-            content = emptyList(),
-            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
-                text = "LARGE_PRIVATE_STATE", key = "visual:one", revision = "revision",
-            )),
+            content = listOf(Conversation.Message.ContentItem.UserMessage("RUNTIME_CONTEXT")),
         )
         val target = userMessage(conversationId, "target", "Remember this fact.")
 

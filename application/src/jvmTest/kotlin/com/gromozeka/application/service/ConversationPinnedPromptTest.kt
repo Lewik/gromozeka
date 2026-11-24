@@ -106,7 +106,7 @@ class ConversationPinnedPromptTest {
         val tools = Mockito.mock(AiToolProvider::class.java)
         Mockito.`when`(tools.getTools()).thenReturn(emptyList())
         val threadMessages = Mockito.mock(com.gromozeka.domain.repository.ThreadMessageRepository::class.java)
-        Mockito.`when`(threadMessages.getMessagesByThreadWithoutRuntime(conversation.currentThread)).thenReturn(emptyList())
+        Mockito.`when`(threadMessages.getMessagesByThread(conversation.currentThread)).thenReturn(emptyList())
         val resolver = com.gromozeka.application.service.memory.MemoryOperationContextResolver(conversations,
             Mockito.mock(AgentDomainService::class.java), assembly, defaults, Mockito.mock(WorkspaceDomainService::class.java),
             Mockito.mock(ProjectDomainService::class.java), ConversationRuntimeExecutorDescriptor(

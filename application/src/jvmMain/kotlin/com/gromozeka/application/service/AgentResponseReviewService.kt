@@ -38,7 +38,7 @@ class AgentResponseReviewService(
             id = "${task.id.value}:review", endpoint = endpoint, actorUserId = actor,
             rootMessageId = payload.rootUserMessageId, turnId = task.turnId.value, iteration = payload.iteration,
             messages = messages, incoming = incoming, outgoing = outgoing, waitableIds = waitable,
-            contextText = input.asSequence().filter { it.role != Conversation.Message.Role.RUNTIME }.mapNotNull { m ->
+            contextText = input.asSequence().mapNotNull { m ->
                 val text = m.content.mapNotNull {
                     when (it) { is ContentItem.UserMessage -> it.text; is ContentItem.VisualInteraction -> it.modelText(); is ContentItem.AssistantMessage -> it.structured.fullText; else -> null }
                 }.joinToString("\n").take(4000).takeIf(String::isNotBlank) ?: return@mapNotNull null

@@ -28,11 +28,11 @@ import kotlin.test.assertTrue
 
 class OpenAiResponsesSdkRuntimeTest {
     @Test
-    fun `runtime role maps to user instructions without message content`() {
+    fun `runtime role maps to user content and instructions`() {
         val runtimeMessage = userMessage().copy(
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
-            content = listOf(Conversation.Message.ContentItem.UserMessage("UI_ONLY_CONTENT")),
+            content = listOf(Conversation.Message.ContentItem.UserMessage("RUNTIME_CONTENT")),
             instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("CURRENT_RUNTIME_STATE")),
         )
 
@@ -42,7 +42,7 @@ class OpenAiResponsesSdkRuntimeTest {
 
         assertTrue(payload.contains("\"role\":\"user\""))
         assertTrue(payload.contains("CURRENT_RUNTIME_STATE"))
-        assertFalse(payload.contains("UI_ONLY_CONTENT"))
+        assertTrue(payload.contains("RUNTIME_CONTENT"))
     }
 
     @Test

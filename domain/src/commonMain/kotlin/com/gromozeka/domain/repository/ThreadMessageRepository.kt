@@ -114,12 +114,6 @@ interface ThreadMessageRepository {
      */
     suspend fun getMessagesByThread(threadId: Conversation.Thread.Id): List<Conversation.Message>
 
-    /** Ordered canonical messages except Server-owned Runtime context; Runtime bodies are never read. */
-    suspend fun getMessagesByThreadWithoutRuntime(threadId: Conversation.Thread.Id): List<Conversation.Message>
-
-    /** Raw external-channel history with superseded keyed Runtime generations removed before body reads. */
-    suspend fun getRawExternalContextMessagesByThread(threadId: Conversation.Thread.Id): List<Conversation.Message>
-
     /** Ordered headers with current author attribution. Message bodies are stored independently. */
     suspend fun compactionHeaders(threadId: Conversation.Thread.Id): List<CompactionMessageHeader>
 
@@ -134,7 +128,6 @@ interface ThreadMessageRepository {
     suspend fun getContextMessagesByThread(
         threadId: Conversation.Thread.Id,
         nativeProvider: String?,
-        prepareRuntimeObservationBoundary: Boolean = false,
     ): ThreadContextMessages
 
     /**

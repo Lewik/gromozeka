@@ -449,7 +449,7 @@ class SearchToolsToolCallback(
         val loadedToolNames = runtimeCatalogService.loadedToolNames(
             agent = agent,
             catalog = preparedCatalog,
-            messages = messageHistory.getMessagesByThreadWithoutRuntime(conversation.currentThread),
+            messages = messageHistory.getMessagesByThread(conversation.currentThread),
             memoryEnabled = settingsProvider.userProfile.memorySettings.let { it.autoRemember || it.autoRecall },
         )
         val matches = searchService.search(

@@ -8,32 +8,20 @@ import kotlin.time.Instant
 
 class ConversationMessageProjectionTest {
     @Test
-    fun runtimeObservationStateStaysOnTheServer() {
-        val observation = Conversation.Message.Instruction.RuntimeObservation(
-            text = "private-state-${"x".repeat(200_000)}",
-            key = "visual:one",
-            revision = "revision",
-        )
+    fun runtimeMessagesUseTheOrdinaryHistoryProjection() {
         val original = message(emptyList()).copy(
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
-            content = listOf(Conversation.Message.ContentItem.UserMessage("ui-only-content")),
-            instructions = listOf(observation),
+            content = listOf(Conversation.Message.ContentItem.UserMessage("runtime-json")),
         )
 
         val view = ConversationMessageProjection.project(PositionedConversationMessage(1, original))
         val event = ConversationMessageProjection.projectEvent(original)
 
-        assertTrue(view.message.instructions.isEmpty())
+        assertEquals(original, view.message)
         assertFalse(view.hasMoreContent)
-        assertFalse(Json.encodeToString(view).contains("private-state"))
-        assertFalse(Json.encodeToString(view).contains("ui-only-content"))
-        assertEquals(original.id, event.id)
-        assertTrue(event.content.isEmpty())
-        assertTrue(event.instructions.isEmpty())
-        assertFalse(Json.encodeToString(event).contains("private-state"))
-        assertTrue(Json.encodeToString(event).encodeToByteArray().size < 2_000)
-        assertEquals(observation, original.instructions.single())
+        assertContains(Json.encodeToString(view), "runtime-json")
+        assertEquals(original, event)
     }
 
     @Test

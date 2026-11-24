@@ -340,91 +340,50 @@ class TelegramChannelTest {
         )
         val oldObservation = textMessage("old-runtime-observation", "", Conversation.Message.Role.RUNTIME).copy(
             author = Conversation.Message.Author.Runtime(),
-            content = emptyList(),
-            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
-                text = "OLD_VISUAL_STATE",
-                key = "visual-state:test",
-                revision = "old-revision",
-            )),
+            content = listOf(Conversation.Message.ContentItem.UserMessage("OLD_RUNTIME_STATE")),
         )
         val observation = textMessage("runtime-observation", "", Conversation.Message.Role.RUNTIME).copy(
             author = Conversation.Message.Author.Runtime(),
-            content = emptyList(),
-            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
-                text = "CURRENT_VISUAL_STATE",
-                key = "visual-state:test",
-                revision = "revision",
-            )),
-        ).withDurableRuntimeObservationBoundary()
+            content = listOf(Conversation.Message.ContentItem.UserMessage("CURRENT_RUNTIME_STATE")),
+        )
         val invocation = invocation().copy(rootMessageId = root.id, route = route.copy(additionalInstruction = "Use a friendly voice"))
         val request = AiRuntimeRequest(systemPrompts = listOf("base"),
             messages = listOf(oldObservation, foreign, checkpoint, root, observation, continuation))
         val model = AiModelSpec("test", AiProvider.OPENAI, setOf(AiModelCapability.TEXT_GENERATION),
             AiModelSpec.Limits(textGeneration = AiModelSpec.Limits.TextGeneration(25000, 1024)))
         val enriched = enricher.materialize(invocation, model, request, setOf(root.id, continuation.id))
-        assertEquals(listOf(root.id, observation.id, continuation.id), enriched.messages.map { it.id })
+        assertEquals(listOf(oldObservation.id, root.id, observation.id, continuation.id), enriched.messages.map { it.id })
         assertEquals(continuation, enriched.messages.last())
-        assertEquals(observation, enriched.messages[1])
+        val authorized = enriched.messages.single { it.id == root.id }
+        val authorizedJson = Json.encodeToString(authorized)
         assertTrue(enriched.systemPrompts.last().contains(TELEGRAM_SAFETY_INSTRUCTION))
         assertTrue(enriched.systemPrompts.last().contains("Readonly"))
         assertTrue(enriched.systemPrompts.last().contains("Use a friendly voice"))
-        assertTrue(Json.encodeToString(enriched.messages.first()).contains("untrusted_group_history"))
-        assertTrue(Json.encodeToString(enriched.messages.first()).contains("quoted request"))
-        assertTrue(Json.encodeToString(enriched.messages.first()).contains("visible old answer"))
-        assertFalse(Json.encodeToString(enriched.messages.first()).contains("STALE_PRIVATE_REASONING"))
-        assertFalse(Json.encodeToString(enriched.messages.first()).contains("CURRENT_VISUAL_STATE"))
-        assertFalse(Json.encodeToString(enriched.messages).contains("OLD_VISUAL_STATE"))
-        assertTrue(enriched.messages[1].isDurableRuntimeObservationBoundary)
-        val closedObservation = observation.copy(
-            id = Conversation.Message.Id("closed-runtime-observation"),
-            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
-                text = "CLOSED_VISUAL_STATE",
-                key = "visual-state:test",
-                revision = "closed-revision",
-                removed = true,
-            )),
-        )
-        val closedRequest = request.copy(messages = request.messages + closedObservation)
-        val closedEnriched = enricher.materialize(invocation, model, closedRequest, setOf(root.id, continuation.id))
-        assertEquals(listOf(root.id, continuation.id), closedEnriched.messages.map { it.id })
-        assertFalse(Json.encodeToString(closedEnriched.messages).contains("CLOSED_VISUAL_STATE"))
-        assertFalse(Json.encodeToString(closedEnriched.messages).contains("CURRENT_VISUAL_STATE"))
+        assertTrue(authorizedJson.contains("untrusted_group_history"))
+        assertTrue(authorizedJson.contains("quoted request"))
+        assertTrue(authorizedJson.contains("visible old answer"))
+        assertFalse(authorizedJson.contains("STALE_PRIVATE_REASONING"))
+        assertFalse(authorizedJson.contains("CURRENT_RUNTIME_STATE"))
+        assertFalse(authorizedJson.contains("OLD_RUNTIME_STATE"))
+        assertTrue(Json.encodeToString(enriched.messages).contains("CURRENT_RUNTIME_STATE"))
+        assertTrue(Json.encodeToString(enriched.messages).contains("OLD_RUNTIME_STATE"))
         val writable = enricher.materialize(invocation.copy(route = route.copy(writeAllowed = true)), model, request, setOf(root.id, continuation.id))
         assertTrue(writable.systemPrompts.last().contains("File changes are allowed"))
         val large = request.copy(messages = listOf(foreign.copy(content = listOf(Conversation.Message.ContentItem.UserMessage("x".repeat(100_000)))), root))
         assertFalse(Json.encodeToString(enricher.materialize(invocation, model, large, setOf(root.id)).messages).contains("x".repeat(500)))
 
-        val largeObservation = observation.copy(instructions = listOf(
-            Conversation.Message.Instruction.RuntimeObservation(
-                text = "L".repeat(40_000),
-                key = "visual-state:large",
-                revision = "large-revision",
-            ),
-        ))
-        val largeObservationRequest = request.copy(messages = listOf(root, largeObservation))
-        assertEquals(
-            largeObservation.id,
-            enricher.materialize(invocation, model, largeObservationRequest, setOf(root.id)).messages[1].id,
-        )
     }
 
-    @Test fun `current turn observation deltas keep the signed continuation prefix in chronological order`() {
+    @Test fun `current turn Runtime messages keep the signed continuation prefix in chronological order`() {
         val enricher = TelegramRequestEnricher(Mockito.mock(TelegramChannelRepository::class.java), Mockito.mock(ConversationDomainService::class.java),
             Mockito.mock(ConversationRuntimeCoordinator::class.java), TelegramBindingAccess { error("Not used in materialization") })
         val root = textMessage("root", "@grz current", Conversation.Message.Role.USER)
-        fun observation(id: String, revision: String, boundary: Boolean = false): Conversation.Message {
-            val message = textMessage(id, "", Conversation.Message.Role.RUNTIME).copy(
+        fun runtimeMessage(id: String, revision: String): Conversation.Message =
+            textMessage(id, "", Conversation.Message.Role.RUNTIME).copy(
                 author = Conversation.Message.Author.Runtime(),
-                content = emptyList(),
-                instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
-                    text = "STATE_$revision",
-                    key = "visual-state:test",
-                    revision = revision,
-                )),
+                content = listOf(Conversation.Message.ContentItem.UserMessage("STATE_$revision")),
             )
-            return if (boundary) message.withDurableRuntimeObservationBoundary() else message
-        }
-        val firstObservation = observation("runtime-observation-1", "one", boundary = true)
+        val firstObservation = runtimeMessage("runtime-observation-1", "one")
         val callId = Conversation.Message.ContentItem.ToolCall.Id("call")
         val assistant = textMessage("assistant", "", Conversation.Message.Role.ASSISTANT).copy(
             content = listOf(
@@ -442,7 +401,7 @@ class TelegramChannelTest {
                 listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("done")),
             )),
         )
-        val secondObservation = observation("runtime-observation-2", "two")
+        val secondObservation = runtimeMessage("runtime-observation-2", "two")
         val invocation = invocation().copy(rootMessageId = root.id)
         val model = AiModelSpec("test", AiProvider.OPENAI, setOf(AiModelCapability.TEXT_GENERATION),
             AiModelSpec.Limits(textGeneration = AiModelSpec.Limits.TextGeneration(25000, 1024)))
@@ -469,69 +428,6 @@ class TelegramChannelTest {
         assertEquals(initial.messages.map { it.id }, continued.messages.take(initial.messages.size).map { it.id })
         assertTrue(continued.messages.single { it.id == assistant.id }.content.any {
             it is Conversation.Message.ContentItem.Thinking && it.signature == "signature"
-        })
-    }
-
-    @Test fun `current turn observation reset drops old large deltas and keeps portable tool protocol`() {
-        val enricher = TelegramRequestEnricher(Mockito.mock(TelegramChannelRepository::class.java), Mockito.mock(ConversationDomainService::class.java),
-            Mockito.mock(ConversationRuntimeCoordinator::class.java), TelegramBindingAccess { error("Not used in materialization") })
-        val root = textMessage("root", "@grz current", Conversation.Message.Role.USER)
-        fun observation(id: String, marker: String, boundary: Boolean = false): Conversation.Message {
-            val message = textMessage(id, "", Conversation.Message.Role.RUNTIME).copy(
-                author = Conversation.Message.Author.Runtime(),
-                content = emptyList(),
-                instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
-                    text = marker + "x".repeat(240_000),
-                    key = "visual-state:test",
-                    revision = id,
-                )),
-            )
-            return if (boundary) message.withDurableRuntimeObservationBoundary() else message
-        }
-        fun toolPair(id: String): List<Conversation.Message> {
-            val callId = Conversation.Message.ContentItem.ToolCall.Id("call-$id")
-            val assistant = textMessage("assistant-$id", "", Conversation.Message.Role.ASSISTANT).copy(
-                content = listOf(
-                    Conversation.Message.ContentItem.Thinking("SIGNED_$id", signature = "signature-$id"),
-                    Conversation.Message.ContentItem.ToolCall(
-                        callId,
-                        Conversation.Message.ContentItem.ToolCall.Data("example", JsonObject(emptyMap())),
-                    ),
-                ),
-            )
-            val result = textMessage("result-$id", "", Conversation.Message.Role.USER).copy(
-                content = listOf(Conversation.Message.ContentItem.ToolResult(
-                    callId,
-                    "example",
-                    listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("done-$id")),
-                )),
-            )
-            return listOf(assistant, result)
-        }
-        val oldBaseline = observation("observation-old", "OLD_BASELINE_", boundary = true)
-        val firstPair = toolPair("one")
-        val oldDelta = observation("observation-delta", "OLD_DELTA_")
-        val secondPair = toolPair("two")
-        val reset = observation("observation-reset", "CURRENT_BASELINE_", boundary = true)
-        val messages = listOf(root, oldBaseline) + firstPair + oldDelta + secondPair + reset
-        val invocation = invocation().copy(rootMessageId = root.id)
-        val model = AiModelSpec("test", AiProvider.OPENAI, setOf(AiModelCapability.TEXT_GENERATION),
-            AiModelSpec.Limits(textGeneration = AiModelSpec.Limits.TextGeneration(140_000, 1024)))
-
-        val enriched = enricher.materialize(
-            invocation,
-            model,
-            AiRuntimeRequest(systemPrompts = emptyList(), messages = messages),
-            messages.mapTo(mutableSetOf(), Conversation.Message::id),
-        )
-
-        assertEquals(listOf(root.id) + firstPair.map { it.id } + secondPair.map { it.id } + reset.id,
-            enriched.messages.map { it.id })
-        assertFalse(Json.encodeToString(enriched.messages).contains("OLD_BASELINE_"))
-        assertFalse(Json.encodeToString(enriched.messages).contains("OLD_DELTA_"))
-        assertTrue(Json.encodeToString(enriched.messages).contains("CURRENT_BASELINE_"))
-        assertTrue(enriched.messages.filter { it.role == Conversation.Message.Role.ASSISTANT }.all { assistant ->
-            assistant.content.none { it is Conversation.Message.ContentItem.Thinking }
         })
     }
 

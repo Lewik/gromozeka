@@ -7,7 +7,6 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageContextHeader
 import com.gromozeka.domain.model.MessageContextMetadata
 import com.gromozeka.domain.model.selectModelHistoryMessageIds
-import com.gromozeka.domain.model.selectRawExternalHistoryMessageIds
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.v1.jdbc.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.v1.core.inList
@@ -18,7 +17,6 @@ import com.gromozeka.domain.repository.ThreadMessageRepository
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.max
 import org.jetbrains.exposed.v1.jdbc.*
@@ -88,31 +86,6 @@ class ExposedThreadMessageRepository(
             .let(::resolveCurrentMessageAuthors)
     }
 
-    override suspend fun getMessagesByThreadWithoutRuntime(threadId: Conversation.Thread.Id): List<Conversation.Message> = dbQuery {
-        (ThreadMessages innerJoin Messages)
-            .select(Messages.messageJson)
-            .where {
-                (ThreadMessages.threadId eq threadId.value) and
-                    (Messages.role neq Conversation.Message.Role.RUNTIME.name)
-            }
-            .orderBy(ThreadMessages.position, SortOrder.ASC)
-            .map { row -> json.decodeFromString<Conversation.Message>(row[Messages.messageJson]) }
-            .let(::resolveCurrentMessageAuthors)
-    }
-
-    override suspend fun getRawExternalContextMessagesByThread(
-        threadId: Conversation.Thread.Id,
-    ): List<Conversation.Message> = newSuspendedTransaction(
-        Dispatchers.IO, transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ, readOnly = true,
-    ) {
-        val captured = readContextHeaders(threadId)
-        materializeContextSelection(
-            threadId,
-            captured,
-            selectRawExternalHistoryMessageIds(captured.headers),
-        )
-    }
-
     override suspend fun compactionHeaders(threadId: Conversation.Thread.Id): List<CompactionMessageHeader> =
         newSuspendedTransaction(Dispatchers.IO, transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ, readOnly = true) {
             val rows = (ThreadMessages innerJoin Messages).select(ThreadMessages.messageId, Messages.compactionHeader)
@@ -143,7 +116,6 @@ class ExposedThreadMessageRepository(
     override suspend fun getContextMessagesByThread(
         threadId: Conversation.Thread.Id,
         nativeProvider: String?,
-        prepareRuntimeObservationBoundary: Boolean,
     ): ThreadContextMessages = newSuspendedTransaction(
         Dispatchers.IO, transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ, readOnly = true,
     ) {
@@ -157,7 +129,6 @@ class ExposedThreadMessageRepository(
             captured.headers,
             checkpoints,
             nativeProvider,
-            prepareRuntimeObservationBoundary,
         )
         ThreadContextMessages(
             messages = materializeContextSelection(threadId, captured, required),

@@ -65,25 +65,20 @@ class AgentResponseReviewServiceTest {
             content = listOf(ContentItem.UserMessage("Keep this recent dialogue")),
             createdAt = now,
         )
-        val observationNoise = List(20) { index ->
-            readableContext.copy(
-                id = Conversation.Message.Id("runtime-observation-$index"),
-                role = Conversation.Message.Role.RUNTIME,
-                author = Conversation.Message.Author.Runtime(),
-                content = emptyList(),
-                instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
-                    text = "NOISE_$index", key = "visual:$index", revision = "revision-$index",
-                )),
-            )
-        }
+        val runtimeContext = readableContext.copy(
+            id = Conversation.Message.Id("runtime-context"),
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(ContentItem.UserMessage("RUNTIME_CONTEXT")),
+        )
         val prepared = assertNotNull(reviewer.prepare(
-            task, payload, conversation, listOf(readableContext) + observationNoise, listOf(message)))
+            task, payload, conversation, listOf(readableContext, runtimeContext), listOf(message)))
         assertEquals(next, prepared.endpoint)
         assertEquals(listOf(incoming), prepared.incoming)
         assertEquals(listOf(outgoing), prepared.outgoing)
         assertEquals(listOf(outgoing.id), prepared.waitableIds)
         assertContains(prepared.contextText, "Keep this recent dialogue")
-        assertFalse(prepared.contextText.contains("runtime-observation"))
+        assertContains(prepared.contextText, "RUNTIME_CONTEXT")
         Mockito.verify(repository).saveDraft(prepared)
     }
 

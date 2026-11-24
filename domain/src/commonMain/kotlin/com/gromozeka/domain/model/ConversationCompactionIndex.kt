@@ -9,18 +9,12 @@ data class CompactionNode(val id: Message.Id, val compactions: List<CompactionCo
 internal fun Message.compactionNode() = CompactionNode(id, compactions().map(::CompactionCoverage))
 
 /** Coverage and recovery depend on ordered IDs and checkpoints, not ordinary message bodies. */
-class ConversationCompactionIndex(
-    private val history: List<CompactionNode>,
-    private val excludedRecoveryMessageIds: Set<Message.Id> = emptySet(),
-) {
+class ConversationCompactionIndex(private val history: List<CompactionNode>) {
     private val byId = history.associateBy { it.id }
     private val positions = history.mapIndexed { index, node -> node.id to index }.toMap()
 
     init {
         require(positions.size == history.size) { "Duplicate message IDs in conversation history" }
-        require(excludedRecoveryMessageIds.all(byId::containsKey)) {
-            "Recovery exclusions must belong to the indexed history"
-        }
     }
 
     fun project(input: List<CompactionNode> = history): List<CompactionNode> {
@@ -88,7 +82,7 @@ class ConversationCompactionIndex(
         sourceIds.forEach { sourceId ->
             check(sourceId in byId) { "Missing compaction source message: ${sourceId.value}" }
         }
-        return sourceIds.filterNot(excludedRecoveryMessageIds::contains)
+        return sourceIds
     }
 
     class RecoveryWindow(val nodes: List<CompactionNode>, val invalidatedReplay: Set<Message.Id>)
@@ -100,18 +94,12 @@ class ConversationCompactionIndex(
     }
 
     /** Keep checkpoints for transitive coverage and replay invalidation, plus recovery sources. */
-    fun requiredHistoryIds(provider: String?, portableBeforeIndex: Int? = null): Set<Message.Id> {
-        require(portableBeforeIndex == null || portableBeforeIndex in 0..history.size) {
-            "Portable replay boundary is outside conversation history"
-        }
+    fun requiredHistoryIds(provider: String?): Set<Message.Id> {
         val required = project().mapTo(mutableSetOf()) { it.id }
         history.filter { it.compactions.isNotEmpty() }.mapTo(required) { it.id }
         fun recover(input: List<CompactionNode>, visiting: Set<Message.Id>) {
             project(input).forEach { node ->
-                val replayProvider = provider.takeUnless {
-                    portableBeforeIndex != null && positions.getValue(node.id) < portableBeforeIndex
-                }
-                val incompatible = incompatibleCompactions(node, replayProvider)
+                val incompatible = incompatibleCompactions(node, provider)
                 if (incompatible.isEmpty()) return@forEach
                 require(node.id !in visiting) { "Cyclic opaque compaction sources at ${node.id.value}" }
                 val sources = recoverySourceIds(node.id, incompatible)

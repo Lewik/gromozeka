@@ -27,7 +27,7 @@ class MemoryOperationPreparer(
     ): List<PreparedMemoryOperation> {
         val conversationId = Conversation.Id(conversationIdValue)
         val conversation = requireConversation(conversationId)
-        return threadMessages.getMessagesByThreadWithoutRuntime(conversation.currentThread).mapNotNull { message ->
+        return threadMessages.getMessagesByThread(conversation.currentThread).mapNotNull { message ->
             if (message.isSyntheticMemoryMessage()) {
                 return@mapNotNull null
             }
@@ -62,7 +62,7 @@ class MemoryOperationPreparer(
         val conversationId = Conversation.Id(conversationIdValue)
         val conversation = requireConversation(conversationId)
         val targetMessage = resolveTargetMessage(
-            threadMessages.getMessagesByThreadWithoutRuntime(conversation.currentThread),
+            threadMessages.getMessagesByThread(conversation.currentThread),
             targetMessageId,
         )
         return PreparedMemoryOperation(
@@ -149,7 +149,7 @@ class MemoryOperationPreparer(
         val conversationId = Conversation.Id(conversationIdValue)
         val conversation = requireConversation(conversationId)
         val targetMessage = resolveTargetMessage(
-            threadMessages.getMessagesByThreadWithoutRuntime(conversation.currentThread),
+            threadMessages.getMessagesByThread(conversation.currentThread),
             targetMessageId,
         )
         return PreparedMemoryOperation(
@@ -194,7 +194,7 @@ class MemoryOperationPreparer(
         val conversationId = Conversation.Id(conversationIdValue)
         val conversation = requireConversation(conversationId)
         val targetMessage = resolveTargetMessage(
-            threadMessages.getMessagesByThreadWithoutRuntime(conversation.currentThread),
+            threadMessages.getMessagesByThread(conversation.currentThread),
             targetMessageId,
         )
         return PreparedMemoryOperation(
@@ -242,7 +242,9 @@ class MemoryOperationPreparer(
         val explicitMessageId = targetMessageId?.takeIf { it.isNotBlank() }
         if (explicitMessageId != null) {
             return threadMessages.firstOrNull { message ->
-                message.id.value == explicitMessageId && !message.isSyntheticMemoryMessage()
+                message.id.value == explicitMessageId &&
+                    message.role != Conversation.Message.Role.RUNTIME &&
+                    !message.isSyntheticMemoryMessage()
             } ?: throw IllegalArgumentException("Target message not found in the current thread: $explicitMessageId")
         }
 
@@ -261,7 +263,8 @@ class MemoryOperationPreparer(
         this?.trim()?.takeIf { it.isNotBlank() }?.let(MemoryRun::Id)
 
     private fun Conversation.Message.hasUserAuthoredContent(): Boolean =
-        content.any { it is Conversation.Message.ContentItem.UserMessage }
+        role == Conversation.Message.Role.USER &&
+            content.any { it is Conversation.Message.ContentItem.UserMessage }
 
     private fun Conversation.Message.isSyntheticMemoryMessage(): Boolean =
         syntheticKind == SyntheticMessageKind.MEMORY

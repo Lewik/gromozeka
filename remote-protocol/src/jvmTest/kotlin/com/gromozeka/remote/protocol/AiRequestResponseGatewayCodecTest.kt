@@ -121,19 +121,14 @@ class AiRequestResponseGatewayCodecTest {
     }
 
     @Test
-    fun keyedRuntimeObservationSurvivesWorkerRequestEncoding() = runBlocking {
+    fun runtimeMessageSurvivesWorkerRequestEncoding() = runBlocking {
         val fixture = TestHandler()
         val observation = Conversation.Message(
             id = Conversation.Message.Id("runtime-observation"),
             conversationId = Conversation.Id("conversation"),
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
-            content = emptyList(),
-            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
-                text = "current state",
-                key = "visual-state:test",
-                revision = "revision-1",
-            )),
+            content = listOf(Conversation.Message.ContentItem.UserMessage("{\"kind\":\"runtime_state\"}")),
             createdAt = Instant.fromEpochMilliseconds(0),
         )
         val request = fixture.runtimeRequest.copy(messages = listOf(observation))
@@ -150,8 +145,8 @@ class AiRequestResponseGatewayCodecTest {
 
         val encoded = AiRequestResponseGatewayCodec.encodeCallRequest(fixture.runtime, null, request)
         val wire = encoded.decodeToString()
-        kotlin.test.assertTrue(wire.contains("\"key\":\"visual-state:test\""))
-        kotlin.test.assertTrue(wire.contains("\"revision\":\"revision-1\""))
+        kotlin.test.assertTrue(wire.contains("\"role\":\"RUNTIME\""))
+        kotlin.test.assertTrue(wire.contains("runtime_state"))
         val response = AiRequestResponseGatewayCodec.execute(encoded, handler)
 
         assertEquals(fixture.runtimeResponse, AiRequestResponseGatewayCodec.decodeCallResponse(response))

@@ -36,13 +36,13 @@ import kotlin.test.assertTrue
 
 class OpenAiSubscriptionRequestMapperTest {
     @Test
-    fun `runtime role maps to user instructions without message content`() {
+    fun `runtime role maps its instructions and content to user input`() {
         val runtimeMessage = Conversation.Message(
             id = Conversation.Message.Id("runtime-observation"),
             conversationId = conversationId,
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
-            content = listOf(Conversation.Message.ContentItem.UserMessage("UI_ONLY_CONTENT")),
+            content = listOf(Conversation.Message.ContentItem.UserMessage("RUNTIME_JSON")),
             instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("CURRENT_RUNTIME_STATE")),
             createdAt = createdAt,
         )
@@ -55,7 +55,7 @@ class OpenAiSubscriptionRequestMapperTest {
 
         assertEquals("user", message.getValue("role").jsonPrimitive.content)
         assertTrue(message.toString().contains("CURRENT_RUNTIME_STATE"))
-        assertFalse(message.toString().contains("UI_ONLY_CONTENT"))
+        assertTrue(message.toString().contains("RUNTIME_JSON"))
     }
 
     @Test fun `synthetic async completion uses native function output with model visible provenance`() {

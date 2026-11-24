@@ -643,10 +643,10 @@ projection is unchanged; there is no last-N cutoff or mutable transcript cache.
 Native CLI sessions (Claude Code and Copilot), external-channel filtering, timeline
 reads, explicit history mutations and isolated snapshot assembly retain their existing
 raw-history contracts. They are not silently redirected to the model-sparse read.
-External channels select their raw non-Runtime archive directly from headers and drop
-only keyed Runtime generations superseded by the latest replay boundary before loading
-bodies. Switching away from an opaque checkpoint's owner can legitimately require the
-original archive; missing recovery sources remain an explicit error.
+External channels read the complete ordered archive, including Runtime messages, with
+no role-specific generation pruning. Switching away from an opaque checkpoint's owner
+can legitimately require the original archive; missing recovery sources remain an
+explicit error.
 
 PostgreSQL can reject escaped Unicode such as NUL while inspecting otherwise valid
 stored JSON. V81 represents only this `22P05` case as absent derived metadata; readers
@@ -1275,68 +1275,30 @@ and client reload clears them. Neither snapshots, handler input, `get`, reminder
 nor dismissal acknowledgements carry highlight state. Dirty-form dots remain
 separate noninteractive indicators.
 
-`include_state_in_context` is an optional boolean on `grz_visual create/update`.
-It defaults to true on create; omission on update preserves the saved setting.
-It can be changed alone, without replacing the document, state or handler, and
-without resetting client drafts. Compact receipts and list summaries return
-`include_state_in_context`; the full `get.visual` exposes `includeStateInContext`.
-The persisted/read model requires this field explicitly. V88 fills missing fields
-on existing panels with true and enforces a boolean storage constraint. There is
-no reader fallback for old records; the default belongs only to new-panel creation.
+Automatic Visual and command-state injection is disabled. The core conversation
+engine does not read Visual storage, synthesize inventories, compare revisions, or
+append unchanged/baseline markers before a model call. `include_state_in_context`
+remains in the persisted Visual record for the later Runtime-based panel design,
+but currently has no effect on model context. Button submissions still carry their
+typed full snapshot, and `grz_visual get` remains the explicit way to inspect saved
+document/state.
 
-Before each ordinary conversation LLM request,
-`ConversationRuntimeObservationService` compares saved Visual state with keyed
-observations already present in the current conversation history. It atomically
-appends one first-class `RUNTIME` message containing only changed observations:
-a complete Visual inventory plus one full state snapshot for each changed enabled
-Visual. An unchanged large Visual is therefore not copied into every request, but
-its latest full keyed snapshot remains durable and survives Server restarts and
-copy-on-write branches. Any compaction checkpoint invalidates the inferred keyed
-frontier; the next ordinary request writes one complete baseline. The checkpoint
-carries an existing replay boundary when it covers one; otherwise that baseline
-establishes a new boundary. Superseded Runtime generations are removed while
-selecting sparse model history, before their potentially large bodies are read.
-The retained delta chain is bounded to 1 MiB and 128 messages. If one complete
-baseline is itself larger than 1 MiB, that irreducible baseline is retained and
-only the additional delta tail is bounded to another 1 MiB, instead of copying the
-baseline on every small change.
+`RUNTIME` is a generic Harness-authored protocol role, not a Visual-specific
+encoding. Runtime messages are persisted, selected, compacted, replayed to clients,
+and projected into provider requests through the same ordinary history path as
+user-side content. Provider adapters serialize their content as user-side model
+input. The engine has no keyed Runtime revisions, replay boundary, generation
+pruning, compact shell, or Runtime-specific sparse-body read. Ordinary history
+preview limits still apply at the UI boundary. Runtime messages do not mark a
+conversation unread and are excluded from user-authored memory claims.
 
-The Server stores the full Runtime instructions, but client events, point reads,
-paged history and the canonical remote archive expose only a compact row shell.
-The archive still returns every canonical non-Runtime body from one coherent
-server-side read; Runtime JSON is replaced by the shell in SQL and is never
-hydrated. The shell is visible in the chat timeline as a Runtime observation and
-advances the client's history activity revision. It does not mark the conversation
-unread and does not trigger an automatic response by itself. Readable compaction
-never includes Runtime bodies in the summary prompt; the next ordinary model
-request records a fresh complete baseline when the compacted history no longer
-carries one.
-
-Disabled Visuals remain in the complete inventory as `state-status=disabled`,
-with metadata but no state or snapshot ID. A small keyed disabled marker replaces
-the earlier state observation without copying the saved state. Reenabling one
-writes a fresh full snapshot. Closing a Visual changes the complete inventory; no
-process-local replay state is required. This is not a privacy/permission boundary:
-it does not erase observations already delivered to a model or retained in chat
-history. Explicit `get` and button submissions still carry full state, and handler
-output cannot change the setting through `form/data` updates.
-
-Updates coalesce between model requests and do not trigger model work. Canonical
-JSON hashing ignores object-key order and transport revisions. Compaction consumes
-the durable history and never performs a live Visual read; after observations are
-compacted away, the next ordinary request writes the missing current snapshots
-again. An isolated context query remains read-only and receives one fresh ephemeral
-view. Before the first durable baseline, that ephemeral view is a request-local
-replay boundary; it never changes later durable revision detection. There is no
-Runtime-message body backfill for old conversations: V95 only recomputes the
-body-free context-selection metadata for existing messages, and the first ordinary
-request after upgrade writes a complete baseline. `RUNTIME` is intentionally a
-protocol role rather than a compatibility encoding. Server and desktop/mobile
-clients must therefore be updated together; an older client cannot deserialize a
-new Runtime row, and the controlled deployments do not keep a legacy projection.
-JSON values are untrusted data
-and XML delimiters are escaped; neither reminders nor client drafts implicitly
-submit forms. `get` remains useful for autonomous fresh reads, markup and diagnostics.
+Runtime JSON is trusted Harness input and may intentionally contain instructions
+or permissions; its authority comes from Runtime authorship, not from treating the
+JSON as inert text. Authenticated user-message submission still cannot forge that
+authorship. A future panel implementation should publish state through normal
+Runtime messages rather than adding Visual knowledge back to the engine. V95 only
+adds generic body-free context metadata needed by the existing sparse history
+selection; it does not backfill Runtime messages.
 
 `create` requires both complete state sections, `form` and `data`. `update.state`
 contains one or both complete sections: omitted roots remain unchanged, supplied
@@ -1346,7 +1308,7 @@ bindings permit; an empty `update.state` object is rejected. The same rules
 apply to handler output. The resulting full state is validated atomically before
 publication. Send `document` only for structural/control/schema changes, not for
 ordinary content updates. Model-facing create/update results contain compact
-acknowledgements (ID, revisions, status, context setting, handler task and diagnostics), never HTML
+acknowledgements (ID, revisions, status, handler task and diagnostics), never HTML
 or state. Only `get` returns the full document and saved state; `list` is compact.
 Schema or rendering errors leave the last valid state intact. Runtime diagnostics
 are shown in host-owned panel chrome outside the document and are available via
@@ -1734,34 +1696,14 @@ Kotlin/Flyway migration, not a runtime compatibility path.
 Worker Gateway protocol **33** requires the updated Server, Workers and clients;
 drain in-flight calls before the coordinated upgrade.
 
-Model requests also receive a keyed `recorded_running_commands` observation from
-the Server's saved command state. Each entry contains only `task_id` and an
-optional nonblank `description`, limited to 160 Unicode code points. Missing
-labels never fall back to the shell command. Only recorded `WORKING` commands in
-the authorized conversation are included; an empty list replaces a previous list.
-This is not a Worker liveness check, does not enumerate detached external services,
-and does not request action or status polling. A changed inventory is appended by
-the same durable Runtime message path as Visual state. This does not wake the model
-or acknowledge automatic completion delivery.
-
-The shared system-prompt assembler supplies the static interpretation contract.
-Dynamic blocks contain only JSON in `<runtime-command-context>`. Observations use
-the distinct `Instruction.RuntimeObservation` type, not user text;
-semantic consumers such as pending WebSearch and recent human-input selection do
-not mistake them for a new human turn. Authenticated submissions reject this type.
-Each durable observation has an application-owned key and content revision. The
-latest retained revision for a key replaces older revisions; the complete command
-and Visual inventories also remove absent entries. The first post-upgrade baseline
-marks a replay boundary: unreconstructable pre-boundary reasoning is projected
-portably, including sources behind same-provider opaque checkpoints, and compaction
-carries the boundary forward. Native CLI sessions reset when a new boundary was not
-part of their saved prefix. Isolated snapshots do not append history or affect later
-change detection. Telegram materialization fences structured history before quoting
-it and includes only the latest retained observation for each key.
-Worker Gateway protocol **32** introduced the instruction variant. Protocol **37**
-adds its keyed revision fields alongside the proactive-compaction wire changes.
-Update Server and Workers together; protocol 36 Workers are rejected during the
-handshake.
+Model requests do not receive an automatically synthesized inventory of running
+commands. Command/monitor completion still uses its typed synthetic messages and
+normal continuation scheduling. `Instruction.RuntimeObservation` remains a small
+assistant-message annotation for existing synthetic async-completion provenance;
+it has no key, revision, removal marker, or history-boundary behavior, and
+authenticated user submissions cannot forge it. Worker Gateway protocol **37** is
+the coordinated Server/Worker contract for the current proactive-compaction and
+runtime task payloads; protocol 36 Workers are rejected during the handshake.
 
 Managed shell commands accept an optional `description`: a short user-facing
 purpose in the user's language, preferably **at most 50 characters including

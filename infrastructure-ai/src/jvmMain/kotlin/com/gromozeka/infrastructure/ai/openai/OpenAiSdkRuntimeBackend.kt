@@ -377,7 +377,7 @@ internal class OpenAiSdkMessageMapper(
                     add(ChatCompletionMessageParam.ofUser(it))
                 }
 
-                Conversation.Message.Role.RUNTIME -> runtimeMessageParam(message)?.let {
+                Conversation.Message.Role.RUNTIME -> userMessageParam(message)?.let {
                     add(ChatCompletionMessageParam.ofUser(it))
                 }
 
@@ -423,13 +423,6 @@ internal class OpenAiSdkMessageMapper(
                 .build()
         }
     }
-
-    private fun runtimeMessageParam(message: Conversation.Message): ChatCompletionUserMessageParam? =
-        message.instructions.joinToString("\n") { it.toXmlLine() }.trim().takeIf(String::isNotBlank)?.let { text ->
-            ChatCompletionUserMessageParam.builder()
-                .content(text)
-                .build()
-        }
 
     private fun Conversation.Message.ContentItem.ImageItem.toOpenAiChatImagePart(): ChatCompletionContentPart {
         val url = when (val imageSource = source) {

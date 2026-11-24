@@ -106,106 +106,6 @@ class SparseConversationHistoryTest {
     }
 
     @Test
-    fun sameProviderOpaqueCheckpointBeforeRuntimeBoundaryLoadsPortableSources() {
-        val provider = "OPENAI_SUBSCRIPTION"
-        val source = text("source").copy(
-            role = Message.Role.ASSISTANT,
-            content = listOf(
-                ContentItem.Thinking("stale reasoning", signature = "signature"),
-                ContentItem.AssistantMessage(Message.StructuredText("visible answer")),
-            ),
-        )
-        val checkpoint = text("checkpoint").copy(role = Message.Role.ASSISTANT, content = listOf(Compaction(
-            Compaction.Payload.OpaqueProviderState(buildJsonObject { put("encrypted_content", "opaque") }),
-            Compaction.Origin.PROVIDER_AUTO,
-            coverage = Compaction.Coverage.ALL_PREVIOUS,
-            providerScope = Compaction.ProviderScope(provider),
-        )))
-        val boundary = text("boundary").copy(
-            role = Message.Role.RUNTIME,
-            author = Message.Author.Runtime(),
-            content = emptyList(),
-            instructions = listOf(Message.Instruction.RuntimeObservation("current state", "state", "revision")),
-        ).withDurableRuntimeObservationBoundary()
-
-        for (persistedBoundary in listOf(false, true)) {
-            val stored = listOf(source, checkpoint) + if (persistedBoundary) listOf(boundary) else emptyList()
-            val ids = select(stored, provider, prepareRuntimeObservationBoundary = !persistedBoundary)
-            assertTrue(source.id in ids)
-            val request = stored.filter { it.id in ids } + if (persistedBoundary) emptyList() else listOf(boundary)
-            assertEquals(
-                listOf(source.withoutProviderReplay(), boundary),
-                ConversationContext(request).messagesForProvider(provider),
-            )
-        }
-    }
-
-    @Test
-    fun supersededRuntimeObservationGenerationsAreExcludedBeforeHydration() {
-        fun observation(id: String, revision: String, boundary: Boolean = false): Message {
-            val message = text(id).copy(
-                role = Message.Role.RUNTIME,
-                author = Message.Author.Runtime(),
-                content = emptyList(),
-                instructions = listOf(Message.Instruction.RuntimeObservation("state-$revision", "state", revision)),
-            )
-            return if (boundary) message.withDurableRuntimeObservationBoundary() else message
-        }
-        val human = text("human")
-        val oldBaseline = observation("old-baseline", "old-0", boundary = true)
-        val oldDelta = observation("old-delta", "old-1")
-        val currentBaseline = observation("current-baseline", "current-0", boundary = true)
-        val currentDelta = observation("current-delta", "current-1")
-        val history = listOf(human, oldBaseline, oldDelta, currentBaseline, currentDelta)
-
-        val selected = select(history, null)
-
-        assertTrue(human.id in selected)
-        assertTrue(currentBaseline.id in selected)
-        assertTrue(currentDelta.id in selected)
-        assertTrue(oldBaseline.id !in selected)
-        assertTrue(oldDelta.id !in selected)
-        assertEquals(
-            ConversationContext(history).messagesForProvider(null),
-            ConversationContext(history.filter { it.id in selected }).messagesForProvider(null),
-        )
-    }
-
-    @Test
-    fun rawExternalHistoryKeepsCompactedRowsButDropsRuntimeStateBeforeCheckpointBoundary() {
-        fun observation(id: String, boundary: Boolean = false): Message {
-            val message = text(id).copy(
-                role = Message.Role.RUNTIME,
-                author = Message.Author.Runtime(),
-                content = emptyList(),
-                instructions = listOf(Message.Instruction.RuntimeObservation(id, "state", id)),
-            )
-            return if (boundary) message.withDurableRuntimeObservationBoundary() else message
-        }
-        val archived = text("archived")
-        val oldRuntime = observation("old-runtime", boundary = true)
-        val checkpoint = text("checkpoint").copy(
-            role = Message.Role.ASSISTANT,
-            content = listOf(ContentItem.ContextCompactionResult(
-                ContentItem.ContextCompactionResult.Payload.ReadableSummary("summary"),
-                ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
-                coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
-            )),
-        ).withDurableRuntimeObservationBoundary()
-        val currentRuntime = observation("current-runtime")
-        val tail = text("tail")
-        val history = listOf(archived, oldRuntime, checkpoint, currentRuntime, tail)
-
-        val selected = selectRawExternalHistoryMessageIds(
-            history.map { MessageContextHeader(it.id, MessageContextMetadata.from(it)) },
-        )
-
-        assertEquals(listOf(archived.id, checkpoint.id, currentRuntime.id, tail.id), history.mapNotNull {
-            it.id.takeIf(selected::contains)
-        })
-    }
-
-    @Test
     fun retainsNativeUsageObservationsEvenWhenSelectiveCoverageHidesTheirMessages() {
         fun observation(id: String, tokens: JsonElement) = text(id).copy(role = Message.Role.ASSISTANT,
             content = listOf(ContentItem.AssistantMessage(Message.StructuredText(id))),
@@ -228,14 +128,10 @@ class SparseConversationHistoryTest {
         assertTrue(malformed.id in invalid && good.id !in invalid)
     }
 
-    private fun select(
-        history: List<Message>,
-        provider: String?,
-        prepareRuntimeObservationBoundary: Boolean = false,
-    ): Set<Message.Id> {
+    private fun select(history: List<Message>, provider: String?): Set<Message.Id> {
         val headers = history.map { MessageContextHeader(it.id, MessageContextMetadata.from(it)) }
         val checkpoints = history.filter { MessageContextMetadata.from(it).hasCompaction }
-        return selectModelHistoryMessageIds(headers, checkpoints, provider, prepareRuntimeObservationBoundary)
+        return selectModelHistoryMessageIds(headers, checkpoints, provider)
     }
 
     private fun text(id: String) = Message(Message.Id(id), Conversation.Id("conversation"), role = Message.Role.USER,

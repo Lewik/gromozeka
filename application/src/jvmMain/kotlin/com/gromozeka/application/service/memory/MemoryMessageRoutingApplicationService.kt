@@ -9,7 +9,6 @@ import com.gromozeka.application.service.backgroundWorkloadOrNull
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.RuntimeEnvironmentContext
-import com.gromozeka.domain.model.isDurableRuntimeObservationMessage
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteRequest
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
@@ -682,7 +681,7 @@ class MemoryMessageRoutingApplicationService(
         targetMessage: Conversation.Message,
         threadContextMessages: List<Conversation.Message>? = null,
     ): MemoryThreadContext {
-        val threadMessages = (threadContextMessages ?: threadMessageRepository.getMessagesByThreadWithoutRuntime(threadId))
+        val threadMessages = (threadContextMessages ?: threadMessageRepository.getMessagesByThread(threadId))
             .filterNot { it.isSyntheticMemoryRuntimeMessage() }
             .filter { it.isMemoryStageContextMessage() }
         val targetIndex = threadMessages.indexOfFirst { it.id == targetMessage.id }
@@ -733,7 +732,7 @@ internal fun Conversation.Message.isMemoryStageContextMessage(): Boolean =
     when (role) {
         Conversation.Message.Role.USER,
         Conversation.Message.Role.ASSISTANT,
-        -> error == null && !isDurableRuntimeObservationMessage
+        -> error == null
 
         Conversation.Message.Role.SYSTEM,
         Conversation.Message.Role.RUNTIME,

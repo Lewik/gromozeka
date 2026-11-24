@@ -590,9 +590,7 @@ private class GitHubCopilotRequestMapper {
             .joinToString("\n") { it.toXmlLine() }
             .takeIf(String::isNotBlank)
             ?.let(::appendLine)
-        if (message.role != Conversation.Message.Role.RUNTIME) {
-            message.content.forEach { item -> appendLine(contentToTranscript(item)) }
-        }
+        message.content.forEach { item -> appendLine(contentToTranscript(item)) }
         append("</message>")
     }
 

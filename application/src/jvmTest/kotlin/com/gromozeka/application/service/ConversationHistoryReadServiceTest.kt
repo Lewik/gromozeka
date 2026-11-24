@@ -122,8 +122,7 @@ class ConversationHistoryReadServiceTest {
         stored = stored.copy(
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
-            content = emptyList(),
-            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("PRIVATE_STATE", "state", "revision")),
+            content = listOf(Conversation.Message.ContentItem.UserMessage("RUNTIME_STATE")),
         )
         assertEquals(stored, service.findMessage(conversationId, stored.id))
         assertEquals(ConversationMessageProjection.projectEvent(stored), service.message(conversationId, stored.id))

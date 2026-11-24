@@ -136,7 +136,6 @@ class ConversationEngineService(
     private val stickyMessageInstructionService: StickyMessageInstructionService,
     private val suggestedRepliesGenerationService: SuggestedRepliesGenerationService,
     private val conversationPins: ConversationPinnedPrompt,
-    private val runtimeObservations: ConversationRuntimeObservationService,
     private val requestEnrichers: List<ConversationRequestEnricher> = emptyList(),
     private val collaboration: AgentCollaborationService? = null,
     private val responseReview: AgentResponseReviewService? = null,
@@ -198,7 +197,6 @@ class ConversationEngineService(
             val context = buildConversationRuntimeContext(prepared.agentId, conversation, executor, readOnlySnapshot = true)
             val assembled = assembleRuntimeRequest(
                 task = task,
-                executor = executor,
                 conversation = conversation,
                 context = context,
                 rootUserMessageId = null,
@@ -254,7 +252,6 @@ class ConversationEngineService(
                 draft.endpoint.agentId, conversation, executor, readOnlySnapshot = true)
             val assembled = assembleRuntimeRequest(
                 task = task,
-                executor = executor,
                 conversation = conversation,
                 context = context,
                 rootUserMessageId = null,
@@ -290,7 +287,6 @@ class ConversationEngineService(
                     val context = buildConversationRuntimeContext(agent.id, conversation, executor, readOnlySnapshot = true)
                     val assembled = assembleRuntimeRequest(
                         task = task,
-                        executor = executor,
                         conversation = conversation,
                         context = context,
                         rootUserMessageId = null,
@@ -333,7 +329,6 @@ class ConversationEngineService(
                 val context = buildConversationRuntimeContext(expected.agentId, conversation, executor, readOnlySnapshot = true)
                 val assembledRequest = assembleRuntimeRequest(
                     task = task,
-                    executor = executor,
                     conversation = conversation,
                     context = context,
                     rootUserMessageId = null,
@@ -525,13 +520,11 @@ class ConversationEngineService(
         val activeCollaboration = collaboration.takeIf { conversation.externalChannel == null }
         val assembledRequest = assembleRuntimeRequest(
             task = task,
-            executor = executor,
             conversation = conversation,
             context = context,
             rootUserMessageId = payload.rootUserMessageId,
             diagnosticId = diagnosticId,
             readOnlySnapshot = false,
-            emitMessage = emitMessage,
         )
         val runtimeRequest = assembledRequest.request
         var currentMessages = assembledRequest.rawMessages
@@ -857,7 +850,7 @@ class ConversationEngineService(
         }
         ensureRuntimeTaskOwner(conversation.id, task.id, executor)
         if (runtimeCoordinator.listPending(conversation.id).any { it.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT }) return continueAfterNewInput()
-        val priorTextContinues = contextHistory.getMessagesByThreadWithoutRuntime(conversation.currentThread).count {
+        val priorTextContinues = contextHistory.getMessagesByThread(conversation.currentThread).count {
             it.id.value.startsWith(draft.turnId + ":") && it.providerMetadata["collaborationNext"] == JsonPrimitive("CONTINUE")
         }
         if (priorTextContinues >= 4) {
@@ -1004,7 +997,7 @@ class ConversationEngineService(
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor)
-        val currentMessages = contextHistory.getMessagesByThreadWithoutRuntime(conversation.currentThread)
+        val currentMessages = contextHistory.getMessagesByThread(conversation.currentThread)
         if (!currentMessages.hasPendingMemoryRecall(payload.targetMessageId)) {
             log.info {
                 "Skipping memory recall without pending marker: conversation=${conversationId.value} target=${payload.targetMessageId.value}"
@@ -1350,26 +1343,14 @@ class ConversationEngineService(
 
     private suspend fun assembleRuntimeRequest(
         task: ConversationRuntimeTask,
-        executor: ConversationRuntimeExecutorIdentity,
         conversation: Conversation,
         context: ConversationRuntimeStepContext,
         rootUserMessageId: Conversation.Message.Id?,
         diagnosticId: String,
         readOnlySnapshot: Boolean,
-        emitMessage: (suspend (Conversation.Message) -> Unit)? = null,
     ): RuntimeRequestAssembly {
         // Native CLI sessions fingerprint raw history; external channels apply their own history filters.
-        val loadedMessages = loadRuntimeMessages(conversation, context.connectionKind)
-        val currentMessages = if (readOnlySnapshot) loadedMessages else {
-            val emitPersistedMessage = checkNotNull(emitMessage) {
-                "Ordinary runtime request assembly requires a persisted-message emitter"
-            }
-            val appended = runtimeObservations.appendChanged(conversation, task.id, loadedMessages) {
-                ensureRuntimeTaskOwner(conversation.id, task.id, executor)
-            }
-            appended.map(ConversationMessageProjection::projectEvent).forEach { emitPersistedMessage(it) }
-            loadedMessages + appended
-        }
+        val currentMessages = loadRuntimeMessages(conversation, context.connectionKind)
         val runtimeMessages = stickyMessageInstructionService.materialize(
             messages = messageTemporalContextService.enrich(
                 messages = currentMessages,
@@ -1469,12 +1450,11 @@ class ConversationEngineService(
 
     private suspend fun loadRuntimeMessages(conversation: Conversation, kind: AiConnection.Kind): List<Conversation.Message> =
         if (conversation.externalChannel != null) {
-            contextHistory.getRawExternalContextMessagesByThread(conversation.currentThread)
+            contextHistory.getMessagesByThread(conversation.currentThread)
         } else {
             contextHistory.getContextMessagesByThread(
                 conversation.currentThread,
                 kind.nativeCompactionProvider(),
-                prepareRuntimeObservationBoundary = true,
             ).messages
         }
 
@@ -1609,7 +1589,7 @@ class ConversationEngineService(
                 messages = when (settings.contextMode) {
                     UserProfile.SuggestedRepliesSettings.ContextMode.RECENT_MESSAGES -> currentMessages
                     UserProfile.SuggestedRepliesSettings.ContextMode.FULL_THREAD ->
-                        contextHistory.getMessagesByThreadWithoutRuntime(conversation.currentThread)
+                        contextHistory.getMessagesByThread(conversation.currentThread)
                 } + assistantMessages,
                 sourceMessage = sourceMessage,
                 agentDefinitionId = agentDefinitionId,
@@ -1725,7 +1705,7 @@ class ConversationEngineService(
         if (!automaticMemoryRecallEnabled) {
             return null
         }
-        val targetMessageId = contextHistory.getMessagesByThreadWithoutRuntime(threadId)
+        val targetMessageId = contextHistory.getMessagesByThread(threadId)
             .nextPendingMemoryRecallTarget()
             ?: return null
         return memoryRecallTask(

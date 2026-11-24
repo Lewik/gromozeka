@@ -17,7 +17,6 @@ class ContextSnapshotUnavailableException(message: String, cause: Throwable? = n
 
 /**
  * Immutable request view. History is pinned to [target]'s thread and ends at a complete group.
- * Runtime/environment observations are read during assembly, not an atomic distributed snapshot.
  * No turn, queue admission, or replay-anchor mutation is performed to build it.
  */
 data class ConversationContextSnapshot(
@@ -25,7 +24,7 @@ data class ConversationContextSnapshot(
     val runtimeSelection: AiRuntimeSelection,
     val resolvedRuntime: com.gromozeka.domain.service.ResolvedAiRuntime,
     val request: AiRuntimeRequest,
-    /** Last message in the pinned durable prefix, before ephemeral snapshot enrichment. */
+    /** Last message in the pinned durable prefix. */
     val lastIncludedMessageId: Conversation.Message.Id?,
     val capturedAt: Instant,
     val sourceMessageCount: Int,
@@ -79,7 +78,6 @@ internal fun assembleConversationSystemPrompts(
     capabilityCatalog?.let(::add)
     add(environment)
     skills?.let(::add)
-    add(ConversationRuntimeObservationService.RECORDED_RUNNING_COMMANDS_INSTRUCTION)
     AssistantResponseFormatContract.instruction(responseFormat, includeSuggestedReplies, inlineSuggestedRepliesPrompt)?.let(::add)
 }
 

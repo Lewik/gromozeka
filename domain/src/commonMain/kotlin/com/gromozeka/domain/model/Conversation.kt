@@ -781,22 +781,7 @@ data class Conversation(
             @SerialName("runtime_observation")
             data class RuntimeObservation(
                 val text: String,
-                /** Stable application-owned state key. Null observations are unversioned event context. */
-                val key: String? = null,
-                /** Content revision for [key]. The latest retained revision replaces older values. */
-                val revision: String? = null,
-                /** Remove [key] from the latest materialized state instead of retaining this observation. */
-                val removed: Boolean = false,
             ) : Instruction() {
-                init {
-                    require((key == null) == (revision == null)) {
-                        "Runtime observation key and revision must be supplied together"
-                    }
-                    require(!removed || key != null) { "Only a keyed Runtime observation can remove state" }
-                    require(key == null || key.isNotBlank()) { "Runtime observation key must not be blank" }
-                    require(revision == null || revision.isNotBlank()) { "Runtime observation revision must not be blank" }
-                }
-
                 override val title = "Runtime observation"
                 override val description = "Runtime-owned application data"
                 override fun serializeContent() = text

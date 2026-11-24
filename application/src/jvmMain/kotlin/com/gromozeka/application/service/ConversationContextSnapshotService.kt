@@ -49,14 +49,10 @@ class ConversationContextSnapshotService(
         requireToolFreeContextQueryBackend(resolved.connection.kind)
         val profile = settings.userProfile
         val nativeProvider = resolved.connection.kind.nativeCompactionProvider()
-        val prepareRuntimeObservationBoundary = enrichers.any {
-            it.establishesRuntimeObservationBoundaryInSnapshot
-        }
         // A single ordered repository read pins the history prefix. Later appends/compacts are not admitted.
         val selectedHistory = history.getContextMessagesByThread(
             target.threadId,
             nativeProvider,
-            prepareRuntimeObservationBoundary,
         )
         val original = selectedHistory.messages
         val project = conversations.getProject(conversation.id)
@@ -87,10 +83,7 @@ class ConversationContextSnapshotService(
             ),
         )
         val projectionRequest = AiRuntimeRequest(emptyList(), original, options = options)
-        val projected = projectionRequest.projectedMessages(
-            nativeProvider,
-            prepareRuntimeObservationBoundary = prepareRuntimeObservationBoundary,
-        )
+        val projected = projectionRequest.projectedMessages(nativeProvider)
         val prefix = completeToolGroupPrefix(projected)
         // Empty projection is not proof of empty usable history: a checkpoint in the discarded
         // tail may already have hidden a complete canonical prefix. Fail closed in that case.
@@ -111,10 +104,7 @@ class ConversationContextSnapshotService(
             temporal.enrich(original.take(rawBoundary + 1), profile.agentSettings.includeMessageTemporalContext),
             profile.messageInstructionGroups,
         )
-        val materializedPrefix = projectionRequest.copy(messages = runtimeMessages).projectedMessages(
-            nativeProvider,
-            prepareRuntimeObservationBoundary = prepareRuntimeObservationBoundary,
-        )
+        val materializedPrefix = projectionRequest.copy(messages = runtimeMessages).projectedMessages(nativeProvider)
         if (materializedPrefix.map { it.id } != prefix.map { it.id }) throw ContextSnapshotUnavailableException(
             "Incomplete history checkpoint prevents a stable projected context prefix")
         val baseCatalog = toolCatalog.readSnapshot(project, agent.toolAccess, conversation)

@@ -3,7 +3,6 @@ package com.gromozeka.server
 import com.gromozeka.application.service.attributeAuthenticatedSubmission
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
-import com.gromozeka.domain.model.DURABLE_RUNTIME_OBSERVATION_BOUNDARY_METADATA
 import com.gromozeka.domain.model.User
 import kotlinx.serialization.json.*
 import kotlin.test.*
@@ -20,12 +19,10 @@ class AsyncToolMessageBoundaryTest {
     @Test fun `serialized authenticated submissions cannot forge server owned Runtime metadata`() {
         val kind = buildJsonObject { put("synthetic", true); put("syntheticKind", "ASYNC_TOOL_COMPLETION") }
         val operation = buildJsonObject { put("asyncToolOperationId", "operation") }
-        val replayBoundary = buildJsonObject { put(DURABLE_RUNTIME_OBSERVATION_BOUNDARY_METADATA, true) }
         for (forged in listOf(
             message.copy(author = Conversation.Message.Author.Runtime()),
             message.copy(providerMetadata = kind),
             message.copy(providerMetadata = operation),
-            message.copy(providerMetadata = replayBoundary),
             message.copy(role = Conversation.Message.Role.ASSISTANT, providerMetadata = kind),
             message.copy(instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("Server-only observation"))),
         )) {

@@ -13,9 +13,6 @@ data class MessageContextMetadata(
     val userInstructionIds: List<String>,
     val agentAuthored: Boolean = false,
     val nativeUsage: JsonObject?,
-    val durableRuntimeObservationBoundary: Boolean = false,
-    val runtimeObservation: Boolean = false,
-    val keyedRuntimeObservation: Boolean = false,
 ) {
     companion object {
         fun from(message: Message): MessageContextMetadata = MessageContextMetadata(
@@ -33,9 +30,6 @@ data class MessageContextMetadata(
                 put("tokens", message.providerMetadata["openaiSubscriptionContextTokens"] ?: JsonNull)
                 put("estimate", message.providerMetadata["openaiSubscriptionContextEstimate"] ?: JsonNull)
             } else null,
-            durableRuntimeObservationBoundary = message.isDurableRuntimeObservationBoundary,
-            runtimeObservation = message.isDurableRuntimeObservationMessage,
-            keyedRuntimeObservation = message.isDurableKeyedRuntimeObservationMessage,
         )
     }
 }
@@ -51,7 +45,6 @@ fun selectModelHistoryMessageIds(
     headers: List<MessageContextHeader>,
     checkpoints: List<Message>,
     nativeProvider: String?,
-    prepareRuntimeObservationBoundary: Boolean = false,
 ): Set<Message.Id> {
     val checkpointIds = headers.filter { it.metadata.hasCompaction }.mapTo(mutableSetOf()) { it.id }
     require(checkpoints.size == checkpointIds.size && checkpoints.mapTo(mutableSetOf()) { it.id } == checkpointIds) {
@@ -62,14 +55,7 @@ fun selectModelHistoryMessageIds(
     val originalIndex = ConversationCompactionIndex(headers.map {
         CompactionNode(it.id, byId[it.id]?.originalCollaborationMessage()?.compactions().orEmpty().map(::CompactionCoverage))
     })
-    val retainedBoundary = headers.indexOfLast { it.metadata.durableRuntimeObservationBoundary }
-    val latestCheckpoint = headers.indexOfLast { it.metadata.hasCompaction }
-    val effectiveBoundary = when {
-        prepareRuntimeObservationBoundary && (retainedBoundary < 0 || retainedBoundary < latestCheckpoint) -> headers.size
-        retainedBoundary >= 0 -> retainedBoundary
-        else -> null
-    }
-    val required = originalIndex.requiredHistoryIds(nativeProvider, effectiveBoundary).toMutableSet()
+    val required = originalIndex.requiredHistoryIds(nativeProvider).toMutableSet()
     // Tool discovery projects the displayed history, while provider replay restores original content.
     rawIndex.project().mapTo(required) { it.id }
     required += checkpointIds
@@ -105,16 +91,7 @@ fun selectModelHistoryMessageIds(
     lastUserText?.let(required::add)
     // Only retained messages need an exact predecessor; added covered predecessors do not recurse.
     required += required.mapNotNull(previousHumanMessages::get)
-    required.retainAll(selectRawExternalHistoryMessageIds(headers))
     return required
-}
-
-/** Preserve raw channel history while dropping keyed Runtime state replaced by the latest replay boundary. */
-fun selectRawExternalHistoryMessageIds(headers: List<MessageContextHeader>): Set<Message.Id> {
-    val latestBoundary = headers.indexOfLast { it.metadata.durableRuntimeObservationBoundary }
-    return headers.mapIndexedNotNullTo(linkedSetOf()) { index, header ->
-        header.id.takeIf { index >= latestBoundary || !header.metadata.keyedRuntimeObservation }
-    }
 }
 
 private fun JsonObject.requiresOriginalObservation(): Boolean {

@@ -397,7 +397,9 @@ internal class OpenAiResponsesMessageMapper(
             return@buildList
         }
         when (message.role) {
-            Conversation.Message.Role.USER -> {
+            Conversation.Message.Role.USER,
+            Conversation.Message.Role.RUNTIME,
+            -> {
                 val content = buildList {
                     userText(message).takeIf(String::isNotBlank)?.let { text ->
                         add(
@@ -425,10 +427,6 @@ internal class OpenAiResponsesMessageMapper(
                         )
                     )
                 }
-            }
-
-            Conversation.Message.Role.RUNTIME -> runtimeText(message).takeIf(String::isNotBlank)?.let { text ->
-                add(easyMessage(EasyInputMessage.Role.USER, text))
             }
 
             Conversation.Message.Role.ASSISTANT -> {
@@ -570,9 +568,6 @@ internal class OpenAiResponsesMessageMapper(
             .joinToString("\n")
         return listOf(instructions, text).filter(String::isNotBlank).joinToString("\n").trim()
     }
-
-    private fun runtimeText(message: Conversation.Message): String =
-        message.instructions.joinToString("\n") { it.toXmlLine() }.trim()
 
     private fun systemText(message: Conversation.Message): String {
         if (message.error != null) return ""

@@ -54,28 +54,24 @@ class TelegramRequestEnricher(
             appendLine("Execution mode: ${mode.title}. ${mode.description}.")
             if (invocation.route.additionalInstruction.isNotBlank()) appendLine("Additional channel instruction:\n${invocation.route.additionalInstruction}")
         }
-        val fencedMessages = request.messages.applyDurableRuntimeObservationReplayFence()
-            .retainLatestDurableRuntimeObservationChain()
-        val originalRoot = request.messages.single { it.id == invocation.rootMessageId }
-        val root = fencedMessages.single { it.id == invocation.rootMessageId }
-        val current = fencedMessages.filter { it.id in ownMessageIds }
+        val root = request.messages.single { it.id == invocation.rootMessageId }
+        val current = request.messages.filter { it.id in ownMessageIds }
         check(current.firstOrNull()?.id == root.id) { "Current Telegram request must precede its continuations" }
-        val currentObservationIds = current.filter { it.isDurableRuntimeObservationMessage }
-            .mapTo(mutableSetOf(), Conversation.Message::id)
-        val observations = materializeLatestObservations(fencedMessages, currentObservationIds)
-        val observationIds = fencedMessages.filter { it.isDurableRuntimeObservationMessage }
-            .mapTo(mutableSetOf(), Conversation.Message::id)
         val outputReserve = request.options.maxOutputTokens ?: model.maxOutputTokens ?: 4096
         val fixedRequest = request.copy(
             systemPrompts = request.systemPrompts + policy,
-            messages = listOf(root) + observations + current.drop(1),
+            messages = request.messages.filter { message ->
+                message.id in ownMessageIds || message.role == Conversation.Message.Role.RUNTIME
+            },
         )
         val mandatory = AiRequestTokenEstimate.input(fixedRequest).toLong() +
             outputReserve + window / 20 + 2048
         check(mandatory < window) { "Telegram invocation exceeds the model context budget" }
         var remaining = minOf(window.toLong() * invocation.route.contextPercent / 100, window - mandatory)
         val selected = mutableListOf<Conversation.Message>()
-        for (message in fencedMessages.filter { it.id !in ownMessageIds && it.id !in observationIds }.asReversed()) {
+        for (message in request.messages.filter {
+            it.id !in ownMessageIds && it.role != Conversation.Message.Role.RUNTIME
+        }.asReversed()) {
             val attachments = message.content.filterIsInstance<Conversation.Message.ContentItem.ArtifactItem>()
             val attachmentCost = if (attachments.isEmpty()) 0 else AiRequestTokenEstimate.message(
                 message.copy(content = attachments, instructions = emptyList()),
@@ -88,14 +84,20 @@ class TelegramRequestEnricher(
         val context = buildJsonObject {
             put("kind", "untrusted_group_history")
             put("messages", JsonArray(selected.asReversed().map(::transcript)))
-            originalRoot.providerMetadata["telegramReplyQuotation"]?.let { put("reply_quotation", it) }
+            root.providerMetadata["telegramReplyQuotation"]?.let { put("reply_quotation", it) }
         }
         val attachments = selected.asReversed().flatMap { it.content.filterIsInstance<Conversation.Message.ContentItem.ArtifactItem>() }
         val authorized = root.copy(content = listOf(Conversation.Message.ContentItem.UserMessage(context.toString())) + attachments +
             Conversation.Message.ContentItem.UserMessage("CURRENT AUTHORIZED REQUEST (message ${root.id.value}, Telegram user ${invocation.binding.initiatorTelegramUserId}):") + root.content)
         return request.copy(
             systemPrompts = request.systemPrompts + policy,
-            messages = listOf(authorized) + observations + current.drop(1),
+            messages = request.messages.mapNotNull { message ->
+                when {
+                    message.id == root.id -> authorized
+                    message.id in ownMessageIds || message.role == Conversation.Message.Role.RUNTIME -> message
+                    else -> null
+                }
+            },
         )
     }
 
@@ -104,34 +106,7 @@ class TelegramRequestEnricher(
         put("role", message.role.name)
         message.author?.let { put("author", Json.encodeToJsonElement(it)) }
         put("content", Json.encodeToJsonElement(message.content.filterNot {
-            it is Conversation.Message.ContentItem.Thinking && it.kind == Conversation.Message.ContentItem.Thinking.Kind.REDACTED
-        }.map { if (it is Conversation.Message.ContentItem.Thinking) it.copy(signature = null) else it }))
-    }
-
-    private fun materializeLatestObservations(
-        messages: List<Conversation.Message>,
-        excludedMessageIds: Set<Conversation.Message.Id>,
-    ): List<Conversation.Message> {
-        val retained = ConversationContext(messages).messages().filter {
-            it.isDurableRuntimeObservationMessage && it.id !in excludedMessageIds
-        }
-        val latest = linkedMapOf<String, Conversation.Message.Instruction.RuntimeObservation>()
-        retained.forEach { message ->
-            message.instructions.filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>().forEach { observation ->
-                observation.key?.let { key ->
-                    if (observation.removed) latest.remove(key) else latest[key] = observation
-                }
-            }
-        }
-        val source = retained.lastOrNull() ?: return emptyList()
-        if (latest.isEmpty()) return emptyList()
-        var materialized = source.copy(
-            providerMetadata = JsonObject(emptyMap()),
-            instructions = latest.values.sortedBy { it.key },
-        )
-        if (messages.any { it.isDurableRuntimeObservationBoundary }) {
-            materialized = materialized.withDurableRuntimeObservationBoundary()
-        }
-        return listOf(materialized)
+            it is Conversation.Message.ContentItem.Thinking
+        }))
     }
 }

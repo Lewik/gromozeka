@@ -7,8 +7,6 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationPin
 import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.compactions
-import com.gromozeka.domain.model.isDurableRuntimeObservationBoundary
-import com.gromozeka.domain.model.withDurableRuntimeObservationBoundary
 import com.gromozeka.domain.model.withoutProviderReplay
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult as Compaction
 import com.gromozeka.domain.model.ai.AI_REPLAY_THREAD_METADATA_KEY
@@ -90,38 +88,6 @@ class ManualCompactionServiceTest {
     }
 
     @Test
-    fun `text compaction strips provider reasoning when boundary remains in the suffix`() = runBlocking {
-        val f = Fixture()
-        val old = f.third.copy(
-            id = Conversation.Message.Id("pre-boundary"),
-            role = Conversation.Message.Role.ASSISTANT,
-            content = listOf(
-                Conversation.Message.ContentItem.Thinking("STALE_REASONING", signature = "signature"),
-                Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("Visible answer")),
-            ),
-        )
-        val boundary = f.third.copy(
-            id = Conversation.Message.Id("runtime-boundary"),
-            author = Conversation.Message.Author.Runtime(),
-            role = Conversation.Message.Role.RUNTIME,
-            content = emptyList(),
-            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("state", "state", "revision")),
-        ).withDurableRuntimeObservationBoundary()
-        f.append(old)
-        f.append(boundary)
-        val window = CompactionHistoryWindow(f.threadMessages.compactionHeaders(f.initialThread.id))
-
-        val messages = window.messages(
-            f.threadMessages,
-            f.initialThread.id,
-            window.headers.filter { it.id == old.id },
-            provider = null,
-        )
-
-        assertEquals(listOf(old.withoutProviderReplay()), messages)
-    }
-
-    @Test
     fun `manual selection in a 16000 message thread reads only the tool exchange including through commit`() = runBlocking {
         val f = Fixture()
         repeat(15_996) { f.append(f.third.copy(id = Conversation.Message.Id("archived-$it"))) }
@@ -172,71 +138,6 @@ class ManualCompactionServiceTest {
         assertEquals(listOf(kept.id), reasoning(latest, second.value))
         assertTrue(reasoning(latest, "real-fork").isEmpty())
         assertEquals(kept, f.messages.values.getValue(kept.id))
-    }
-
-    @Test
-    fun `compaction carries a covered durable runtime observation boundary`() = runBlocking {
-        val f = Fixture()
-        val observation = f.third.copy(
-            id = Conversation.Message.Id("runtime-observation"),
-            role = Conversation.Message.Role.RUNTIME,
-            author = Conversation.Message.Author.Runtime(),
-            content = emptyList(),
-            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
-                text = "state",
-                key = "state",
-                revision = "revision",
-            )),
-        ).withDurableRuntimeObservationBoundary()
-        f.append(observation)
-        val checkpoint = f.checkpoint(opaque = true).copy(id = Conversation.Message.Id("checkpoint"))
-        val result = checkpoint.compactions().single().copy(sourceBoundaryMessageId = observation.id)
-
-        val updated = f.committer.commit(
-            f.initialThread.id,
-            checkpoint.copy(content = listOf(result)),
-        )
-
-        val committed = f.threadMessages.messages(updated.currentThread).single { it.id == checkpoint.id }
-        assertTrue(committed.isDurableRuntimeObservationBoundary)
-    }
-
-    @Test
-    fun `selective summary invalidates replay between covered sources before carrying boundary`() = runBlocking {
-        val f = Fixture()
-        val boundary = f.third.copy(
-            id = Conversation.Message.Id("runtime-observation"),
-            role = Conversation.Message.Role.RUNTIME,
-            author = Conversation.Message.Author.Runtime(),
-            content = emptyList(),
-            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("state", "state", "revision")),
-        ).withDurableRuntimeObservationBoundary()
-        val unselected = f.third.copy(
-            id = Conversation.Message.Id("unselected-assistant"),
-            role = Conversation.Message.Role.ASSISTANT,
-            content = listOf(
-                Conversation.Message.ContentItem.Thinking("provider reasoning", signature = "signature"),
-                Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("visible answer")),
-            ),
-        )
-        val selected = f.third.copy(id = Conversation.Message.Id("selected-tail"))
-        f.append(boundary)
-        f.append(unselected)
-        f.append(selected)
-
-        val updated = f.service().compactRuntimeHistory(
-            f.conversation.id,
-            listOf(boundary.id, selected.id),
-            SquashType.DISTILL,
-        )
-
-        val history = f.threadMessages.messages(updated.currentThread)
-        val checkpoint = history.single { it.compactions().isNotEmpty() }
-        val result = checkpoint.compactions().single()
-        assertTrue(checkpoint.isDurableRuntimeObservationBoundary)
-        assertTrue(unselected.id in result.invalidatedReplayMessageIds)
-        val projected = ConversationContext(history).messages().single { it.id == unselected.id }
-        assertTrue(projected.content.none { it is Conversation.Message.ContentItem.Thinking })
     }
 
     @Test
@@ -595,27 +496,20 @@ class ManualCompactionServiceTest {
     }
 
     @Test
-    fun `Runtime rows do not satisfy the manual compaction minimum`() = runBlocking {
+    fun `Runtime rows are ordinary manual compaction input`() = runBlocking {
         for (strategy in listOf(SquashType.COMPACT, SquashType.DISTILL)) {
             val fixture = Fixture()
             val runtime = fixture.third.copy(
                 id = Conversation.Message.Id("runtime-${strategy.name.lowercase()}"),
                 role = Conversation.Message.Role.RUNTIME,
                 author = Conversation.Message.Author.Runtime(),
-                content = emptyList(),
-                instructions = listOf(
-                    Conversation.Message.Instruction.RuntimeObservation("state", "visual:one", "revision"),
-                ),
+                content = listOf(Conversation.Message.ContentItem.UserMessage("RUNTIME_JSON_${strategy.name}")),
             )
             fixture.append(runtime)
-            val counts = fixture.storageCounts()
 
-            assertFailsWith<IllegalArgumentException> {
-                fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(runtime.id), strategy)
-            }
+            fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(runtime.id), strategy)
 
-            assertEquals(counts, fixture.storageCounts())
-            assertTrue(fixture.runtimeProvider.requests.isEmpty())
+            assertContains(fixture.runtimeProvider.requests.single().toString(), "RUNTIME_JSON_${strategy.name}")
         }
 
         val fixture = Fixture()
@@ -623,24 +517,17 @@ class ManualCompactionServiceTest {
             id = Conversation.Message.Id("runtime-concatenate"),
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
-            content = emptyList(),
-            instructions = listOf(
-                Conversation.Message.Instruction.RuntimeObservation("state", "visual:one", "revision"),
-            ),
+            content = listOf(Conversation.Message.ContentItem.UserMessage("RUNTIME_JSON_CONCATENATE")),
         )
         fixture.append(runtime)
-        val counts = fixture.storageCounts()
 
-        assertFailsWith<IllegalArgumentException> {
-            fixture.service().compactRuntimeHistory(
-                fixture.conversation.id,
-                listOf(fixture.third.id, runtime.id),
-                SquashType.CONCATENATE,
-            )
-        }
+        val updated = fixture.service().compactRuntimeHistory(
+            fixture.conversation.id,
+            listOf(fixture.third.id, runtime.id),
+            SquashType.CONCATENATE,
+        )
 
-        assertEquals(counts, fixture.storageCounts())
-        assertTrue(fixture.runtimeProvider.requests.isEmpty())
+        assertContains(fixture.threadMessages.messages(updated.currentThread).last().toString(), "RUNTIME_JSON_CONCATENATE")
     }
 
     @Test
@@ -1114,15 +1001,6 @@ private class InMemoryThreadMessageRepository(
         links[threadId]?.maxOfOrNull(ThreadMessageLink::position)
     override suspend fun getMessagesByThread(threadId: Conversation.Thread.Id): List<Conversation.Message> =
         messages(threadId)
-    override suspend fun getMessagesByThreadWithoutRuntime(threadId: Conversation.Thread.Id): List<Conversation.Message> =
-        messages(threadId).filter { it.role != Conversation.Message.Role.RUNTIME }
-    override suspend fun getRawExternalContextMessagesByThread(threadId: Conversation.Thread.Id): List<Conversation.Message> {
-        val history = messages(threadId)
-        val selected = com.gromozeka.domain.model.selectRawExternalHistoryMessageIds(
-            history.map { com.gromozeka.domain.model.MessageContextHeader(it.id, com.gromozeka.domain.model.MessageContextMetadata.from(it)) },
-        )
-        return history.filter { it.id in selected }
-    }
     val bodyReads = mutableListOf<Conversation.Message.Id>()
     override suspend fun compactionHeaders(threadId: Conversation.Thread.Id) = messages(threadId).map(CompactionMessageHeader::from)
     override suspend fun compactionBodies(threadId: Conversation.Thread.Id, ids: List<Conversation.Message.Id>): List<Conversation.Message> {
@@ -1132,13 +1010,11 @@ private class InMemoryThreadMessageRepository(
     override suspend fun getContextMessagesByThread(
         threadId: Conversation.Thread.Id,
         nativeProvider: String?,
-        prepareRuntimeObservationBoundary: Boolean,
     ): com.gromozeka.domain.repository.ThreadContextMessages {
         val history = messages(threadId)
         val selected = com.gromozeka.domain.model.selectModelHistoryMessageIds(
             history.map { com.gromozeka.domain.model.MessageContextHeader(it.id, com.gromozeka.domain.model.MessageContextMetadata.from(it)) },
             history.filter { com.gromozeka.domain.model.MessageContextMetadata.from(it).hasCompaction }, nativeProvider,
-            prepareRuntimeObservationBoundary,
         )
         return com.gromozeka.domain.repository.ThreadContextMessages(
             messages = history.filter { it.id in selected },

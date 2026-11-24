@@ -3,8 +3,6 @@ package com.gromozeka.infrastructure.ai.claude
 import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
-import com.gromozeka.domain.model.applyDurableRuntimeObservationReplayFence
-import com.gromozeka.domain.model.isDurableRuntimeObservationBoundary
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiContextUsage
@@ -127,9 +125,8 @@ internal class ClaudeCodeCliRuntime(
 
     override suspend fun inspectContext(request: AiRuntimeRequest, allowProviderCount: Boolean): AiContextInspection {
         val key = sessionStateKey(request)
-        val projected = request.copy(messages = ConversationContext(
-            request.messages.applyDurableRuntimeObservationReplayFence(),
-        ).messagesForProvider(AiConnection.Kind.CLAUDE_CODE.name))
+        val projected = request.copy(messages = ConversationContext(request.messages)
+            .messagesForProvider(AiConnection.Kind.CLAUDE_CODE.name))
         if (key == null) return AiContextInspection(AiRequestTokenEstimate.input(projected), AiContextInspection.Precision.ESTIMATE)
         return sessionLocks.computeIfAbsent(key.lockKey()) { Mutex() }.withLock {
             val plan = planSession(key, request.messages)
@@ -552,14 +549,6 @@ internal class ClaudeCodeCliRuntime(
 
         val deltaOffset = generatedTailOffset + generatedTailSize
         val deltaMessages = messages.drop(deltaOffset)
-        if (deltaMessages.any { it.isDurableRuntimeObservationBoundary }) {
-            sessionStateRepository.delete(sessionKey)
-            return ClaudeCodeSessionPlan(
-                messagesToSend = messages,
-                resumeSessionId = null,
-                decision = ClaudeCodeSessionDecision.RESET_RUNTIME_OBSERVATION_BOUNDARY,
-            )
-        }
         return if (deltaMessages.isEmpty()) {
             ClaudeCodeSessionPlan(
                 messagesToSend = messages,
@@ -648,9 +637,7 @@ internal class ClaudeCodeCliRuntime(
             "New Gromozeka messages since the previous Claude Code session turn:"
         }
         val attachments = ClaudeCodeAttachmentCollector()
-        val replayMessages = ConversationContext(
-            plan.messagesToSend.applyDurableRuntimeObservationReplayFence(),
-        )
+        val replayMessages = ConversationContext(plan.messagesToSend)
             .messagesForProvider(AiConnection.Kind.CLAUDE_CODE.name)
         val prompt = listOf(
             "$header\n\n${messagesToTranscript(replayMessages, attachments)}",
@@ -805,11 +792,9 @@ internal class ClaudeCodeCliRuntime(
                     append("\n")
                 }
 
-                if (message.role != Conversation.Message.Role.RUNTIME) {
-                    message.content.forEach { item ->
-                        append(contentItemToTranscript(item, attachments))
-                        append("\n")
-                    }
+                message.content.forEach { item ->
+                    append(contentItemToTranscript(item, attachments))
+                    append("\n")
                 }
 
                 append("</message>")
@@ -927,9 +912,7 @@ internal class ClaudeCodeCliRuntime(
             append('\u001F')
             append(message.instructions.joinToString("\u001D") { it.toXmlLine() })
             append('\u001F')
-            if (message.role != Conversation.Message.Role.RUNTIME) {
-                append(message.content.joinToString("\u001D", transform = ::contentSignature))
-            }
+            append(message.content.joinToString("\u001D", transform = ::contentSignature))
         }
 
     private fun Conversation.Message.providerTranscriptRole(): String =
@@ -1153,7 +1136,6 @@ private enum class ClaudeCodeSessionDecision {
     RESET_MESSAGE_IDS_CHANGED,
     RESET_GENERATED_TAIL_CHANGED,
     RESET_TRANSCRIPT_CHANGED,
-    RESET_RUNTIME_OBSERVATION_BOUNDARY,
     FRESH_WITHOUT_DELTA,
     RESUME_WITH_DELTA,
 }

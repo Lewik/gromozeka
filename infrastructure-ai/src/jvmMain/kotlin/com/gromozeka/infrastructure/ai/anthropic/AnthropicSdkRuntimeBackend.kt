@@ -386,19 +386,11 @@ internal class AnthropicSdkMessageMapper(
     private fun toMessageParam(message: Conversation.Message, modelName: String): MessageParam? {
         return when (message.role) {
             Conversation.Message.Role.USER -> toUserMessageParam(message)
-            Conversation.Message.Role.RUNTIME -> toRuntimeMessageParam(message)
+            Conversation.Message.Role.RUNTIME -> toUserMessageParam(message)
             Conversation.Message.Role.ASSISTANT -> toAssistantMessageParam(message, modelName)
             Conversation.Message.Role.SYSTEM -> null
         }
     }
-
-    private fun toRuntimeMessageParam(message: Conversation.Message): MessageParam? =
-        message.instructions.joinToString("\n") { it.toXmlLine() }.trim().takeIf(String::isNotBlank)?.let { text ->
-            MessageParam.builder()
-                .role(MessageParam.Role.USER)
-                .contentOfBlockParams(listOf(textBlock(text)))
-                .build()
-        }
 
     private fun toUserMessageParam(message: Conversation.Message): MessageParam? {
         val blocks = mutableListOf<ContentBlockParam>()

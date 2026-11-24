@@ -34,24 +34,24 @@ class PostgresConversationSessionMetadataTest {
                     statement.execute("INSERT INTO threads(id,updated_at) VALUES ('a','2099-01-01T00:00:00Z'),('fork','2099-01-01T00:00:00Z'),('empty','2099-01-01T00:00:00Z'),('unrelated','2099-01-01T00:00:00Z')")
                 }
                 connection.prepareStatement("INSERT INTO messages(id,created_at,role,message_json,context_metadata_json) VALUES (?,?,?,?,?)").use { statement ->
-                    for ((id, at, role, runtimeObservation) in listOf(
-                        listOf("old", "2026-11-01T00:00:00Z", "USER", "false"),
-                        listOf("newer", "2026-11-04T00:00:00Z", "ASSISTANT", "false"),
-                        listOf("last-in-order", "2026-11-02T00:00:00Z", "SYSTEM", "false"),
-                        listOf("runtime-observation", "2098-01-01T00:00:00Z", "USER", "true"),
-                        listOf("foreign", "2099-01-01T00:00:00Z", "USER", "false"),
+                    for ((id, at, role) in listOf(
+                        listOf("old", "2026-11-01T00:00:00Z", "USER"),
+                        listOf("newer", "2026-11-04T00:00:00Z", "ASSISTANT"),
+                        listOf("last-in-order", "2026-11-02T00:00:00Z", "SYSTEM"),
+                        listOf("runtime", "2098-01-01T00:00:00Z", "RUNTIME"),
+                        listOf("foreign", "2099-01-01T00:00:00Z", "USER"),
                     )) {
                         statement.setString(1, id)
                         statement.setTimestamp(2, Timestamp.from(java.time.Instant.parse(at)))
                         statement.setString(3, role)
                         // This deliberately cannot be deserialized; the query must use scalar metadata only.
                         statement.setString(4, "PRIVATE_INVALID_JSON_BODY")
-                        statement.setString(5, "{\"runtimeObservation\":$runtimeObservation}")
+                        statement.setString(5, "{}")
                         statement.addBatch()
                     }
                     statement.executeBatch()
                 }
-                connection.createStatement().use { it.execute("INSERT INTO thread_messages VALUES ('a','old',0),('a','newer',1),('a','last-in-order',2),('a','runtime-observation',3),('fork','old',0),('fork','newer',1),('unrelated','foreign',0)") }
+                connection.createStatement().use { it.execute("INSERT INTO thread_messages VALUES ('a','old',0),('a','newer',1),('a','last-in-order',2),('a','runtime',3),('fork','old',0),('fork','newer',1),('unrelated','foreign',0)") }
             }
             val repository = PostgresConversationHistoryRepository(source, Json)
             val a = Conversation.Thread.Id("a")

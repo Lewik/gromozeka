@@ -17,20 +17,8 @@ import kotlinx.serialization.json.jsonPrimitive
 class ConversationContext(
     private val history: List<Message>,
     private val index: ConversationCompactionIndex = ConversationCompactionIndex(history.map(Message::compactionNode)),
-    portableBeforeIndex: Int? = null,
 ) {
     private val byId = history.associateBy(Message::id)
-    private val positions = history.mapIndexed { index, message -> message.id to index }.toMap()
-    private val replayBoundary = maxOf(
-        history.indexOfLast { it.isDurableRuntimeObservationBoundary },
-        portableBeforeIndex ?: -1,
-    )
-
-    init {
-        require(portableBeforeIndex == null || portableBeforeIndex in 0..history.size) {
-            "Portable replay boundary is outside conversation history"
-        }
-    }
 
     /** Two passes: collect back to the latest full checkpoint, then remove covered nodes. */
     fun messages(): List<Message> = project(history)
@@ -41,12 +29,10 @@ class ConversationContext(
      * A selection is projected independently of unselected summaries elsewhere in history.
      */
     fun messagesForProvider(provider: String?, selection: Set<Message.Id>? = null): List<Message> {
-        val candidates = (if (selection == null) history else history.filter { it.id in selection })
-            .map(::fenceProviderReplay)
+        val candidates = if (selection == null) history else history.filter { it.id in selection }
         // Opaque recovery can restore sources covered by another selected summary.
         // Apply coverage once more to the recovered view, not to unselected history.
         return project(prepare(candidates, provider, emptySet()))
-            .retainLatestDurableRuntimeObservationChain()
     }
 
     /** Full checkpoints protect their prefix and all transitive source versions, including themselves. */
@@ -86,19 +72,16 @@ class ConversationContext(
 
     private fun prepare(input: List<Message>, provider: String?, visiting: Set<Message.Id>): List<Message> =
         project(input).flatMap { message ->
-            val replayProvider = provider.takeUnless {
-                replayBoundary >= 0 && positions.getValue(message.id) < replayBoundary
-            }
             val incompatible = message.compactions().filter {
                 it.payload is ContextCompactionResult.Payload.OpaqueProviderState &&
-                    (replayProvider == null || it.providerScope?.provider != replayProvider)
+                    (provider == null || it.providerScope?.provider != provider)
             }
             if (incompatible.isEmpty()) return@flatMap listOf(message)
             require(message.id !in visiting) { "Cyclic opaque compaction sources at ${message.id.value}" }
             // There must be a real source for recovery. A provider label is not a summary.
             val window = index.recoveryWindow(message.id, incompatible.map(::CompactionCoverage))
             val sources = window.nodes.map { node ->
-                val source = byId[node.id]?.let(::fenceProviderReplay)
+                val source = byId[node.id]
                     ?: error("Missing compaction source message: ${node.id.value}")
                 if (node.id in window.invalidatedReplay) source.withoutProviderReplay() else source
             }
@@ -109,10 +92,6 @@ class ConversationContext(
                 message.copy(content = tail).withoutProviderReplay()
             )
         }.distinctBy(Message::id)
-
-    private fun fenceProviderReplay(message: Message): Message =
-        if (replayBoundary >= 0 && positions.getValue(message.id) < replayBoundary) message.withoutProviderReplay()
-        else message
 }
 
 fun Conversation.Message.compactions(): List<Conversation.Message.ContentItem.ContextCompactionResult> =
@@ -175,9 +154,7 @@ fun Message.recordRetainedOpenAiReplay(previous: RetainedOpenAiReplay?, suffix: 
     val sourceThread = requireNotNull(checkpoint.historyTransition).sourceThreadId.value
     val inherited = previous.idsFor(scope.provider, sourceThread)
     val invalidated = checkpoint.invalidatedReplayMessageIds.toSet()
-    val boundary = suffix.indexOfLast { it.durableRuntimeObservationBoundary }
-    val replayableSuffix = suffix.drop(boundary + 1)
-    val ids = replayableSuffix.filter { message ->
+    val ids = suffix.filter { message ->
         val metadata = message.replayMetadata
         message.role == Message.Role.ASSISTANT && message.id !in invalidated &&
             metadata["provider"] == JsonPrimitive(scope.provider) &&
@@ -194,8 +171,7 @@ fun Message.recordRetainedOpenAiReplay(previous: RetainedOpenAiReplay?, suffix: 
 fun Conversation.Message.withoutProviderReplay(): Conversation.Message = copy(
     content = content.filterNot { it is Conversation.Message.ContentItem.Thinking },
     providerMetadata = JsonObject(providerMetadata.filterKeys {
-        it == "providerManagedTool" || it == RETAINED_OPENAI_REPLAY_IDS ||
-            it == DURABLE_RUNTIME_OBSERVATION_BOUNDARY_METADATA
+        it == "providerManagedTool" || it == RETAINED_OPENAI_REPLAY_IDS
     }),
 )
 

@@ -4,7 +4,6 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.UserIdentity
-import com.gromozeka.domain.model.withDurableRuntimeObservationBoundary
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -32,7 +31,7 @@ import kotlin.time.Clock
 
 class PostgresRuntimeMessageReadTest {
     @Test
-    fun `non Runtime history and user mode reads never hydrate Runtime bodies`() = runBlocking {
+    fun `Runtime history is hydrated like ordinary messages while user mode stays sparse`() = runBlocking {
         withFixture { f ->
             val thread = f.conversation.currentThread
             val writable = f.message("writable").copy(instructions = listOf(
@@ -41,18 +40,15 @@ class PostgresRuntimeMessageReadTest {
             val runtime = f.message("runtime").copy(
                 role = Conversation.Message.Role.RUNTIME,
                 author = Conversation.Message.Author.Runtime(),
-                content = emptyList(),
-                instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
-                    "PRIVATE_STATE_${"x".repeat(300_000)}", "visual:one", "revision",
-                )),
-            ).withDurableRuntimeObservationBoundary()
+                content = listOf(ContentItem.UserMessage("RUNTIME_STATE_${"x".repeat(300_000)}")),
+            )
             val readonly = f.message("readonly").copy(instructions = listOf(
                 Conversation.Message.Instruction.UserInstruction("mode_readonly", "Readonly", "No changes"),
             ))
             listOf(writable, runtime, readonly).forEachIndexed { index, message -> f.save(message, thread, index) }
 
             lateinit var visible: List<Conversation.Message>
-            val historyRead = f.measure { visible = f.links.getMessagesByThreadWithoutRuntime(thread) }
+            val historyRead = f.measure { visible = f.links.getMessagesByThread(thread) }
             lateinit var mode: String
             val modeRead = f.measure {
                 mode = checkNotNull(f.history.latestUserInstructionId(
@@ -61,9 +57,9 @@ class PostgresRuntimeMessageReadTest {
                 ))
             }
 
-            assertEquals(listOf(writable, readonly), visible)
-            assertEquals(2L, historyRead.bodies)
-            assertTrue(historyRead.bytes < 20_000)
+            assertEquals(listOf(writable, runtime, readonly), visible)
+            assertEquals(3L, historyRead.bodies)
+            assertTrue(historyRead.bytes > 300_000)
             assertEquals("mode_readonly", mode)
             assertEquals(0L, modeRead.bodies)
         }
@@ -112,7 +108,7 @@ class PostgresRuntimeMessageReadTest {
     }
 
     @Test
-    fun `canonical client archive keeps non Runtime bodies without reading Runtime state`() = runBlocking {
+    fun `canonical client archive reads full Runtime bodies`() = runBlocking {
         withFixture { f ->
             val thread = f.conversation.currentThread
             val canonical = f.message("canonical").copy(
@@ -123,13 +119,8 @@ class PostgresRuntimeMessageReadTest {
             val runtime = f.message("runtime").copy(
                 role = Conversation.Message.Role.RUNTIME,
                 author = Conversation.Message.Author.Runtime(),
-                content = emptyList(),
-                instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
-                    "PRIVATE_STATE_${"z".repeat(300_000)}",
-                    "visual:one",
-                    "revision",
-                )),
-            ).withDurableRuntimeObservationBoundary()
+                content = listOf(ContentItem.UserMessage("RUNTIME_STATE_${"z".repeat(300_000)}")),
+            )
             f.save(canonical, thread, 0)
             f.save(runtime, thread, 1)
 
@@ -137,29 +128,21 @@ class PostgresRuntimeMessageReadTest {
             val measurement = f.measure { archive = f.history.clientMessages(thread) }
 
             assertEquals(canonical, archive[0].message)
-            assertEquals(runtime.id, archive[1].message.id)
-            assertEquals(Conversation.Message.Role.RUNTIME, archive[1].message.role)
-            assertTrue(archive[1].message.instructions.isEmpty())
-            assertTrue(archive[1].message.providerMetadata.isEmpty())
-            assertEquals(1L, measurement.bodies)
-            assertTrue(measurement.bytes < 50_000)
+            assertEquals(runtime, archive[1].message)
+            assertEquals(2L, measurement.bodies)
+            assertTrue(measurement.bytes > 300_000)
         }
     }
 
     @Test
-    fun `client point read projects Runtime state without reading its body`() = runBlocking {
+    fun `client point read returns the full Runtime body`() = runBlocking {
         withFixture { f ->
             val thread = f.conversation.currentThread
             val runtime = f.message("runtime-point").copy(
                 role = Conversation.Message.Role.RUNTIME,
                 author = Conversation.Message.Author.Runtime(),
-                content = emptyList(),
-                instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
-                    "PRIVATE_STATE_${"z".repeat(1_000_000)}",
-                    "visual:one",
-                    "revision",
-                )),
-            ).withDurableRuntimeObservationBoundary()
+                content = listOf(ContentItem.UserMessage("RUNTIME_STATE_${"z".repeat(1_000_000)}")),
+            )
             f.save(runtime, thread, 0)
 
             lateinit var point: com.gromozeka.domain.repository.PositionedConversationMessage
@@ -167,31 +150,24 @@ class PostgresRuntimeMessageReadTest {
                 point = checkNotNull(f.history.clientMessage(thread, runtime.id))
             }
 
-            assertEquals(runtime.id, point.message.id)
-            assertEquals(Conversation.Message.Role.RUNTIME, point.message.role)
-            assertTrue(point.message.instructions.isEmpty())
-            assertTrue(point.message.providerMetadata.isEmpty())
-            assertEquals(0L, measurement.bodies)
-            assertTrue(measurement.bytes < 1_000)
+            assertEquals(runtime, point.message)
+            assertEquals(1L, measurement.bodies)
+            assertTrue(measurement.bytes > 1_000_000)
         }
     }
 
     @Test
-    fun `raw external context preserves compacted rows and skips superseded Runtime bodies`() = runBlocking {
+    fun `raw external context reads Runtime messages without special pruning`() = runBlocking {
         withFixture { f ->
             val thread = f.conversation.currentThread
-            fun observation(id: String, text: String, boundary: Boolean = false): Conversation.Message {
-                val message = f.message(id).copy(
+            fun runtime(id: String, text: String): Conversation.Message = f.message(id).copy(
                     role = Conversation.Message.Role.RUNTIME,
                     author = Conversation.Message.Author.Runtime(),
-                    content = emptyList(),
-                    instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(text, "visual:one", id)),
+                    content = listOf(ContentItem.UserMessage(text)),
                 )
-                return if (boundary) message.withDurableRuntimeObservationBoundary() else message
-            }
             val archived = f.message("archived")
-            val oldBaseline = observation("old-baseline", "OLD_PRIVATE_${"x".repeat(300_000)}", boundary = true)
-            val oldDelta = observation("old-delta", "OLD_PRIVATE_${"y".repeat(300_000)}")
+            val oldBaseline = runtime("old-baseline", "OLD_RUNTIME_${"x".repeat(300_000)}")
+            val oldDelta = runtime("old-delta", "OLD_RUNTIME_${"y".repeat(300_000)}")
             val checkpoint = f.message("checkpoint").copy(
                 role = Conversation.Message.Role.ASSISTANT,
                 content = listOf(ContentItem.ContextCompactionResult(
@@ -199,40 +175,36 @@ class PostgresRuntimeMessageReadTest {
                     ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
                     coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
                 )),
-            ).withDurableRuntimeObservationBoundary()
-            val current = observation("current", "CURRENT_PRIVATE")
+            )
+            val current = runtime("current", "CURRENT_RUNTIME")
             val tail = f.message("tail")
             listOf(archived, oldBaseline, oldDelta, checkpoint, current, tail).forEachIndexed { index, message ->
                 f.save(message, thread, index)
             }
 
             lateinit var selected: List<Conversation.Message>
-            val measurement = f.measure { selected = f.links.getRawExternalContextMessagesByThread(thread) }
+            val measurement = f.measure { selected = f.links.getMessagesByThread(thread) }
 
-            assertEquals(listOf(archived, checkpoint, current, tail), selected)
-            assertEquals(4L, measurement.bodies)
-            assertTrue(measurement.bytes < 30_000)
+            assertEquals(listOf(archived, oldBaseline, oldDelta, checkpoint, current, tail), selected)
+            assertEquals(6L, measurement.bodies)
+            assertTrue(measurement.bytes > 600_000)
         }
     }
 
     @Test
-    fun `sparse context skips superseded Runtime bodies before deserialization`() = runBlocking {
+    fun `sparse model context keeps ordinary Runtime bodies`() = runBlocking {
         withFixture { f ->
             val thread = f.conversation.currentThread
-            fun observation(id: String, text: String, boundary: Boolean = false): Conversation.Message {
-                val message = f.message(id).copy(
+            fun runtime(id: String, text: String): Conversation.Message = f.message(id).copy(
                     role = Conversation.Message.Role.RUNTIME,
                     author = Conversation.Message.Author.Runtime(),
-                    content = emptyList(),
-                    instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(text, "visual:one", id)),
+                    content = listOf(ContentItem.UserMessage(text)),
                 )
-                return if (boundary) message.withDurableRuntimeObservationBoundary() else message
-            }
             val root = f.message("root")
-            val oldBaseline = observation("old-baseline", "OLD_PRIVATE_${"x".repeat(300_000)}", boundary = true)
-            val oldDelta = observation("old-delta", "OLD_PRIVATE_${"y".repeat(300_000)}")
-            val currentBaseline = observation("current-baseline", "current", boundary = true)
-            val currentDelta = observation("current-delta", "current-delta")
+            val oldBaseline = runtime("old-baseline", "OLD_RUNTIME_${"x".repeat(300_000)}")
+            val oldDelta = runtime("old-delta", "OLD_RUNTIME_${"y".repeat(300_000)}")
+            val currentBaseline = runtime("current-baseline", "current")
+            val currentDelta = runtime("current-delta", "current-delta")
             val tail = f.message("tail")
             val history = listOf(root, oldBaseline, oldDelta, currentBaseline, currentDelta, tail)
             history.forEachIndexed { index, message -> f.save(message, thread, index) }
@@ -240,15 +212,15 @@ class PostgresRuntimeMessageReadTest {
             lateinit var selected: com.gromozeka.domain.repository.ThreadContextMessages
             val measurement = f.measure { selected = f.links.getContextMessagesByThread(thread, null) }
 
-            assertEquals(listOf(root, currentBaseline, currentDelta, tail), selected.messages)
+            assertEquals(history, selected.messages)
             assertEquals(history.size, selected.sourceMessageCount)
-            assertEquals(4L, measurement.bodies)
-            assertTrue(measurement.bytes < 30_000)
+            assertEquals(6L, measurement.bodies)
+            assertTrue(measurement.bytes > 600_000)
         }
     }
 
     @Test
-    fun `timeline paging counts visible rows without reading runtime observation bodies`() = runBlocking {
+    fun `timeline paging returns Runtime bodies like other rows`() = runBlocking {
         withFixture { f ->
             val thread = f.conversation.currentThread
             val first = f.message("visible-first")
@@ -257,14 +229,8 @@ class PostgresRuntimeMessageReadTest {
                 f.message("runtime-observation-$index").copy(
                     role = Conversation.Message.Role.RUNTIME,
                     author = Conversation.Message.Author.Runtime(),
-                    content = emptyList(),
-                    instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
-                        text = "PRIVATE_STATE_${"x".repeat(250_000)}",
-                        key = "visual:$index",
-                        revision = "revision-$index",
-                    )),
-                ).let { if (index == 0) it.withDurableRuntimeObservationBoundary() else it }
-                    .also { f.save(it, thread, index + 1) }
+                    content = listOf(ContentItem.UserMessage("RUNTIME_STATE_${"x".repeat(250_000)}")),
+                ).also { f.save(it, thread, index + 1) }
             }
             val last = f.message("visible-last")
             f.save(last, thread, 4)
@@ -275,11 +241,10 @@ class PostgresRuntimeMessageReadTest {
             }
 
             assertEquals(listOf("runtime-observation-2", last.id.value), page.map { it.message.id.value })
-            assertEquals(1L, measurement.bodies)
-            assertTrue(measurement.bytes < 10_000)
+            assertEquals(2L, measurement.bodies)
+            assertTrue(measurement.bytes > 250_000)
             assertEquals(Conversation.Message.Role.RUNTIME, page.first().message.role)
             assertIs<Conversation.Message.Author.Runtime>(page.first().message.author)
-            assertTrue(page.first().message.instructions.isEmpty())
         }
     }
 
@@ -733,16 +698,11 @@ class PostgresRuntimeMessageReadTest {
                         put("provider", "OPENAI_SUBSCRIPTION"); put("connectionId", "connection"); put("model", "model")
                         put("openaiSubscriptionContextTokens", 1000); put("openaiSubscriptionContextEstimate", 900)
                     }),
-                f.message("runtime-boundary").copy(
+                f.message("runtime").copy(
                     role = Conversation.Message.Role.RUNTIME,
-                    content = emptyList(),
+                    content = listOf(ContentItem.UserMessage("runtime state")),
                     author = Conversation.Message.Author.Runtime(),
-                    instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
-                        text = "runtime state",
-                        key = "state",
-                        revision = "revision",
-                    )),
-                ).withDurableRuntimeObservationBoundary(),
+                ),
             )
             messages.forEachIndexed { index, message -> f.insertRaw(message, index) }
             f.migrate()

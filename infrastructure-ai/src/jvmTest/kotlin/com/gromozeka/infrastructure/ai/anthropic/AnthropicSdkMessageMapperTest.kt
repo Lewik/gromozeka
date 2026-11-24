@@ -32,8 +32,8 @@ import kotlin.test.assertTrue
 
 class AnthropicSdkMessageMapperTest {
     @Test
-    fun `runtime role maps to user instructions without message content`() {
-        val runtimeMessage = userMessage("UI_ONLY_CONTENT").copy(
+    fun `runtime role maps to user content and instructions`() {
+        val runtimeMessage = userMessage("RUNTIME_CONTENT").copy(
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
             instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("CURRENT_RUNTIME_STATE")),
@@ -46,7 +46,7 @@ class AnthropicSdkMessageMapperTest {
 
         assertTrue(payload.contains("\"role\":\"user\""))
         assertTrue(payload.contains("CURRENT_RUNTIME_STATE"))
-        assertFalse(payload.contains("UI_ONLY_CONTENT"))
+        assertTrue(payload.contains("RUNTIME_CONTENT"))
     }
 
     @Test

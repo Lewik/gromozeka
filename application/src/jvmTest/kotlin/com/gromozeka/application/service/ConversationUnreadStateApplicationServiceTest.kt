@@ -111,7 +111,7 @@ class ConversationUnreadStateApplicationServiceTest {
     }
 
     @Test
-    fun `durable runtime observations do not mark a conversation unread`() = runBlocking {
+    fun `runtime messages do not mark a conversation unread`() = runBlocking {
         val conversationRepository = FakeConversationRepository().apply { create(conversation) }
         val changes = RecordingStateChanges()
         val service = ConversationUnreadStateApplicationService(
@@ -124,12 +124,7 @@ class ConversationUnreadStateApplicationServiceTest {
             conversationId = conversation.id,
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
-            content = emptyList(),
-            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
-                text = "state",
-                key = "state",
-                revision = "revision",
-            )),
+            content = listOf(Conversation.Message.ContentItem.UserMessage("runtime state")),
             createdAt = conversation.updatedAt,
         )
 

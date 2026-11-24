@@ -24,18 +24,13 @@ import kotlin.time.Instant
 @OptIn(ExperimentalTestApi::class)
 class MessageTextSelectionTest {
     @Test
-    fun runtimeObservationHasCompactTimelineEntry() = runDesktopComposeUiTest {
+    fun runtimeMessageHasCompactTimelineEntry() = runDesktopComposeUiTest {
         val message = Conversation.Message(
             id = Conversation.Message.Id("runtime-observation"),
             conversationId = Conversation.Id("conversation"),
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
-            content = emptyList(),
-            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
-                text = "state",
-                key = "state",
-                revision = "revision",
-            )),
+            content = listOf(Conversation.Message.ContentItem.UserMessage("{\"kind\":\"runtime_state\"}")),
             createdAt = Instant.fromEpochMilliseconds(0),
         )
         var entries = emptyList<MessageListEntry>()
@@ -47,7 +42,7 @@ class MessageTextSelectionTest {
 
         runOnIdle {
             assertEquals(1, entries.size)
-            assertEquals(MessageSegment.RuntimeObservation, entries.single().segment)
+            assertEquals(MessageSegment.RuntimeMessage, entries.single().segment)
         }
     }
 

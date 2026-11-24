@@ -5,9 +5,6 @@ import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 
 interface ConversationRequestEnricher {
-    /** Snapshot projection must retain portable sources for the request-local observation baseline. */
-    val establishesRuntimeObservationBoundaryInSnapshot: Boolean get() = false
-
     suspend fun enrich(
         conversationId: Conversation.Id,
         rootUserMessageId: Conversation.Message.Id,

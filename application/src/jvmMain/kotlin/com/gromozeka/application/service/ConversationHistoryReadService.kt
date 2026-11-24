@@ -82,7 +82,7 @@ class ConversationHistoryReadService(
             }.message,
         )
 
-    /** Canonical client archive except for Server-owned Runtime bodies, which remain identity-only shells. */
+    /** Canonical client archive in thread order. */
     suspend fun clientMessages(conversationId: Conversation.Id): List<Conversation.Message> =
         messages.clientMessages(currentThread(conversationId)).map { it.message }
 
