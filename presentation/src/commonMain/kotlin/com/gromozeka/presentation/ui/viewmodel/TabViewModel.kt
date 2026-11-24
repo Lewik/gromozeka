@@ -907,6 +907,7 @@ class TabViewModel(
 
     fun sendPendingMessageInCurrentTurn(messageId: String) {
         val pendingMessage = _pendingMessages.value.firstOrNull { it.id == messageId } ?: return
+        if (pendingMessage.isRuntime) return
         val agentDefinitionId = pendingMessage.steeringAgentId
         val activeAgentDefinitionId = (_runtimeSnapshot.value?.activeTask ?: _runtimeSnapshot.value?.continuationTask)
             ?.primaryAgentDefinitionIdOrNull()
@@ -1615,6 +1616,7 @@ data class PendingUserMessage(
 ) {
     val steeringAgentId: AgentDefinition.Id? get() = agentDefinitionId ?: autoRespondAgentIds.singleOrNull()
     val id: String get() = userMessage.id.value
+    val isRuntime: Boolean get() = userMessage.role == Conversation.Message.Role.RUNTIME
 
     val text: String
         get() = userMessage.content.mapNotNull { item ->

@@ -251,6 +251,25 @@ class ConversationRuntimePanelUiTest {
     }
 
     @Test
+    fun runtimeQueueRowsUseAShellWithoutEditOrCurrentTurnActions() = runComposeUiTest {
+        val fixture = Fixture()
+        val runtime = fixture.snapshot(active = fixture.llmTask(fixture.alpha))
+        setContent {
+            fixture.Panel(
+                runtime,
+                pendingMessages = listOf(fixture.runtimePendingMessage(fixture.alpha)),
+            )
+        }
+
+        onNodeWithTag("side-panel-tab-tasks").performClick()
+
+        onNodeWithText(translation.text("client.instructions.runtimeObservation")).assertExists()
+        onNodeWithText(translation.runtime.currentTurnLabel).assertDoesNotExist()
+        onNodeWithText(translation.runtime.editButton).assertDoesNotExist()
+        onNodeWithText(translation.cancelButton).assertExists()
+    }
+
+    @Test
     fun zeroOneAndManyParticipantsAndSelectedRemovalAreHandled() = runComposeUiTest {
         val fixture = Fixture()
         val participants = mutableStateOf(fixture.connected())
@@ -672,6 +691,19 @@ class ConversationRuntimePanelUiTest {
                 conversationId = conversationId,
                 role = Conversation.Message.Role.USER,
                 content = listOf(Conversation.Message.ContentItem.UserMessage("Queued instruction")),
+                createdAt = now,
+            ),
+            agentDefinitionId = agent.id,
+            delivery = MessageDelivery.QUEUE,
+        )
+
+        fun runtimePendingMessage(agent: AgentDefinition) = PendingUserMessage(
+            userMessage = Conversation.Message(
+                id = Conversation.Message.Id("pending-runtime-${agent.id.value}"),
+                conversationId = conversationId,
+                role = Conversation.Message.Role.RUNTIME,
+                author = Conversation.Message.Author.Runtime(),
+                content = listOf(Conversation.Message.ContentItem.RuntimeJson(JsonNull)),
                 createdAt = now,
             ),
             agentDefinitionId = agent.id,

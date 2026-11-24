@@ -1241,7 +1241,7 @@ class GromozekaRemoteServer(
                 StateSyncSnapshotResponse(
                     query = query,
                     cursor = it.cursor.toRemote(),
-                    state = ConversationRuntimeStatePayload(it.value),
+                    state = ConversationRuntimeStatePayload(it.value.projectForRemoteClient()),
                 )
             }
             SlotsStateQuery -> slotService.snapshot(user.id).let {

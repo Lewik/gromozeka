@@ -978,8 +978,10 @@ private fun PendingMessageGroup(
     messages.forEach { message ->
         Column {
             Text(
-                text = message.text.ifBlank {
-                    message.artifacts.joinToString { it.fileName }
+                text = if (message.isRuntime) {
+                    translation.text("client.instructions.runtimeObservation")
+                } else {
+                    message.text.ifBlank { message.artifacts.joinToString { it.fileName } }
                 },
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -996,6 +998,7 @@ private fun PendingMessageGroup(
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     if (
                         isWaitingForResponse &&
+                        !message.isRuntime &&
                         activeAgentDefinitionId != null &&
                         message.steeringAgentId == activeAgentDefinitionId &&
                         message.delivery == MessageDelivery.QUEUE
