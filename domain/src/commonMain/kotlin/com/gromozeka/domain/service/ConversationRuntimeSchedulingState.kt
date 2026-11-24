@@ -217,19 +217,8 @@ data class ConversationRuntimeSchedulingState(
         )
     }
 
-    private fun activeAgentId(): AgentDefinition.Id? = when (val payload = (activeTask ?: continuationTask)?.payload) {
-        is ConversationRuntimeTask.Payload.PostMessage -> payload.autoRespondAgentIds.minByOrNull { it.value }
-        is ConversationRuntimeTask.Payload.AgentInvocation -> payload.agentDefinitionId
-        is ConversationRuntimeTask.Payload.AgentResponse -> payload.agentDefinitionId
-        is ConversationRuntimeTask.Payload.LlmCall -> payload.agentDefinitionId
-        is ConversationRuntimeTask.Payload.ToolExecution -> payload.agentDefinitionId
-        is ConversationRuntimeTask.Payload.ToolResultProcessing -> payload.agentDefinitionId
-        is ConversationRuntimeTask.Payload.MemoryRecall -> payload.agentDefinitionId
-        is ConversationRuntimeTask.Payload.MemoryRunCompletion -> payload.agentDefinitionId
-        is ConversationRuntimeTask.Payload.ResponseReview -> payload.agentDefinitionId
-        is ConversationRuntimeTask.Payload.BackgroundActivityCompletion -> payload.agentDefinitionId
-        else -> null
-    }
+    private fun activeAgentId(): AgentDefinition.Id? =
+        (activeTask ?: continuationTask)?.primaryAgentDefinitionIdOrNull()
 
     private fun prepareMessage(task: ConversationRuntimeTask, delivery: MessageDelivery): List<ConversationRuntimeTask> {
         require(task.externalChannel == null && task.userMessageOrNull() != null) {
@@ -283,8 +272,12 @@ data class ConversationRuntimeSchedulingState(
         if (index < 0) return unchanged(false)
 
         val submissions = prepareMessage(task, delivery)
-        if (submissions.size != 1) return unchanged(false)
-        val submitted = submissions.single()
+        val submitted = submissions.first()
+        if (delivery == MessageDelivery.STEER &&
+            submitted.placement != QueuedMessagePlacement.AFTER_TOOL_RESULT
+        ) {
+            return unchanged(false)
+        }
         if (submitted.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT &&
             activeTask == null && continuationTask == null
         ) {
@@ -298,9 +291,17 @@ data class ConversationRuntimeSchedulingState(
         ) {
             "Updating a queued message submission cannot change its runtime identity"
         }
-        val updatedTask = submitted.withTurnTerminationInstructions(existing.turnTerminationInstructions())
+        val replacement = listOf(
+            submitted.withTurnTerminationInstructions(existing.turnTerminationInstructions())
+        ) + submissions.drop(1)
+        val before = pendingTasks.take(index).filterNot { pending ->
+            (pending.payload as? ConversationRuntimeTask.Payload.AgentResponse)?.rootUserMessageId == task.userMessageIdOrNull()
+        }
+        val after = pendingTasks.drop(index + 1).filterNot { pending ->
+            (pending.payload as? ConversationRuntimeTask.Payload.AgentResponse)?.rootUserMessageId == task.userMessageIdOrNull()
+        }
         return changed(
-            copy(pendingTasks = pendingTasks.toMutableList().apply { this[index] = updatedTask }),
+            copy(pendingTasks = before + replacement + after),
             true,
         )
     }

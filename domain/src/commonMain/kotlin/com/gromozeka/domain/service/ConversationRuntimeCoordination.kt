@@ -213,6 +213,23 @@ data class ConversationRuntimeTask(
 
     fun userMessageIdOrNull(): Conversation.Message.Id? = userMessageOrNull()?.id
 
+    fun primaryAgentDefinitionIdOrNull(): AgentDefinition.Id? = when (val payload = payload) {
+        is Payload.PostMessage -> payload.autoRespondAgentIds.minByOrNull { it.value }
+        is Payload.AgentInvocation -> payload.agentDefinitionId
+        is Payload.AgentResponse -> payload.agentDefinitionId
+        is Payload.LlmCall -> payload.agentDefinitionId
+        is Payload.ToolExecution -> payload.agentDefinitionId
+        is Payload.ToolResultProcessing -> payload.agentDefinitionId
+        is Payload.MemoryRecall -> payload.agentDefinitionId
+        is Payload.MemoryRunCompletion -> payload.agentDefinitionId
+        is Payload.ResponseReview -> payload.agentDefinitionId
+        is Payload.BackgroundActivityCompletion -> payload.agentDefinitionId
+        is Payload.HistoryMutation,
+        is Payload.ApplyPreparedCompaction,
+        is Payload.ExecutionIncident,
+        -> null
+    }
+
     fun isRootInput(): Boolean = payload.isRootInput()
 
     fun isContinuation(): Boolean = !isRootInput()

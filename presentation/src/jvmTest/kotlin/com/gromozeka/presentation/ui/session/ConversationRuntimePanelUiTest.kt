@@ -31,6 +31,7 @@ import com.gromozeka.domain.tool.ToolAccessPolicy
 import com.gromozeka.domain.visual.*
 import com.gromozeka.presentation.services.translation.data.EnglishTranslation
 import com.gromozeka.presentation.ui.UiTestTag
+import com.gromozeka.presentation.ui.viewmodel.PendingUserMessage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -233,6 +234,20 @@ class ConversationRuntimePanelUiTest {
         runOnIdle { runtime.value = fixture.snapshot(active = fixture.llmTask(fixture.beta)) }
         onNodeWithTag(UiTestTag.RuntimeAgentTab("beta").value).assertIsSelected()
         onNodeWithTag(UiTestTag.RuntimeAgentActivity.value).assertTextEquals(translation.runtime.modelRequestStatus)
+    }
+
+    @Test
+    fun currentTurnActionIsOfferedOnlyForTheActiveAgent() = runComposeUiTest {
+        val fixture = Fixture()
+        val pendingMessages = mutableStateOf(listOf(fixture.pendingMessage(fixture.beta)))
+        val runtime = fixture.snapshot(active = fixture.llmTask(fixture.alpha))
+        setContent { fixture.Panel(runtime, pendingMessages = pendingMessages.value) }
+        onNodeWithTag("side-panel-tab-tasks").performClick()
+        onNodeWithText(translation.runtime.currentTurnLabel).assertDoesNotExist()
+
+        runOnIdle { pendingMessages.value = listOf(fixture.pendingMessage(fixture.alpha)) }
+
+        onNodeWithText(translation.runtime.currentTurnLabel).assertExists()
     }
 
     @Test
@@ -584,6 +599,8 @@ class ConversationRuntimePanelUiTest {
             selectedVisualId: String? = null,
             onClose: () -> Unit = {},
             onCloseVisual: (Visual) -> Unit = {},
+            pendingMessages: List<PendingUserMessage> = emptyList(),
+            onSendInCurrentTurn: (String) -> Unit = {},
             visualContent: @Composable (Visual) -> Unit = {},
         ) {
             MaterialTheme {
@@ -604,8 +621,8 @@ class ConversationRuntimePanelUiTest {
                             replyRoutingContent = replyRoutingContent, agentService = agentService,
                             aiConfigurationProvider = provider, aiSubscriptionQuotaService = quotaService, tokenStats = tokenStats,
                             isWaitingForResponse = runtime?.activeTask != null || runtime?.continuationTask != null,
-                            pendingMessages = emptyList(), runtimeSnapshot = runtime,
-                            onCancelCommandTask = {}, onCancelCommandMonitor = {}, onSendInCurrentTurn = {},
+                            pendingMessages = pendingMessages, runtimeSnapshot = runtime,
+                            onCancelCommandTask = {}, onCancelCommandMonitor = {}, onSendInCurrentTurn = onSendInCurrentTurn,
                             onEditPendingMessage = {}, onCancelPendingMessage = {},
                         )
                         else -> error("This fixture only provides Runtime, tasks and Visual content")
@@ -648,6 +665,18 @@ class ConversationRuntimePanelUiTest {
                 ),
             )
         }
+
+        fun pendingMessage(agent: AgentDefinition) = PendingUserMessage(
+            userMessage = Conversation.Message(
+                id = Conversation.Message.Id("pending-${agent.id.value}"),
+                conversationId = conversationId,
+                role = Conversation.Message.Role.USER,
+                content = listOf(Conversation.Message.ContentItem.UserMessage("Queued instruction")),
+                createdAt = now,
+            ),
+            agentDefinitionId = agent.id,
+            delivery = MessageDelivery.QUEUE,
+        )
 
         fun call(id: String, agentId: AgentDefinition.Id?, prompt: Int, completion: Int) = TokenUsageStatistics(
             id = TokenUsageStatistics.Id(id), timestamp = now,

@@ -1,7 +1,6 @@
 package com.gromozeka.presentation.ui.viewmodel
 
 import com.gromozeka.presentation.services.translation.LocalizedText
-import com.gromozeka.presentation.ui.liveSteeringInstruction
 import com.gromozeka.presentation.services.asAttachmentFailure
 import com.gromozeka.presentation.services.translation.LocalizedTextException
 import com.gromozeka.presentation.services.translation.localizedText
@@ -896,11 +895,19 @@ class TabViewModel(
     fun sendPendingMessageInCurrentTurn(messageId: String) {
         val pendingMessage = _pendingMessages.value.firstOrNull { it.id == messageId } ?: return
         val agentDefinitionId = pendingMessage.steeringAgentId
-        if (agentDefinitionId == null || pendingMessage.delivery == MessageDelivery.STEER) {
+        val activeAgentDefinitionId = (_runtimeSnapshot.value?.activeTask ?: _runtimeSnapshot.value?.continuationTask)
+            ?.primaryAgentDefinitionIdOrNull()
+        if (agentDefinitionId == null ||
+            agentDefinitionId != activeAgentDefinitionId ||
+            pendingMessage.delivery == MessageDelivery.STEER
+        ) {
             return
         }
 
-        val steeredMessage = pendingMessage.copy(agentDefinitionId = agentDefinitionId).withMidTurnSteerInstruction()
+        val steeredMessage = pendingMessage.copy(
+            agentDefinitionId = agentDefinitionId,
+            delivery = MessageDelivery.STEER,
+        )
         _pendingMessages.update { messages ->
             messages.map { message ->
                 if (message.id == messageId) steeredMessage else message
@@ -1091,19 +1098,6 @@ class TabViewModel(
 
     private suspend fun PendingUserMessage.cancelRuntimeQueueIfNeeded() {
         conversationRuntimeService.cancelQueuedMessage(conversationId, userMessage.id)
-    }
-
-    private fun PendingUserMessage.withMidTurnSteerInstruction(): PendingUserMessage {
-        val instructions = userMessage.instructions
-            .filterNot { instruction ->
-                instruction is Conversation.Message.Instruction.UserInstruction &&
-                    instruction.id == liveSteeringInstruction.id
-            } + liveSteeringInstruction
-
-        return copy(
-            userMessage = userMessage.copy(instructions = instructions),
-            delivery = MessageDelivery.STEER,
-        )
     }
 
     private fun Conversation.connectedAgentIds(): Set<AgentDefinition.Id> =

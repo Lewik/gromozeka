@@ -149,6 +149,31 @@ class UserMessageDeliverySchedulingTest {
         assertEquals(edited.userMessageOrNull()?.content, updated.state.pendingTasks.single().userMessageOrNull()?.content)
     }
 
+    @Test fun `updating steer broadcast to queue replaces the complete derived group`() {
+        val source = input("broadcast")
+        val broadcast = source.copy(payload = ConversationRuntimeTask.Payload.PostMessage(
+            requireNotNull(source.userMessageOrNull()), setOf(other, agent)))
+        val steered = active().submit(broadcast, now, messageDelivery = MessageDelivery.STEER).state
+        assertEquals(2, steered.pendingTasks.size)
+
+        val updated = steered.updatePendingMessageSubmission(broadcast, MessageDelivery.QUEUE)
+
+        assertTrue(updated.result)
+        val queued = updated.state.pendingTasks.single()
+        assertEquals(QueuedMessagePlacement.END_OF_TURN, queued.placement)
+        assertEquals(setOf(other, agent), assertIs<ConversationRuntimeTask.Payload.PostMessage>(queued.payload).autoRespondAgentIds)
+    }
+
+    @Test fun `pending steer update rejects a non-active recipient`() {
+        val task = input("other", other)
+        val queued = active().submit(task, now, messageDelivery = MessageDelivery.QUEUE).state
+
+        val updated = queued.updatePendingMessageSubmission(task, MessageDelivery.STEER)
+
+        assertFalse(updated.result)
+        assertEquals(queued, updated.state)
+    }
+
     @Test fun `local steering does not require an authenticated actor`() {
         val actorless = input("actorless").copy(actorUserId = null)
 
