@@ -1294,11 +1294,13 @@ conversation unread and are excluded from user-authored memory claims.
 
 Runtime JSON is trusted Harness input and may intentionally contain instructions
 or permissions; its authority comes from Runtime authorship, not from treating the
-JSON as inert text. Authenticated user-message submission still cannot forge that
-authorship. A future panel implementation should publish state through normal
-Runtime messages rather than adding Visual knowledge back to the engine. V95 only
-adds generic body-free context metadata needed by the existing sparse history
-selection; it does not backfill Runtime messages.
+JSON as inert text. Authenticated submission selects Runtime explicitly through
+the message role; the Server normalizes its author to `Author.Runtime` while
+retaining the authenticated user as the runtime-task actor. A future panel
+implementation should publish state through normal Runtime messages rather than
+adding Visual knowledge back to the engine. V95 only adds generic body-free context
+metadata needed by the existing sparse history selection; it does not backfill
+Runtime messages.
 
 `create` requires both complete state sections, `form` and `data`. `update.state`
 contains one or both complete sections: omitted roots remain unchanged, supplied

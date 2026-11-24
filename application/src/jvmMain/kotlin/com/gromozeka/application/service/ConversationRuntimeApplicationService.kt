@@ -114,12 +114,11 @@ class ConversationRuntimeApplicationService(
 
     private suspend fun autoResponders(
         conversationId: Conversation.Id,
-        userMessage: Conversation.Message,
+        message: Conversation.Message,
     ): Set<AgentDefinition.Id> {
-        require(userMessage.role == Conversation.Message.Role.USER) { "Only user messages can trigger automatic responses" }
         return requireNotNull(conversationService.findById(conversationId)) {
             "Conversation not found: ${conversationId.value}"
-        }.also { require(it.externalChannel == null) { "Send messages through the connected external channel" } }.autoRespondersFor(userMessage)
+        }.also { require(it.externalChannel == null) { "Send messages through the connected external channel" } }.autoRespondersFor(message)
     }
 
     private suspend fun requireConnectedAgent(

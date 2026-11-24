@@ -840,6 +840,25 @@ class RemoteProtocolCodecTest {
         assertEquals(agentDefinitionId, decodedSubmit.agentDefinitionId)
         assertEquals(MessageDelivery.STEER, decodedSubmit.delivery)
 
+        val runtimeMessage = userMessage.copy(
+            id = Conversation.Message.Id("runtime-submit-1"),
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(Conversation.Message.ContentItem.UnknownJson(
+                JsonObject(mapOf("kind" to JsonPrimitive("panel_state"))),
+            )),
+        )
+        val decodedRuntime = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(GromozekaClientEnvelope(
+                "runtime-submit-1",
+                SubmitMessageRequest(userMessage.conversationId, runtimeMessage, agentDefinitionId, MessageDelivery.QUEUE),
+            ))
+        ).payload as SubmitMessageRequest
+
+        assertEquals(runtimeMessage, decodedRuntime.message)
+        assertEquals(agentDefinitionId, decodedRuntime.agentDefinitionId)
+        assertEquals(MessageDelivery.QUEUE, decodedRuntime.delivery)
+
         val observeEnvelope = GromozekaClientEnvelope(
             id = "observe-1",
             payload = ObserveConversationCommand(
