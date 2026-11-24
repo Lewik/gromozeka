@@ -16,6 +16,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import com.gromozeka.domain.model.MessageInputContext
+import com.gromozeka.domain.model.MessageDelivery
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.User
@@ -76,7 +77,11 @@ class TabViewModelRuntimeReplayTest {
             ),
             createdAt = Instant.fromEpochMilliseconds(1),
         )
-        val model = viewModel(backgroundScope, runtimeEvents) {
+        val model = viewModel(
+            backgroundScope,
+            runtimeEvents,
+            messageDeliveryMode = MutableStateFlow(MessageDelivery.QUEUE),
+        ) {
             ConversationHistoryPage(Conversation.Thread.Id("thread-1"), emptyList())
         }
         runCurrent()
@@ -93,6 +98,115 @@ class TabViewModelRuntimeReplayTest {
 
         assertEquals(listOf(runtimeMessage.id.value), model.pendingMessages.value.map { it.id })
         assertEquals("", model.uiState.value.userInput)
+    }
+
+    @Test
+    fun `queued messages outside the composer contract cannot be destructively edited`() = runTest {
+        val conversationId = Conversation.Id("conversation-1")
+        val runtimeEvents = MutableSharedFlow<ConversationRuntimeEvent>(extraBufferCapacity = 2)
+        val author = Conversation.Message.Author.User(User.Id("user-1"), "User")
+        val systemMessage = Conversation.Message(
+            id = Conversation.Message.Id("system-message"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.SYSTEM,
+            author = author,
+            content = listOf(Conversation.Message.ContentItem.System(
+                Conversation.Message.ContentItem.System.SystemLevel.INFO,
+                "Harness notification",
+            )),
+            createdAt = Instant.fromEpochMilliseconds(1),
+        )
+        val unsupportedUserMessage = Conversation.Message(
+            id = Conversation.Message.Id("unsupported-user-message"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.USER,
+            author = author,
+            content = listOf(Conversation.Message.ContentItem.UserMessage("Agent handoff")),
+            instructions = listOf(Conversation.Message.Instruction.ResponseExpected("source-tab")),
+            createdAt = Instant.fromEpochMilliseconds(1),
+        )
+        val messages = listOf(systemMessage, unsupportedUserMessage)
+        val model = viewModel(
+            backgroundScope,
+            runtimeEvents,
+            messageDeliveryMode = MutableStateFlow(MessageDelivery.QUEUE),
+        ) {
+            ConversationHistoryPage(Conversation.Thread.Id("thread-1"), emptyList())
+        }
+        runCurrent()
+        runtimeEvents.emit(ConversationRuntimeEvent.SnapshotUpdated(
+            conversationId,
+            ConversationRuntimeSnapshot(
+                revision = 1,
+                conversationId = conversationId,
+                state = null,
+                pendingTasks = messages.map(::pendingTask),
+            ),
+        ))
+        runCurrent()
+
+        assertTrue(model.pendingMessages.value.none { it.editable })
+        messages.forEach { model.editPendingMessage(it.id.value) }
+        runCurrent()
+
+        assertEquals(messages.map { it.id.value }, model.pendingMessages.value.map { it.id })
+        assertEquals("", model.uiState.value.userInput)
+    }
+
+    @Test
+    fun `queued composer message restores its text context and instruction selection`() = runTest {
+        val conversationId = Conversation.Id("conversation-1")
+        val runtimeEvents = MutableSharedFlow<ConversationRuntimeEvent>(extraBufferCapacity = 2)
+        val inputContext = MessageInputContext(
+            modality = MessageInputContext.Modality.TEXT,
+            source = MessageInputContext.Source.CHAT_INPUT,
+            clientPlatform = MessageInputContext.ClientPlatform.DESKTOP,
+        )
+        val readonly = com.gromozeka.domain.model.MessageInstructionGroup.defaults().single()
+            .controls.single { it.data.id == "mode_readonly" }.data
+        val userMessage = Conversation.Message(
+            id = Conversation.Message.Id("ordinary-user-message"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.USER,
+            author = Conversation.Message.Author.User(User.Id("user-1"), "User"),
+            content = listOf(Conversation.Message.ContentItem.UserMessage("Editable message")),
+            instructions = listOf(
+                Conversation.Message.Instruction.MessageInputRuntimeContext(inputContext),
+                readonly,
+            ),
+            createdAt = Instant.fromEpochMilliseconds(1),
+        )
+        val deliveryMode = MutableStateFlow(MessageDelivery.STEER)
+        val model = viewModel(
+            backgroundScope,
+            runtimeEvents,
+            messageDeliveryMode = deliveryMode,
+        ) {
+            ConversationHistoryPage(Conversation.Thread.Id("thread-1"), emptyList())
+        }
+        runCurrent()
+        runtimeEvents.emit(ConversationRuntimeEvent.SnapshotUpdated(
+            conversationId,
+            ConversationRuntimeSnapshot(1, conversationId, null, pendingTasks = listOf(pendingTask(userMessage))),
+        ))
+        runCurrent()
+
+        assertFalse(model.pendingMessages.value.single().editable)
+        deliveryMode.value = MessageDelivery.QUEUE
+        runtimeEvents.emit(ConversationRuntimeEvent.SnapshotUpdated(
+            conversationId,
+            ConversationRuntimeSnapshot(2, conversationId, null, pendingTasks = listOf(pendingTask(userMessage))),
+        ))
+        runCurrent()
+
+        assertTrue(model.pendingMessages.value.single().editable)
+        model.editPendingMessage(userMessage.id.value)
+        runCurrent()
+
+        assertTrue(model.pendingMessages.value.isEmpty())
+        assertEquals("Editable message", model.uiState.value.userInput)
+        assertEquals(inputContext, model.uiState.value.composerMessageInputContext)
+        assertEquals(setOf("mode_readonly"), model.uiState.value.activeMessageInstructionIds)
     }
 
     @Test
@@ -599,11 +713,25 @@ class TabViewModelRuntimeReplayTest {
         assertEquals(101, model.allMessages.value.size)
     }
 
+    private fun pendingTask(message: Conversation.Message): ConversationRuntimeTask = ConversationRuntimeTask(
+        id = ConversationRuntimeTask.Id("task-${message.id.value}"),
+        conversationId = message.conversationId,
+        payload = ConversationRuntimeTask.Payload.PostMessage(message),
+        placement = com.gromozeka.domain.service.QueuedMessagePlacement.END_OF_TURN,
+        idempotencyKey = "task-${message.id.value}",
+        requirements = com.gromozeka.domain.service.ConversationRuntimeTaskRequirements(
+            setOf(com.gromozeka.domain.service.ConversationRuntimeCapability.CONVERSATION_TURN),
+            com.gromozeka.domain.service.ConversationRuntimeTaskTarget.Server,
+        ),
+        createdAt = message.createdAt,
+    )
+
     private fun viewModel(
         scope: CoroutineScope,
         runtimeEvents: MutableSharedFlow<ConversationRuntimeEvent>,
         loadMessage: suspend (Conversation.Message.Id) -> Conversation.Message = { error("Unused") },
         latestUserMessage: suspend () -> Conversation.Message? = { error("Unused") },
+        messageDeliveryMode: StateFlow<MessageDelivery> = MutableStateFlow(MessageDelivery.STEER),
         loadPage: suspend (ConversationHistoryPageRequest) -> ConversationHistoryPage,
     ): TabViewModel {
         val conversationId = Conversation.Id("conversation-1")
@@ -624,6 +752,7 @@ class TabViewModelRuntimeReplayTest {
                 when {
                     methodName.startsWith("observeConversation") -> runtimeEvents
                     methodName.startsWith("observeActiveGeneration") -> emptyFlow<ActiveGenerationSnapshot?>()
+                    methodName.startsWith("cancelQueuedMessage") -> true
                     else -> unsupported(methodName)
                 }
             },
@@ -662,6 +791,7 @@ class TabViewModelRuntimeReplayTest {
                 settingsService,
                 NoOpTurnCompletionNotificationSink,
             ),
+            messageDeliveryMode = messageDeliveryMode,
         )
     }
 

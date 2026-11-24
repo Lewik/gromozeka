@@ -553,7 +553,14 @@ class TabViewModel(
         }
         lastRuntimeSnapshotRevision = snapshot.revision
 
-        _pendingMessages.value = snapshot.pendingTasks.mapNotNull { it.toPendingUserMessageOrNull() }
+        _pendingMessages.value = snapshot.pendingTasks.mapNotNull {
+            it.toPendingUserMessageOrNull(
+                messageInstructionGroups,
+                currentUserAuthor,
+                agentMentionCandidates.value,
+                messageDeliveryMode.value,
+            )
+        }
         _activeToolExecutions.value = snapshot.toolExecutions
         _runtimeTrace.value = snapshot.trace
         _runtimeSnapshot.value = snapshot
@@ -875,7 +882,12 @@ class TabViewModel(
 
     fun editPendingMessage(messageId: String) {
         val message = _pendingMessages.value.firstOrNull { it.id == messageId } ?: return
-        if (!message.editable) return
+        val instructionIds = message.composerRoundTripInstructionIdsOrNull(
+            messageInstructionGroups,
+            currentUserAuthor,
+            agentMentionCandidates.value,
+            messageDeliveryMode.value,
+        ) ?: return
         _pendingMessages.update { messages ->
             messages.filterNot { it.id == messageId }
         }
@@ -888,6 +900,7 @@ class TabViewModel(
                 composerArtifacts = message.artifacts,
                 composerMessageInputContext = message.messageInputContext,
                 workspaceContextReferences = message.workspaceContextReferences,
+                activeMessageInstructionIds = instructionIds,
             )
         }
     }
@@ -1004,12 +1017,20 @@ class TabViewModel(
             instructions = instructions
         )
 
-        return PendingUserMessage(
+        val pendingMessage = PendingUserMessage(
             userMessage = userMessage,
             agentDefinitionId = agentDefinitionId,
             autoRespondAgentIds = agentMentionCandidates.value.filter { it.connected && it.autoRespond }
                 .mapTo(linkedSetOf()) { it.agentDefinitionId },
             delivery = messageDeliveryMode.value,
+        )
+        return pendingMessage.copy(
+            composerRoundTripInstructionIds = pendingMessage.composerRoundTripInstructionIdsOrNull(
+                messageInstructionGroups,
+                currentUserAuthor,
+                agentMentionCandidates.value,
+                messageDeliveryMode.value,
+            ),
         )
     }
 
@@ -1590,6 +1611,7 @@ data class PendingUserMessage(
     val agentDefinitionId: AgentDefinition.Id?,
     val delivery: MessageDelivery,
     val autoRespondAgentIds: Set<AgentDefinition.Id> = emptySet(),
+    val composerRoundTripInstructionIds: Set<String>? = null,
 ) {
     val steeringAgentId: AgentDefinition.Id? get() = agentDefinitionId ?: autoRespondAgentIds.singleOrNull()
     val id: String get() = userMessage.id.value
@@ -1603,9 +1625,7 @@ data class PendingUserMessage(
             }
         }.joinToString("\n")
 
-    val editable: Boolean
-        get() = userMessage.role != Conversation.Message.Role.RUNTIME &&
-            userMessage.content.none { it is Conversation.Message.ContentItem.VisualInteraction }
+    val editable: Boolean get() = composerRoundTripInstructionIds != null
 
     val artifacts: List<com.gromozeka.domain.model.Artifact.Reference>
         get() = userMessage.content
@@ -1624,20 +1644,116 @@ data class PendingUserMessage(
             ?.context
 }
 
-private fun ConversationRuntimeTask.toPendingUserMessageOrNull(): PendingUserMessage? =
+private fun Conversation.Message.composerRoundTripInstructionIdsOrNull(
+    instructionGroups: List<MessageInstructionGroup>,
+    currentUserAuthor: Conversation.Message.Author.User,
+): Set<String>? {
+    if (
+        role != Conversation.Message.Role.USER ||
+        author != currentUserAuthor ||
+        originalIds.isNotEmpty() ||
+        replyTo != null ||
+        providerMetadata.isNotEmpty() ||
+        error != null
+    ) return null
+
+    val textItems = content.filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
+    if (textItems.size > 1) return null
+    val text = textItems.singleOrNull()?.text.orEmpty()
+    val artifacts = content.filterIsInstance<Conversation.Message.ContentItem.ArtifactItem>()
+    val expectedContent = buildList {
+        text.takeIf(String::isNotBlank)?.let {
+            add(Conversation.Message.ContentItem.UserMessage(it))
+        }
+        artifacts.forEach { add(Conversation.Message.ContentItem.ArtifactItem(it.artifact)) }
+    }
+    if (expectedContent.isEmpty() || content != expectedContent) return null
+
+    val inputContexts = instructions.filterIsInstance<Conversation.Message.Instruction.MessageInputRuntimeContext>()
+    val workspaceContexts = instructions.filterIsInstance<Conversation.Message.Instruction.WorkspaceContext>()
+    val userInstructions = instructions.filterIsInstance<Conversation.Message.Instruction.UserInstruction>()
+    if (
+        inputContexts.size > 1 ||
+        workspaceContexts.size > 1 ||
+        instructions.size != inputContexts.size + workspaceContexts.size + userInstructions.size
+    ) return null
+
+    val selectedControls = buildList {
+        instructionGroups.forEach { group ->
+            val matchingInstructions = userInstructions.filter { instruction ->
+                group.controls.any { it.data.id == instruction.id }
+            }
+            if (matchingInstructions.size > 1) return null
+            val selected = if (matchingInstructions.isNotEmpty()) {
+                val instruction = matchingInstructions.single()
+                group.controls.singleOrNull { control ->
+                    control.includeInMessage && control.data == instruction
+                } ?: return null
+            } else {
+                group.controls.singleOrNull { !it.includeInMessage } ?: return null
+            }
+            add(selected)
+        }
+    }
+    val expectedUserInstructions = selectedControls.filter { it.includeInMessage }.map { it.data }
+    val expectedInstructions = inputContexts + expectedUserInstructions + workspaceContexts
+    if (instructions != expectedInstructions) return null
+
+    return selectedControls.mapTo(linkedSetOf()) { it.data.id }
+}
+
+private fun PendingUserMessage.composerRoundTripInstructionIdsOrNull(
+    instructionGroups: List<MessageInstructionGroup>,
+    currentUserAuthor: Conversation.Message.Author.User,
+    mentionCandidates: List<AgentMentionCandidate>,
+    currentDelivery: MessageDelivery,
+): Set<String>? {
+    if (delivery != currentDelivery) return null
+    val routeMatches = when (val mention = resolveAgentMention(text, mentionCandidates)) {
+        AgentMentionResolution.None -> agentDefinitionId == null && autoRespondAgentIds == mentionCandidates
+            .filter { it.connected && it.autoRespond }
+            .mapTo(linkedSetOf()) { it.agentDefinitionId }
+
+        is AgentMentionResolution.Target -> agentDefinitionId == mention.candidate.agentDefinitionId
+        is AgentMentionResolution.Invalid -> false
+    }
+    if (!routeMatches) return null
+    return userMessage.composerRoundTripInstructionIdsOrNull(instructionGroups, currentUserAuthor)
+}
+
+private fun ConversationRuntimeTask.toPendingUserMessageOrNull(
+    instructionGroups: List<MessageInstructionGroup>,
+    currentUserAuthor: Conversation.Message.Author.User,
+    mentionCandidates: List<AgentMentionCandidate>,
+    currentDelivery: MessageDelivery,
+): PendingUserMessage? =
     when (val taskPayload = payload) {
         is ConversationRuntimeTask.Payload.AgentInvocation -> PendingUserMessage(
             userMessage = taskPayload.userMessage,
             agentDefinitionId = taskPayload.agentDefinitionId,
             delivery = placement.toMessageDelivery(),
-        )
+        ).let { pendingMessage ->
+            pendingMessage.copy(composerRoundTripInstructionIds = pendingMessage.composerRoundTripInstructionIdsOrNull(
+                instructionGroups,
+                currentUserAuthor,
+                mentionCandidates,
+                currentDelivery,
+            ))
+        }
 
         is ConversationRuntimeTask.Payload.PostMessage -> PendingUserMessage(
             userMessage = taskPayload.userMessage,
             agentDefinitionId = null,
             autoRespondAgentIds = taskPayload.autoRespondAgentIds,
             delivery = placement.toMessageDelivery(),
-        )
+        ).let { pendingMessage ->
+            pendingMessage.copy(composerRoundTripInstructionIds = pendingMessage.composerRoundTripInstructionIdsOrNull(
+                instructionGroups,
+                currentUserAuthor,
+                mentionCandidates,
+                currentDelivery,
+            ))
+        }
 
         else -> null
     }
