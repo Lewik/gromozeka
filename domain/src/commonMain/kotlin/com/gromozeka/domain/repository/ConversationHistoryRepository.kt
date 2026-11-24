@@ -11,6 +11,8 @@ interface ConversationHistoryRepository {
     suspend fun page(threadId: Conversation.Thread.Id, before: Int?, after: Int?, limit: Int): List<PositionedConversationMessage>
     /** Canonical non-Runtime bodies plus identity-only Runtime shells, in thread order. */
     suspend fun clientMessages(threadId: Conversation.Thread.Id): List<PositionedConversationMessage>
+    /** Canonical non-Runtime body or identity-only Runtime shell. */
+    suspend fun clientMessage(threadId: Conversation.Thread.Id, messageId: Conversation.Message.Id): PositionedConversationMessage?
     suspend fun position(threadId: Conversation.Thread.Id, messageId: Conversation.Message.Id): Int?
     suspend fun message(threadId: Conversation.Thread.Id, messageId: Conversation.Message.Id): PositionedConversationMessage?
     suspend fun toolResults(threadId: Conversation.Thread.Id, callIds: Set<String>): List<PositionedConversationMessage>

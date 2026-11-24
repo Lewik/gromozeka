@@ -67,6 +67,14 @@ class PostgresConversationHistoryRepository(
             listOf(threadId.value),
         )
 
+    override suspend fun clientMessage(
+        threadId: Conversation.Thread.Id,
+        messageId: Conversation.Message.Id,
+    ): PositionedConversationMessage? = queryPage(
+        "$PAGE_JOIN WHERE tm.thread_id = ? AND tm.message_id = ?",
+        listOf(threadId.value, messageId.value),
+    ).singleOrNull()
+
     override suspend fun position(threadId: Conversation.Thread.Id, messageId: Conversation.Message.Id): Int? = withContext(Dispatchers.IO) {
         dataSource.connection.use { connection ->
             connection.prepareStatement("SELECT position FROM thread_messages WHERE thread_id = ? AND message_id = ?").use { statement ->

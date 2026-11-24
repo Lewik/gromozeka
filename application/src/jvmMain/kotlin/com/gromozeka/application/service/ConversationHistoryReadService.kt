@@ -77,9 +77,9 @@ class ConversationHistoryReadService(
 
     suspend fun message(conversationId: Conversation.Id, messageId: Conversation.Message.Id): Conversation.Message =
         ConversationMessageProjection.projectEvent(
-            requireNotNull(findMessage(conversationId, messageId)) {
+            requireNotNull(messages.clientMessage(currentThread(conversationId), messageId)) {
                 "Message is not in the current conversation thread"
-            },
+            }.message,
         )
 
     /** Canonical client archive except for Server-owned Runtime bodies, which remain identity-only shells. */

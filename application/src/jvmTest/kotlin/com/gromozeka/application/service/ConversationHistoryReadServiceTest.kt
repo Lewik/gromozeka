@@ -103,6 +103,10 @@ class ConversationHistoryReadServiceTest {
             val matches = args[0] == threadId.value && args[1] == stored.id.value
             when (name) {
                 "message" -> if (matches) PositionedConversationMessage(0, stored) else null
+                "clientMessage" -> if (matches) PositionedConversationMessage(
+                    0,
+                    ConversationMessageProjection.projectEvent(stored),
+                ) else null
                 "position" -> if (matches) 0 else null
                 else -> error("Point reads must not scan history: $name")
             }

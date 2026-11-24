@@ -147,6 +147,36 @@ class PostgresRuntimeMessageReadTest {
     }
 
     @Test
+    fun `client point read projects Runtime state without reading its body`() = runBlocking {
+        withFixture { f ->
+            val thread = f.conversation.currentThread
+            val runtime = f.message("runtime-point").copy(
+                role = Conversation.Message.Role.RUNTIME,
+                author = Conversation.Message.Author.Runtime(),
+                content = emptyList(),
+                instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
+                    "PRIVATE_STATE_${"z".repeat(1_000_000)}",
+                    "visual:one",
+                    "revision",
+                )),
+            ).withDurableRuntimeObservationBoundary()
+            f.save(runtime, thread, 0)
+
+            lateinit var point: com.gromozeka.domain.repository.PositionedConversationMessage
+            val measurement = f.measure {
+                point = checkNotNull(f.history.clientMessage(thread, runtime.id))
+            }
+
+            assertEquals(runtime.id, point.message.id)
+            assertEquals(Conversation.Message.Role.RUNTIME, point.message.role)
+            assertTrue(point.message.instructions.isEmpty())
+            assertTrue(point.message.providerMetadata.isEmpty())
+            assertEquals(0L, measurement.bodies)
+            assertTrue(measurement.bytes < 1_000)
+        }
+    }
+
+    @Test
     fun `raw external context preserves compacted rows and skips superseded Runtime bodies`() = runBlocking {
         withFixture { f ->
             val thread = f.conversation.currentThread
