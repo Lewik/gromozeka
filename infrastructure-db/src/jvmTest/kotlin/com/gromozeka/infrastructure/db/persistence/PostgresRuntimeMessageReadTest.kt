@@ -520,6 +520,20 @@ class PostgresRuntimeMessageReadTest {
     @Test
     fun `V97 backfills canonical tool sequence facts including imported rows without headers`() = runBlocking {
         withFixture(target = "96") { f ->
+            val bulkMessages = 2_001
+            f.source.connection.use { connection ->
+                connection.prepareStatement("""
+                    INSERT INTO messages(id, conversation_id, original_ids_json, role, created_at, search_text, message_json)
+                    SELECT 'v97-bulk-' || lpad(i::text, 5, '0'), ?, '[]', 'USER', now(), '',
+                        replace(?, 'V97_SEED_ID', 'v97-bulk-' || lpad(i::text, 5, '0'))
+                    FROM generate_series(1, ?) AS i
+                """.trimIndent()).use {
+                    it.setString(1, f.conversation.id.value)
+                    it.setString(2, Json.encodeToString(f.message("V97_SEED_ID")))
+                    it.setInt(3, bulkMessages)
+                    assertEquals(bulkMessages, it.executeUpdate())
+                }
+            }
             val call = f.message("provider-call").copy(
                 role = Conversation.Message.Role.ASSISTANT,
                 content = listOf(ContentItem.ToolCall(
@@ -553,6 +567,11 @@ class PostgresRuntimeMessageReadTest {
 
             f.source.connection.use { connection ->
                 connection.createStatement().use { statement ->
+                    statement.executeQuery("SELECT count(*), count(DISTINCT xmin::text) FROM messages").use { rows ->
+                        assertTrue(rows.next())
+                        assertEquals(bulkMessages + 3, rows.getInt(1))
+                        assertEquals(3, rows.getInt(2), "V97 must commit three cursor-advanced backfill batches")
+                    }
                     statement.executeQuery("""
                         SELECT id, tool_call_ids, tool_result_ids, provider_managed_tool,
                             tool_results_only, full_compaction_anchor

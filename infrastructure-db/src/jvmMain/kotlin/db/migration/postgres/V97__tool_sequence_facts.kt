@@ -41,10 +41,12 @@ class V97__tool_sequence_facts : BaseJavaMigration() {
         }
         val json = Json { ignoreUnknownKeys = true }
         try {
+            var afterId: String? = null
             while (true) {
-                val batch = readBatch(connection, json)
+                val batch = readBatch(connection, json, afterId)
                 if (batch.isEmpty()) break
                 writeBatch(connection, batch)
+                afterId = batch.last().id
             }
             connection.createStatement().use { statement ->
                 statement.execute("ALTER TABLE messages ALTER COLUMN tool_call_ids SET NOT NULL")
@@ -60,7 +62,7 @@ class V97__tool_sequence_facts : BaseJavaMigration() {
         }
     }
 
-    private fun readBatch(connection: Connection, json: Json): List<FactUpdate> =
+    private fun readBatch(connection: Connection, json: Json, afterId: String?): List<FactUpdate> =
         connection.prepareStatement(
             """
             WITH pending AS (
@@ -68,6 +70,7 @@ class V97__tool_sequence_facts : BaseJavaMigration() {
                     gromozeka_tool_results_only(message_json::json) AS tool_results_only
                 FROM messages
                 WHERE tool_call_ids IS NULL
+                    ${if (afterId == null) "" else "AND id > ?"}
                 ORDER BY id
                 LIMIT ?
             )
@@ -77,7 +80,9 @@ class V97__tool_sequence_facts : BaseJavaMigration() {
             ORDER BY id
             """.trimIndent(),
         ).use { select ->
-            select.setInt(1, BATCH_SIZE)
+            var parameter = 1
+            afterId?.let { select.setString(parameter++, it) }
+            select.setInt(parameter, BATCH_SIZE)
             select.executeQuery().use { rows ->
                 buildList {
                     while (rows.next()) {
