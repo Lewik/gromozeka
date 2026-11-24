@@ -26,6 +26,7 @@ import com.gromozeka.domain.service.ConversationHistoryService
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
+import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.presentation.services.NoOpAttachmentAcquisitionController
@@ -47,6 +48,53 @@ import kotlinx.coroutines.test.runTest
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TabViewModelRuntimeReplayTest {
+    @Test
+    fun `queued runtime message cannot be destructively edited into the user composer`() = runTest {
+        val conversationId = Conversation.Id("conversation-1")
+        val runtimeEvents = MutableSharedFlow<ConversationRuntimeEvent>(extraBufferCapacity = 2)
+        val runtimeMessage = Conversation.Message(
+            id = Conversation.Message.Id("runtime-message"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(
+                kotlinx.serialization.json.JsonObject(mapOf(
+                    "kind" to kotlinx.serialization.json.JsonPrimitive("panel_state"),
+                )),
+            )),
+            createdAt = Instant.fromEpochMilliseconds(1),
+        )
+        val pending = ConversationRuntimeTask(
+            id = ConversationRuntimeTask.Id("runtime-task"),
+            conversationId = conversationId,
+            payload = ConversationRuntimeTask.Payload.PostMessage(runtimeMessage),
+            placement = com.gromozeka.domain.service.QueuedMessagePlacement.END_OF_TURN,
+            idempotencyKey = "runtime-task",
+            requirements = com.gromozeka.domain.service.ConversationRuntimeTaskRequirements(
+                setOf(com.gromozeka.domain.service.ConversationRuntimeCapability.CONVERSATION_TURN),
+                com.gromozeka.domain.service.ConversationRuntimeTaskTarget.Server,
+            ),
+            createdAt = Instant.fromEpochMilliseconds(1),
+        )
+        val model = viewModel(backgroundScope, runtimeEvents) {
+            ConversationHistoryPage(Conversation.Thread.Id("thread-1"), emptyList())
+        }
+        runCurrent()
+        runtimeEvents.emit(ConversationRuntimeEvent.SnapshotUpdated(
+            conversationId,
+            ConversationRuntimeSnapshot(1, conversationId, null, pendingTasks = listOf(pending)),
+        ))
+        runCurrent()
+
+        assertEquals(listOf(runtimeMessage.id.value), model.pendingMessages.value.map { it.id })
+        assertFalse(model.pendingMessages.value.single().editable)
+        model.editPendingMessage(runtimeMessage.id.value)
+        runCurrent()
+
+        assertEquals(listOf(runtimeMessage.id.value), model.pendingMessages.value.map { it.id })
+        assertEquals("", model.uiState.value.userInput)
+    }
+
     @Test
     fun `elapsed origin ignores scrolling synthetic messages and other users but follows live own messages`() = runTest {
         val events = MutableSharedFlow<ConversationRuntimeEvent>(extraBufferCapacity = 8)
@@ -426,7 +474,7 @@ class TabViewModelRuntimeReplayTest {
         fun observation(id: String) = visible(id).copy(
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
-            content = emptyList(),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(kotlinx.serialization.json.JsonNull)),
             instructions = emptyList(),
         )
         val first = visible("visible-first")
@@ -473,7 +521,7 @@ class TabViewModelRuntimeReplayTest {
         val observationShell = visible("runtime-observation").copy(
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
-            content = emptyList(),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(kotlinx.serialization.json.JsonNull)),
             instructions = emptyList(),
         )
         val assistant = visible("assistant", Conversation.Message.Role.ASSISTANT)

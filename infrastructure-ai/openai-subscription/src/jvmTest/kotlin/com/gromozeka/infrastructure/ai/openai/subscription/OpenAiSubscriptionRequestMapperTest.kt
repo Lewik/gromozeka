@@ -42,7 +42,10 @@ class OpenAiSubscriptionRequestMapperTest {
             conversationId = conversationId,
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
-            content = listOf(Conversation.Message.ContentItem.UserMessage("RUNTIME_JSON")),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(buildJsonObject {
+                put("kind", "runtime_state")
+                put("value", "RUNTIME_JSON")
+            })),
             instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("CURRENT_RUNTIME_STATE")),
             createdAt = createdAt,
         )

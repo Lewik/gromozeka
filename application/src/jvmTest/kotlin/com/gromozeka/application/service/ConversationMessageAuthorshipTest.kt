@@ -66,7 +66,7 @@ class ConversationMessageAuthorshipTest {
             author = Conversation.Message.Author.User(User.Id("client-author"), "Client Author"),
         ).copy(
             role = Conversation.Message.Role.RUNTIME,
-            content = listOf(Conversation.Message.ContentItem.UnknownJson(payload)),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(payload)),
         )
         val decoded = Json.decodeFromString<Conversation.Message>(Json.encodeToString(submitted))
 

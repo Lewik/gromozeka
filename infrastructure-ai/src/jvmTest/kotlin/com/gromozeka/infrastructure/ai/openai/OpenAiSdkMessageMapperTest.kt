@@ -22,7 +22,10 @@ class OpenAiSdkMessageMapperTest {
             conversationId = Conversation.Id("conversation"),
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
-            content = listOf(Conversation.Message.ContentItem.UserMessage("RUNTIME_CONTENT")),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(JsonObject(mapOf(
+                "kind" to kotlinx.serialization.json.JsonPrimitive("runtime_state"),
+                "value" to kotlinx.serialization.json.JsonPrimitive("RUNTIME_CONTENT"),
+            )))),
             instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("CURRENT_RUNTIME_STATE")),
             createdAt = Instant.fromEpochMilliseconds(0),
         )

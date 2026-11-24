@@ -95,6 +95,7 @@ class CompactionHistoryWindowTest {
         val runtime = message("runtime", "runtime JSON").copy(
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
+            content = listOf(ContentItem.RuntimeJson(kotlinx.serialization.json.JsonPrimitive("runtime JSON"))),
         )
         val recent = message("recent", "x".repeat(80_000))
         val history = listOf(dialogue, runtime, recent)

@@ -503,7 +503,9 @@ class ManualCompactionServiceTest {
                 id = Conversation.Message.Id("runtime-${strategy.name.lowercase()}"),
                 role = Conversation.Message.Role.RUNTIME,
                 author = Conversation.Message.Author.Runtime(),
-                content = listOf(Conversation.Message.ContentItem.UserMessage("RUNTIME_JSON_${strategy.name}")),
+                content = listOf(Conversation.Message.ContentItem.RuntimeJson(
+                    kotlinx.serialization.json.JsonPrimitive("RUNTIME_JSON_${strategy.name}"),
+                )),
             )
             fixture.append(runtime)
 
@@ -517,7 +519,9 @@ class ManualCompactionServiceTest {
             id = Conversation.Message.Id("runtime-concatenate"),
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
-            content = listOf(Conversation.Message.ContentItem.UserMessage("RUNTIME_JSON_CONCATENATE")),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(
+                kotlinx.serialization.json.JsonPrimitive("RUNTIME_JSON_CONCATENATE"),
+            )),
         )
         fixture.append(runtime)
 

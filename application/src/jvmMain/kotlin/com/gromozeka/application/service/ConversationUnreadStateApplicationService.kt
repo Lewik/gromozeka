@@ -67,6 +67,7 @@ class ConversationUnreadStateApplicationService(
             is Conversation.Message.ContentItem.DocumentItem,
             is Conversation.Message.ContentItem.ArtifactItem,
             is Conversation.Message.ContentItem.ContextCompactionResult,
+            is Conversation.Message.ContentItem.RuntimeJson,
             is Conversation.Message.ContentItem.UnknownJson,
             -> true
         }

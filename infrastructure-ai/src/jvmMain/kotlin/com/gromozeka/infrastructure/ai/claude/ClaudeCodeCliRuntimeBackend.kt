@@ -828,6 +828,7 @@ internal class ClaudeCodeCliRuntime(
             is Conversation.Message.ContentItem.ArtifactItem ->
                 error("Claude Code received an unmaterialized artifact: ${item.artifact.id.value}")
             is Conversation.Message.ContentItem.ContextCompactionResult -> compactionResultToTranscript(item, attachments)
+            is Conversation.Message.ContentItem.RuntimeJson -> xmlBlock("runtime_json", item.json.toString())
             is Conversation.Message.ContentItem.UnknownJson -> xmlBlock("json", item.json.toString())
         }
 
@@ -950,6 +951,7 @@ internal class ClaudeCodeCliRuntime(
             is Conversation.Message.ContentItem.DocumentItem -> "document:${documentSourceSignature(item.source)}"
             is Conversation.Message.ContentItem.ArtifactItem -> "artifact:${item.artifact}"
             is Conversation.Message.ContentItem.ContextCompactionResult -> "compaction:${compactionSignature(item)}"
+            is Conversation.Message.ContentItem.RuntimeJson -> "runtime_json:${item.json}"
             is Conversation.Message.ContentItem.UnknownJson -> "json:${item.json}"
         }
 

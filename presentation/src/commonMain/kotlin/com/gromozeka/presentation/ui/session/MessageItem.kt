@@ -880,6 +880,7 @@ private fun GenericContentItem(
 
         is Conversation.Message.ContentItem.System -> Text(text = content.content)
         is Conversation.Message.ContentItem.ContextCompactionResult -> ContextCompactionResultItem(content, providerMetadata["compactionBoundary"] as? JsonObject)
+        is Conversation.Message.ContentItem.RuntimeJson -> Text(text = jsonPrettyPrint(content.json))
         is Conversation.Message.ContentItem.UnknownJson -> Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),

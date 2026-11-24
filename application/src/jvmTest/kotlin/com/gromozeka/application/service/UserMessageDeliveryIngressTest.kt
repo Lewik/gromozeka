@@ -61,7 +61,7 @@ class UserMessageDeliveryIngressTest {
         val message = Conversation.Message(
             Conversation.Message.Id("runtime-message"), conversation.id,
             role = Conversation.Message.Role.RUNTIME,
-            content = listOf(Conversation.Message.ContentItem.UnknownJson(
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(
                 JsonObject(mapOf("kind" to JsonPrimitive("panel_state"))),
             )),
             createdAt = now,

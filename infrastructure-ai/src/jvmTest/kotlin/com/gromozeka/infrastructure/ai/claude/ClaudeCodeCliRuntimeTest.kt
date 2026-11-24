@@ -1696,9 +1696,13 @@ class ClaudeCodeCliRuntimeTest {
             "kind" to JsonPrimitive("final_answer"),
             "final_answer" to JsonPrimitive("OK"),
         )))
-        val runtimeMessage = userMessage("CURRENT_RUNTIME_STATE").copy(
+        val runtimeMessage = userMessage("ignored").copy(
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(jsonObject(
+                "kind" to JsonPrimitive("runtime_state"),
+                "value" to JsonPrimitive("CURRENT_RUNTIME_STATE"),
+            ))),
         )
 
         runtime(executor).call(request(listOf(userMessage("Earlier"), runtimeMessage, userMessage("Next")), emptyList()))

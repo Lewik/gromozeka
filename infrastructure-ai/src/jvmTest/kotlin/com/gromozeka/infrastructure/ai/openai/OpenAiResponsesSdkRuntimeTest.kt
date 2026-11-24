@@ -32,7 +32,10 @@ class OpenAiResponsesSdkRuntimeTest {
         val runtimeMessage = userMessage().copy(
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
-            content = listOf(Conversation.Message.ContentItem.UserMessage("RUNTIME_CONTENT")),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(JsonObject(mapOf(
+                "kind" to JsonPrimitive("runtime_state"),
+                "value" to JsonPrimitive("RUNTIME_CONTENT"),
+            )))),
             instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("CURRENT_RUNTIME_STATE")),
         )
 

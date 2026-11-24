@@ -597,7 +597,7 @@ class ConversationEngineDeliveryTest {
             id = Conversation.Message.Id("old-runtime"),
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
-            content = listOf(ContentItem.UserMessage("OLD_RUNTIME")),
+            content = listOf(ContentItem.RuntimeJson(JsonPrimitive("OLD_RUNTIME"))),
         )
         val checkpoint = root.copy(
             id = Conversation.Message.Id("checkpoint"),
@@ -610,7 +610,7 @@ class ConversationEngineDeliveryTest {
         )
         val currentRuntime = oldRuntime.copy(
             id = Conversation.Message.Id("current-runtime"),
-            content = listOf(ContentItem.UserMessage("CURRENT_RUNTIME")),
+            content = listOf(ContentItem.RuntimeJson(JsonPrimitive("CURRENT_RUNTIME"))),
         )
         f.messages.clear()
         f.messages += listOf(archived, oldRuntime, checkpoint, currentRuntime, root)

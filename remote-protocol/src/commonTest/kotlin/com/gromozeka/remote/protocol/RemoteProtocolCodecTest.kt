@@ -844,7 +844,7 @@ class RemoteProtocolCodecTest {
             id = Conversation.Message.Id("runtime-submit-1"),
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
-            content = listOf(Conversation.Message.ContentItem.UnknownJson(
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(
                 JsonObject(mapOf("kind" to JsonPrimitive("panel_state"))),
             )),
         )

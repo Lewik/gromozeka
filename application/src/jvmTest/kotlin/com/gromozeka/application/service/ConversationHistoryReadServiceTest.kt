@@ -122,7 +122,9 @@ class ConversationHistoryReadServiceTest {
         stored = stored.copy(
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
-            content = listOf(Conversation.Message.ContentItem.UserMessage("RUNTIME_STATE")),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(
+                kotlinx.serialization.json.JsonPrimitive("RUNTIME_STATE"),
+            )),
         )
         assertEquals(stored, service.findMessage(conversationId, stored.id))
         assertEquals(ConversationMessageProjection.projectEvent(stored), service.message(conversationId, stored.id))

@@ -69,7 +69,7 @@ class AgentResponseReviewServiceTest {
             id = Conversation.Message.Id("runtime-context"),
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
-            content = listOf(ContentItem.UserMessage("RUNTIME_CONTEXT")),
+            content = listOf(ContentItem.RuntimeJson(kotlinx.serialization.json.JsonPrimitive("RUNTIME_CONTEXT"))),
         )
         val prepared = assertNotNull(reviewer.prepare(
             task, payload, conversation, listOf(readableContext, runtimeContext), listOf(message)))

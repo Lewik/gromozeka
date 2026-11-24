@@ -33,9 +33,13 @@ import kotlin.test.assertTrue
 class AnthropicSdkMessageMapperTest {
     @Test
     fun `runtime role maps to user content and instructions`() {
-        val runtimeMessage = userMessage("RUNTIME_CONTENT").copy(
+        val runtimeMessage = userMessage("ignored").copy(
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(buildJsonObject {
+                put("kind", "runtime_state")
+                put("value", "RUNTIME_CONTENT")
+            })),
             instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("CURRENT_RUNTIME_STATE")),
         )
 

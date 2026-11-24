@@ -120,25 +120,36 @@ class OpenAiSubscriptionWebSearch(private val client: OpenAiSubscriptionResponse
     }
 
     internal fun recentInput(messages: List<Conversation.Message>): List<JsonObject> {
-        val userIndices = messages.indices.filter { index ->
-            messages[index].role == Conversation.Message.Role.USER && messages[index].content.any { it is ContentItem.UserMessage || it is ContentItem.VisualInteraction }
+        val inputIndices = messages.indices.filter { index ->
+            val message = messages[index]
+            when (message.role) {
+                Conversation.Message.Role.USER,
+                Conversation.Message.Role.RUNTIME,
+                -> message.content.any { it.userInputTextOrNull() != null }
+
+                Conversation.Message.Role.ASSISTANT,
+                Conversation.Message.Role.SYSTEM,
+                -> false
+            }
         }.takeLast(2)
-        if (userIndices.isEmpty()) return emptyList()
+        if (inputIndices.isEmpty()) return emptyList()
         var assistantCharactersLeft = 4000
-        return messages.subList(userIndices.first(), userIndices.last() + 1).mapNotNull { message ->
+        return messages.subList(inputIndices.first(), inputIndices.last() + 1).mapNotNull { message ->
             val text = when (message.role) {
-                Conversation.Message.Role.USER -> message.content.mapNotNull { it.userInputTextOrNull() }.joinToString("\n")
+                Conversation.Message.Role.USER,
+                Conversation.Message.Role.RUNTIME,
+                -> message.content.mapNotNull { it.userInputTextOrNull() }.joinToString("\n")
+
                 Conversation.Message.Role.ASSISTANT -> message.content.filterIsInstance<ContentItem.AssistantMessage>()
                     .joinToString("\n") { it.structured.fullText }.take(assistantCharactersLeft).also { assistantCharactersLeft -= it.length }
-                Conversation.Message.Role.SYSTEM,
-                Conversation.Message.Role.RUNTIME,
-                -> ""
+                Conversation.Message.Role.SYSTEM -> ""
             }
             if (text.isBlank()) null else buildJsonObject {
-                put("role", if (message.role == Conversation.Message.Role.USER) "user" else "assistant")
+                val userSide = message.role != Conversation.Message.Role.ASSISTANT
+                put("role", if (userSide) "user" else "assistant")
                 put("type", "message")
                 put("content", buildJsonArray { add(buildJsonObject {
-                    put("type", if (message.role == Conversation.Message.Role.USER) "input_text" else "output_text")
+                    put("type", if (userSide) "input_text" else "output_text")
                     put("text", text)
                 }) })
             }

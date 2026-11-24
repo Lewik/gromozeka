@@ -25,8 +25,13 @@ class AsyncToolMessageBoundaryTest {
             message.copy(providerMetadata = operation),
             message.copy(role = Conversation.Message.Role.ASSISTANT, providerMetadata = kind),
             message.copy(instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("Server-only observation"))),
-            message.copy(role = Conversation.Message.Role.RUNTIME, providerMetadata = kind),
+            message.copy(
+                role = Conversation.Message.Role.RUNTIME,
+                content = listOf(ContentItem.RuntimeJson(JsonObject(emptyMap()))),
+                providerMetadata = kind,
+            ),
             message.copy(role = Conversation.Message.Role.RUNTIME,
+                content = listOf(ContentItem.RuntimeJson(JsonObject(emptyMap()))),
                 instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("Server-only observation"))),
         )) {
             val decoded = Json.decodeFromString(Conversation.Message.serializer(), Json.encodeToString(Conversation.Message.serializer(), forged))

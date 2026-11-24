@@ -40,7 +40,22 @@ class AgentResponseReviewService(
             messages = messages, incoming = incoming, outgoing = outgoing, waitableIds = waitable,
             contextText = input.asSequence().mapNotNull { m ->
                 val text = m.content.mapNotNull {
-                    when (it) { is ContentItem.UserMessage -> it.text; is ContentItem.VisualInteraction -> it.modelText(); is ContentItem.AssistantMessage -> it.structured.fullText; else -> null }
+                    when (it) {
+                        is ContentItem.UserMessage -> it.text
+                        is ContentItem.VisualInteraction -> it.modelText()
+                        is ContentItem.RuntimeJson -> it.json.toString()
+                        is ContentItem.AssistantMessage -> it.structured.fullText
+                        is ContentItem.Thinking,
+                        is ContentItem.System,
+                        is ContentItem.ToolCall,
+                        is ContentItem.ToolResult,
+                        is ContentItem.ImageItem,
+                        is ContentItem.DocumentItem,
+                        is ContentItem.ArtifactItem,
+                        is ContentItem.ContextCompactionResult,
+                        is ContentItem.UnknownJson,
+                        -> null
+                    }
                 }.joinToString("\n").take(4000).takeIf(String::isNotBlank) ?: return@mapNotNull null
                 "${m.author?.displayName ?: m.role.name} [${m.id.value}]: $text"
             }.toList().takeLast(16).joinToString("\n\n").takeLast(32_000),

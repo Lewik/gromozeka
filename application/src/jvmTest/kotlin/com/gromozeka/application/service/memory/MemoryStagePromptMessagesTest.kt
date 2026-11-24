@@ -21,7 +21,7 @@ class MemoryStagePromptMessagesTest {
         val observation = userMessage(conversationId, "runtime-observation", "unused").copy(
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
-            content = listOf(Conversation.Message.ContentItem.UserMessage("RUNTIME_CONTEXT")),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(JsonPrimitive("RUNTIME_CONTEXT"))),
         )
         val target = userMessage(conversationId, "target", "Remember this fact.")
 

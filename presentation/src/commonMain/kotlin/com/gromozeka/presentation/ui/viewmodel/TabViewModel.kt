@@ -1603,7 +1603,9 @@ data class PendingUserMessage(
             }
         }.joinToString("\n")
 
-    val editable: Boolean get() = userMessage.content.none { it is Conversation.Message.ContentItem.VisualInteraction }
+    val editable: Boolean
+        get() = userMessage.role != Conversation.Message.Role.RUNTIME &&
+            userMessage.content.none { it is Conversation.Message.ContentItem.VisualInteraction }
 
     val artifacts: List<com.gromozeka.domain.model.Artifact.Reference>
         get() = userMessage.content

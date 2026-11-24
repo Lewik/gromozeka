@@ -630,6 +630,7 @@ private class GitHubCopilotRequestMapper {
                 is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
                     error("GitHub Copilot cannot replay opaque provider compaction state")
             }
+            is Conversation.Message.ContentItem.RuntimeJson -> xmlBlock("runtime_json", item.json.toString())
             is Conversation.Message.ContentItem.UnknownJson -> xmlBlock("json", item.json.toString())
         }
 

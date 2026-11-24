@@ -124,7 +124,9 @@ class ConversationUnreadStateApplicationServiceTest {
             conversationId = conversation.id,
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
-            content = listOf(Conversation.Message.ContentItem.UserMessage("runtime state")),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(
+                kotlinx.serialization.json.JsonPrimitive("runtime state"),
+            )),
             createdAt = conversation.updatedAt,
         )
 

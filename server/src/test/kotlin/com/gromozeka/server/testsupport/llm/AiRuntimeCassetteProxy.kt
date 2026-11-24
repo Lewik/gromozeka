@@ -976,6 +976,7 @@ private fun Conversation.Message.ContentItem.extractCassetteRuntimeText(): Strin
             appendLine(artifact.fileName)
             appendLine(artifact.mediaType)
         }
+        is Conversation.Message.ContentItem.RuntimeJson -> compactCassetteJson.encodeToString(json)
         is Conversation.Message.ContentItem.UnknownJson -> compactCassetteJson.encodeToString(json)
     }
 }
@@ -1072,6 +1073,7 @@ private fun Conversation.Message.ContentItem.toStableCassetteContentItem(
                 mediaType = normalizeRuntimeText(artifact.mediaType, runtimeBindings),
             )
         )
+        is Conversation.Message.ContentItem.RuntimeJson -> copy(json = normalizeJsonElement(json, runtimeBindings))
         is Conversation.Message.ContentItem.UnknownJson -> copy(json = normalizeJsonElement(json, runtimeBindings))
     }
 }
@@ -1196,6 +1198,7 @@ private fun Conversation.Message.ContentItem.rehydrateDynamicContentItem(
                 mediaType = context.runtimeBindings.rehydrateText(artifact.mediaType),
             )
         )
+        is Conversation.Message.ContentItem.RuntimeJson -> copy(json = rehydrateJsonElement(json, context))
         is Conversation.Message.ContentItem.UnknownJson -> copy(json = rehydrateJsonElement(json, context))
     }
 }

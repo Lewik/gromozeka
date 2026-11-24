@@ -340,11 +340,11 @@ class TelegramChannelTest {
         )
         val oldObservation = textMessage("old-runtime-observation", "", Conversation.Message.Role.RUNTIME).copy(
             author = Conversation.Message.Author.Runtime(),
-            content = listOf(Conversation.Message.ContentItem.UserMessage("OLD_RUNTIME_STATE")),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(JsonPrimitive("OLD_RUNTIME_STATE"))),
         )
         val observation = textMessage("runtime-observation", "", Conversation.Message.Role.RUNTIME).copy(
             author = Conversation.Message.Author.Runtime(),
-            content = listOf(Conversation.Message.ContentItem.UserMessage("CURRENT_RUNTIME_STATE")),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(JsonPrimitive("CURRENT_RUNTIME_STATE"))),
         )
         val invocation = invocation().copy(rootMessageId = root.id, route = route.copy(additionalInstruction = "Use a friendly voice"))
         val request = AiRuntimeRequest(systemPrompts = listOf("base"),
@@ -381,7 +381,7 @@ class TelegramChannelTest {
         fun runtimeMessage(id: String, revision: String): Conversation.Message =
             textMessage(id, "", Conversation.Message.Role.RUNTIME).copy(
                 author = Conversation.Message.Author.Runtime(),
-                content = listOf(Conversation.Message.ContentItem.UserMessage("STATE_$revision")),
+                content = listOf(Conversation.Message.ContentItem.RuntimeJson(JsonPrimitive("STATE_$revision"))),
             )
         val firstObservation = runtimeMessage("runtime-observation-1", "one")
         val callId = Conversation.Message.ContentItem.ToolCall.Id("call")
@@ -445,8 +445,15 @@ class TelegramChannelTest {
     private fun invocation() = TelegramInvocation("turn", connection.id, connection.ownerUserId, binding, route, Conversation.Message.Id("root"), 7)
     private fun textMessage(id: String, text: String, role: Conversation.Message.Role = Conversation.Message.Role.ASSISTANT) =
         Conversation.Message(Conversation.Message.Id(id), binding.conversationId, role = role,
-            content = listOf(if (role == Conversation.Message.Role.ASSISTANT) Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText(text))
-                else Conversation.Message.ContentItem.UserMessage(text)), createdAt = instant)
+            content = listOf(when (role) {
+                Conversation.Message.Role.ASSISTANT -> Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText(text))
+                Conversation.Message.Role.USER -> Conversation.Message.ContentItem.UserMessage(text)
+                Conversation.Message.Role.SYSTEM -> Conversation.Message.ContentItem.System(
+                    Conversation.Message.ContentItem.System.SystemLevel.INFO,
+                    text,
+                )
+                Conversation.Message.Role.RUNTIME -> Conversation.Message.ContentItem.RuntimeJson(JsonPrimitive(text))
+            }), createdAt = instant)
     private fun processor(repository: MemorySession, gateway: FakeGateway, api: FakeApi = FakeApi(), config: TelegramConnection = connection) =
         TelegramBotProcessor(config, api, gateway, repository, { null }, now = { 100L })
 

@@ -51,6 +51,7 @@ object MessageCompactionTextRenderer {
     private fun renderContentItem(item: Conversation.Message.ContentItem): String? = when (item) {
         is Conversation.Message.ContentItem.UserMessage -> item.text
         is Conversation.Message.ContentItem.VisualInteraction -> item.modelText()
+        is Conversation.Message.ContentItem.RuntimeJson -> item.json.toString()
         is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
         is Conversation.Message.ContentItem.Thinking -> item.thinking.takeIf(String::isNotBlank)
         is Conversation.Message.ContentItem.System -> item.content

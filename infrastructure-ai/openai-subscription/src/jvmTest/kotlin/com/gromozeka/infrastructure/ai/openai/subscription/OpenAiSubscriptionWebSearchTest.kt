@@ -151,6 +151,30 @@ class OpenAiSubscriptionWebSearchTest {
         assertEquals(4000, input[1]["content"]!!.jsonArray.single().jsonObject["text"]!!.jsonPrimitive.content.length)
     }
 
+    @Test
+    fun searchContinuationIncludesTrailingRuntimeJson() {
+        val search = OpenAiSubscriptionWebSearch(client("http://127.0.0.1:1"))
+        val runtime = message(Conversation.Message.Role.RUNTIME, listOf(ContentItem.RuntimeJson(buildJsonObject {
+            put("kind", "panel_state")
+            put("revision", 7)
+        })))
+        val input = search.recentInput(listOf(
+            userMessage("old"),
+            userMessage("current"),
+            message(Conversation.Message.Role.ASSISTANT, listOf(
+                ContentItem.AssistantMessage(Conversation.Message.StructuredText("answer")),
+            )),
+            runtime,
+        ))
+
+        assertEquals(3, input.size)
+        assertEquals("user", input.last().getValue("role").jsonPrimitive.content)
+        assertEquals("input_text", input.last().getValue("content").jsonArray.single().jsonObject
+            .getValue("type").jsonPrimitive.content)
+        assertContains(input.last().toString(), "panel_state")
+        assertContains(input.last().toString(), "revision")
+    }
+
     companion object {
         const val connectionId = "web-test-connection"
         const val model = "gpt-6-astra"

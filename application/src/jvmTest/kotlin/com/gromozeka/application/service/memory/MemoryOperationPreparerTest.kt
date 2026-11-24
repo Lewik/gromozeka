@@ -39,7 +39,11 @@ class MemoryOperationPreparerTest {
             conversationId = conversationId,
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
-            content = listOf(Conversation.Message.ContentItem.UserMessage("{\"kind\":\"visual.update\"}")),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(
+                kotlinx.serialization.json.JsonObject(mapOf(
+                    "kind" to kotlinx.serialization.json.JsonPrimitive("visual.update"),
+                )),
+            )),
             createdAt = now,
         )
         val conversations = Mockito.mock(ConversationDomainService::class.java)

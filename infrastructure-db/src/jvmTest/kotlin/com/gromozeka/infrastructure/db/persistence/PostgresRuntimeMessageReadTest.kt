@@ -40,7 +40,9 @@ class PostgresRuntimeMessageReadTest {
             val runtime = f.message("runtime").copy(
                 role = Conversation.Message.Role.RUNTIME,
                 author = Conversation.Message.Author.Runtime(),
-                content = listOf(ContentItem.UserMessage("RUNTIME_STATE_${"x".repeat(300_000)}")),
+                content = listOf(ContentItem.RuntimeJson(kotlinx.serialization.json.JsonPrimitive(
+                    "RUNTIME_STATE_${"x".repeat(300_000)}",
+                ))),
             )
             val readonly = f.message("readonly").copy(instructions = listOf(
                 Conversation.Message.Instruction.UserInstruction("mode_readonly", "Readonly", "No changes"),
@@ -119,7 +121,9 @@ class PostgresRuntimeMessageReadTest {
             val runtime = f.message("runtime").copy(
                 role = Conversation.Message.Role.RUNTIME,
                 author = Conversation.Message.Author.Runtime(),
-                content = listOf(ContentItem.UserMessage("RUNTIME_STATE_${"z".repeat(300_000)}")),
+                content = listOf(ContentItem.RuntimeJson(kotlinx.serialization.json.JsonPrimitive(
+                    "RUNTIME_STATE_${"z".repeat(300_000)}",
+                ))),
             )
             f.save(canonical, thread, 0)
             f.save(runtime, thread, 1)
@@ -141,7 +145,9 @@ class PostgresRuntimeMessageReadTest {
             val runtime = f.message("runtime-point").copy(
                 role = Conversation.Message.Role.RUNTIME,
                 author = Conversation.Message.Author.Runtime(),
-                content = listOf(ContentItem.UserMessage("RUNTIME_STATE_${"z".repeat(1_000_000)}")),
+                content = listOf(ContentItem.RuntimeJson(kotlinx.serialization.json.JsonPrimitive(
+                    "RUNTIME_STATE_${"z".repeat(1_000_000)}",
+                ))),
             )
             f.save(runtime, thread, 0)
 
@@ -163,7 +169,7 @@ class PostgresRuntimeMessageReadTest {
             fun runtime(id: String, text: String): Conversation.Message = f.message(id).copy(
                     role = Conversation.Message.Role.RUNTIME,
                     author = Conversation.Message.Author.Runtime(),
-                    content = listOf(ContentItem.UserMessage(text)),
+                    content = listOf(ContentItem.RuntimeJson(kotlinx.serialization.json.JsonPrimitive(text))),
                 )
             val archived = f.message("archived")
             val oldBaseline = runtime("old-baseline", "OLD_RUNTIME_${"x".repeat(300_000)}")
@@ -198,7 +204,7 @@ class PostgresRuntimeMessageReadTest {
             fun runtime(id: String, text: String): Conversation.Message = f.message(id).copy(
                     role = Conversation.Message.Role.RUNTIME,
                     author = Conversation.Message.Author.Runtime(),
-                    content = listOf(ContentItem.UserMessage(text)),
+                    content = listOf(ContentItem.RuntimeJson(kotlinx.serialization.json.JsonPrimitive(text))),
                 )
             val root = f.message("root")
             val oldBaseline = runtime("old-baseline", "OLD_RUNTIME_${"x".repeat(300_000)}")
@@ -229,7 +235,9 @@ class PostgresRuntimeMessageReadTest {
                 f.message("runtime-observation-$index").copy(
                     role = Conversation.Message.Role.RUNTIME,
                     author = Conversation.Message.Author.Runtime(),
-                    content = listOf(ContentItem.UserMessage("RUNTIME_STATE_${"x".repeat(250_000)}")),
+                    content = listOf(ContentItem.RuntimeJson(kotlinx.serialization.json.JsonPrimitive(
+                        "RUNTIME_STATE_${"x".repeat(250_000)}",
+                    ))),
                 ).also { f.save(it, thread, index + 1) }
             }
             val last = f.message("visible-last")
@@ -700,7 +708,7 @@ class PostgresRuntimeMessageReadTest {
                     }),
                 f.message("runtime").copy(
                     role = Conversation.Message.Role.RUNTIME,
-                    content = listOf(ContentItem.UserMessage("runtime state")),
+                    content = listOf(ContentItem.RuntimeJson(kotlinx.serialization.json.JsonPrimitive("runtime state"))),
                     author = Conversation.Message.Author.Runtime(),
                 ),
             )

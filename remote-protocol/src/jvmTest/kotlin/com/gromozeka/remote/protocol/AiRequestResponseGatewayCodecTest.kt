@@ -128,7 +128,11 @@ class AiRequestResponseGatewayCodecTest {
             conversationId = Conversation.Id("conversation"),
             role = Conversation.Message.Role.RUNTIME,
             author = Conversation.Message.Author.Runtime(),
-            content = listOf(Conversation.Message.ContentItem.UserMessage("{\"kind\":\"runtime_state\"}")),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(
+                kotlinx.serialization.json.JsonObject(mapOf(
+                    "kind" to kotlinx.serialization.json.JsonPrimitive("runtime_state"),
+                )),
+            )),
             createdAt = Instant.fromEpochMilliseconds(0),
         )
         val request = fixture.runtimeRequest.copy(messages = listOf(observation))
