@@ -207,7 +207,8 @@ class ToolCallSequenceFixerService(
                 }
             }
 
-            if (remainingContent.isNotEmpty()) {
+            // Body-free placeholders for unchanged non-tool rows have empty content; retain their original links.
+            if (remainingContent.isNotEmpty() || message.content.isEmpty()) {
                 fixedMessages += if (remainingContent.size == message.content.size) {
                     message
                 } else {
