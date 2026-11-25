@@ -402,8 +402,8 @@ class PostgresRuntimeMessageReadTest {
     }
 
     @Test
-    fun `user mode decodes NULL metadata and ignores a later agent-authored override`() = runBlocking {
-        withFixture { f ->
+    fun `user mode metadata tolerates escaped NUL and ignores a later agent-authored override`() = runBlocking {
+        withFixture(target = "97") { f ->
             val thread = f.conversation.currentThread
             val writable = f.message("writable").copy(instructions = listOf(
                 Conversation.Message.Instruction.UserInstruction("mode_writable", "Writable", "Allow changes"),
@@ -427,7 +427,10 @@ class PostgresRuntimeMessageReadTest {
                 f.save(message, thread, index)
             }
             assertNull(f.metadata(readonly.id))
+            f.migrate()
+            assertEquals(listOf("mode_readonly"), checkNotNull(f.metadata(readonly.id)).userInstructionIds)
             assertTrue(checkNotNull(f.metadata(agentWritable.id)).agentAuthored)
+            assertEquals(readonly, checkNotNull(f.history.message(thread, readonly.id)).message)
 
             lateinit var mode: String
             val measurement = f.measure {
@@ -438,8 +441,54 @@ class PostgresRuntimeMessageReadTest {
             }
 
             assertEquals("mode_readonly", mode)
-            assertEquals(1L, measurement.bodies)
-            assertTrue(measurement.bytes < 20_000)
+            assertEquals(0L, measurement.bodies)
+            assertEquals(0L, measurement.bytes)
+        }
+    }
+
+    @Test
+    fun `large Runtime escaped NUL instruction remains body-free`() = runBlocking {
+        withFixture { f ->
+            val thread = f.conversation.currentThread
+            val writable = f.message("writable").copy(instructions = listOf(
+                Conversation.Message.Instruction.UserInstruction("mode_writable", "Writable", "Allow changes"),
+            ))
+            val random = java.util.Random(2)
+            val alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+            val runtimePayload = buildString(1_000_001) {
+                repeat(500_000) { append(alphabet[random.nextInt(alphabet.length)]) }
+                append('\u0000')
+                repeat(500_000) { append(alphabet[random.nextInt(alphabet.length)]) }
+            }
+            val runtime = f.message("runtime-nul").copy(
+                role = Conversation.Message.Role.RUNTIME,
+                author = Conversation.Message.Author.Runtime(),
+                content = listOf(ContentItem.RuntimeJson(JsonPrimitive(runtimePayload))),
+                instructions = listOf(
+                    Conversation.Message.Instruction.UserInstruction("mode_readonly", "Readonly", "No changes"),
+                ),
+            )
+            f.save(writable, thread, 0)
+            f.save(runtime, thread, 1)
+            assertEquals(listOf("mode_readonly"), checkNotNull(f.metadata(runtime.id)).userInstructionIds)
+
+            val calibrationBefore = f.messageToastBlocks()
+            f.readMessageBody(runtime.id)
+            assertTrue(f.messageToastBlocks() > calibrationBefore, "The Runtime body must use measured TOAST storage")
+
+            lateinit var mode: String
+            val toastBefore = f.messageToastBlocks()
+            val measurement = f.measure {
+                mode = checkNotNull(f.history.latestUserInstructionId(
+                    thread,
+                    setOf("mode_readonly", "mode_writable"),
+                ))
+            }
+
+            assertEquals("mode_readonly", mode)
+            assertEquals(0L, measurement.bodies)
+            assertEquals(0L, measurement.bytes)
+            assertEquals(0L, f.messageToastBlocks() - toastBefore)
         }
     }
 
@@ -1104,8 +1153,7 @@ class PostgresRuntimeMessageReadTest {
                     )
                 )) else message
                 assertEquals(expected, ExposedMessageRepository(Json).findById(message.id))
-                if (message.id.value == "binary") assertNull(f.metadata(message.id))
-                else assertEquals(com.gromozeka.domain.model.MessageContextMetadata.from(message), f.metadata(message.id))
+                assertEquals(com.gromozeka.domain.model.MessageContextMetadata.from(message), f.metadata(message.id))
             }
             val selected = f.links.getContextMessagesByThread(f.conversation.currentThread, null)
             assertTrue(selected.messages.any { it == messages.single { message -> message.id.value == "binary" } })
