@@ -34,6 +34,19 @@ data class ThreadContextMessages(
     }
 }
 
+/** Lightweight visible text selected without hydrating the canonical message body. */
+data class RecentVisibleMessage(
+    val id: Conversation.Message.Id,
+    val role: Conversation.Message.Role,
+    val text: String,
+) {
+    init {
+        require(role == Conversation.Message.Role.USER || role == Conversation.Message.Role.ASSISTANT) {
+            "Recent visible message must have a user or assistant role"
+        }
+    }
+}
+
 /**
  * Repository for managing thread-message relationships.
  *
@@ -121,12 +134,13 @@ interface ThreadMessageRepository {
     /** Read exactly these immutable versions in the requested order, including current author attribution. */
     suspend fun compactionBodies(threadId: Conversation.Thread.Id, ids: List<Conversation.Message.Id>): List<Conversation.Message>
 
-    /** Most recent visible user/assistant bodies ending at an included message, bounded in SQL. */
-    suspend fun recentVisibleMessagesThrough(
+    /** Most recent visible user/assistant excerpts ending at an included message, bounded in rows and characters in SQL. */
+    suspend fun recentVisibleMessageTextThrough(
         threadId: Conversation.Thread.Id,
         throughMessageId: Conversation.Message.Id,
         limit: Int,
-    ): List<Conversation.Message>
+        maxCharacters: Int,
+    ): List<RecentVisibleMessage>
 
     /** Normal provider-aware model context, bounded at and including one message in the thread. */
     suspend fun getContextMessagesThrough(

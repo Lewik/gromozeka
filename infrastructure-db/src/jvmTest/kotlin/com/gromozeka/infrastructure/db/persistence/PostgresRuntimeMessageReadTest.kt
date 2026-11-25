@@ -7,6 +7,7 @@ import com.gromozeka.domain.model.ToolSequenceFacts
 import com.gromozeka.domain.model.UserIdentity
 import com.gromozeka.domain.model.ai.AI_PROVIDER_MANAGED_TOOL_METADATA_KEY
 import com.gromozeka.domain.model.ai.projectedMessages
+import com.gromozeka.domain.repository.RecentVisibleMessage
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -35,10 +36,15 @@ import kotlin.time.Clock
 
 class PostgresRuntimeMessageReadTest {
     @Test
-    fun `recent visible history is bounded in SQL before message bodies are read`() = runBlocking {
+    fun `recent visible history is bounded in rows and characters without message bodies`() = runBlocking {
         withFixture { f ->
             val thread = f.conversation.currentThread
-            val visible = (0 until 12).map { index -> f.message("visible-$index") }
+            val visible = (0 until 12).map { index ->
+                f.message("visible-$index").let { message ->
+                    if (index == 11) message.copy(content = listOf(ContentItem.UserMessage("V".repeat(5_000))))
+                    else message
+                }
+            }
             visible.forEachIndexed { position, message -> f.save(message, thread, position) }
             val runtime = f.message("runtime").copy(
                 role = Conversation.Message.Role.RUNTIME,
@@ -52,20 +58,31 @@ class PostgresRuntimeMessageReadTest {
             val source = f.message("source").copy(
                 role = Conversation.Message.Role.ASSISTANT,
                 content = listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("Answer"))),
+                providerMetadata = buildJsonObject { put("opaque_replay", "x".repeat(500_000)) },
             )
             f.save(runtime, thread, 12)
             f.save(blank, thread, 13)
             f.save(source, thread, 14)
 
-            lateinit var selected: List<Conversation.Message>
+            lateinit var selected: List<RecentVisibleMessage>
             val measurement = f.measure {
-                selected = f.links.recentVisibleMessagesThrough(thread, source.id, limit = 10)
+                selected = f.links.recentVisibleMessageTextThrough(
+                    thread,
+                    source.id,
+                    limit = 10,
+                    maxCharacters = 4_000,
+                )
             }
 
             assertEquals(visible.drop(3).map { it.id } + source.id, selected.map { it.id })
-            assertEquals(10L, measurement.bodies)
-            assertTrue(measurement.bytes < 100_000)
+            assertEquals("Answer", selected.last().text)
+            assertEquals("V".repeat(4_000), selected.single { it.id == visible.last().id }.text)
+            assertEquals(0L, measurement.bodies)
+            assertEquals(0L, measurement.bytes)
+            assertEquals(10L, measurement.rows)
             assertTrue(measurement.queries.single().contains("LIMIT ?", ignoreCase = true))
+            assertTrue(measurement.queries.single().contains("left(m.message_text, ?)", ignoreCase = true))
+            assertFalse(measurement.queries.single().contains("message_json", ignoreCase = true))
         }
     }
 

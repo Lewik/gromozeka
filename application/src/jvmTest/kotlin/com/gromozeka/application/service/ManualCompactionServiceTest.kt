@@ -1011,10 +1011,11 @@ private class InMemoryThreadMessageRepository(
         bodyReads += ids
         return ids.map(messages(threadId).associateBy { it.id }::getValue)
     }
-    override suspend fun recentVisibleMessagesThrough(
+    override suspend fun recentVisibleMessageTextThrough(
         threadId: Conversation.Thread.Id,
         throughMessageId: Conversation.Message.Id,
         limit: Int,
+        maxCharacters: Int,
     ) = error("Suggested replies are outside this compaction fixture")
     override suspend fun getContextMessagesThrough(
         threadId: Conversation.Thread.Id,

@@ -172,23 +172,28 @@ class ConversationApplicationService(
 
             UserProfile.SuggestedRepliesSettings.Mode.DISABLED -> error("Unreachable")
         }
-        val messages = when (settings.contextMode) {
+        val suggestionContext = when (settings.contextMode) {
             UserProfile.SuggestedRepliesSettings.ContextMode.RECENT_MESSAGES ->
-                threadMessageRepo.recentVisibleMessagesThrough(
-                    conversation.currentThread,
-                    sourceMessageId,
-                    SUGGESTED_REPLIES_CONTEXT_MESSAGES,
+                SuggestedRepliesGenerationService.Context.Recent(
+                    threadMessageRepo.recentVisibleMessageTextThrough(
+                        conversation.currentThread,
+                        sourceMessageId,
+                        SUGGESTED_REPLIES_RECENT_CONTEXT_MESSAGES,
+                        SUGGESTED_REPLIES_RECENT_MESSAGE_CHARACTERS,
+                    )
                 )
             UserProfile.SuggestedRepliesSettings.ContextMode.FULL_THREAD ->
-                threadMessageRepo.getContextMessagesThrough(
-                    conversation.currentThread,
-                    sourceMessageId,
-                    suggestedRepliesGenerationService.nativeContextProvider(runtimeSelection),
-                ).messages
+                SuggestedRepliesGenerationService.Context.Full(
+                    threadMessageRepo.getContextMessagesThrough(
+                        conversation.currentThread,
+                        sourceMessageId,
+                        suggestedRepliesGenerationService.nativeContextProvider(runtimeSelection),
+                    ).messages
+                )
         }
         return suggestedRepliesGenerationService.generate(
             conversation = conversation,
-            messages = messages,
+            context = suggestionContext,
             sourceMessage = sourceMessage,
             agentDefinitionId = sourceAgentId,
             runtimeSelection = runtimeSelection,
@@ -639,5 +644,3 @@ class ConversationApplicationService(
 }
 
 private infix fun <T> Set<T>.xor(other: Set<T>): Set<T> = (this - other) + (other - this)
-
-private const val SUGGESTED_REPLIES_CONTEXT_MESSAGES = 10

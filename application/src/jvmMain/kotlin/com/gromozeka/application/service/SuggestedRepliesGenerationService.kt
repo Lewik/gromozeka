@@ -11,6 +11,7 @@ import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.model.ai.nativeCompactionProvider
+import com.gromozeka.domain.repository.RecentVisibleMessage
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiRuntimeProvider
 import kotlin.time.Clock
@@ -22,6 +23,11 @@ class SuggestedRepliesGenerationService(
     private val conversationPins: ConversationPinnedPrompt,
     private val aiConfigurationProvider: AiConfigurationProvider,
 ) {
+    sealed interface Context {
+        data class Recent(val messages: List<RecentVisibleMessage>) : Context
+        data class Full(val messages: List<Conversation.Message>) : Context
+    }
+
     fun requireConfiguredRuntimeSelection(): AiRuntimeSelection =
         aiConfigurationProvider.requireAvailableRuntimeSelectionFor(AiRuntimeAssignment.Purpose.SUGGESTED_REPLIES)
 
@@ -30,7 +36,7 @@ class SuggestedRepliesGenerationService(
 
     suspend fun generate(
         conversation: Conversation,
-        messages: List<Conversation.Message>,
+        context: Context,
         sourceMessage: Conversation.Message,
         agentDefinitionId: AgentDefinition.Id,
         runtimeSelection: AiRuntimeSelection,
@@ -38,6 +44,11 @@ class SuggestedRepliesGenerationService(
         usageId: String,
         settings: SuggestedRepliesSettings,
     ): List<String> {
+        val contextMatchesMode = when (settings.contextMode) {
+            SuggestedRepliesSettings.ContextMode.RECENT_MESSAGES -> context is Context.Recent
+            SuggestedRepliesSettings.ContextMode.FULL_THREAD -> context is Context.Full
+        }
+        require(contextMatchesMode) { "Suggested replies context does not match the configured context mode" }
         val runtime = aiRuntimeProvider.getRuntime(runtimeSelection, workspaceRootPath = null)
         val instructionMessage = Conversation.Message(
             id = Conversation.Message.Id("$usageId:request"),
@@ -45,10 +56,9 @@ class SuggestedRepliesGenerationService(
             role = Conversation.Message.Role.USER,
             content = listOf(
                 Conversation.Message.ContentItem.UserMessage(
-                    if (settings.contextMode == SuggestedRepliesSettings.ContextMode.FULL_THREAD) {
-                        buildGenerationInstruction(settings)
-                    } else {
-                        buildRecentSuggestionPrompt(messages, settings)
+                    when (context) {
+                        is Context.Recent -> buildRecentSuggestionPrompt(context.messages, settings)
+                        is Context.Full -> buildGenerationInstruction(settings)
                     },
                 )
             ),
@@ -57,9 +67,9 @@ class SuggestedRepliesGenerationService(
         val response = runtime.call(
             AiRuntimeRequest(
                 systemPrompts = conversationPins.append(conversation.id, listOf(SYSTEM_PROMPT)),
-                messages = when (settings.contextMode) {
-                    SuggestedRepliesSettings.ContextMode.RECENT_MESSAGES -> listOf(instructionMessage)
-                    SuggestedRepliesSettings.ContextMode.FULL_THREAD -> messages + instructionMessage
+                messages = when (context) {
+                    is Context.Recent -> listOf(instructionMessage)
+                    is Context.Full -> context.messages + instructionMessage
                 },
                 options = AiRuntimeOptions(
                     maxOutputTokens = 256,
@@ -88,16 +98,25 @@ class SuggestedRepliesGenerationService(
         return suggestions
     }
 
-    private fun buildRecentSuggestionPrompt(messages: List<Conversation.Message>, settings: SuggestedRepliesSettings): String {
-        val context = messages.asSequence()
+    fun recentContext(messages: List<Conversation.Message>): Context.Recent = Context.Recent(
+        messages.asSequence()
             .filter { it.role == Conversation.Message.Role.USER || it.role == Conversation.Message.Role.ASSISTANT }
             .mapNotNull { message ->
                 message.visibleText().takeIf(String::isNotBlank)?.let { text ->
-                    "${message.role.name}: ${text.take(MAX_MESSAGE_CHARACTERS)}"
+                    RecentVisibleMessage(message.id, message.role, text)
                 }
             }
+            .toList(),
+    )
+
+    private fun buildRecentSuggestionPrompt(messages: List<RecentVisibleMessage>, settings: SuggestedRepliesSettings): String {
+        val context = messages.asSequence()
+            .filter { message -> message.text.isNotBlank() }
+            .map { message ->
+                "${message.role.name}: ${message.text.take(SUGGESTED_REPLIES_RECENT_MESSAGE_CHARACTERS)}"
+            }
             .toList()
-            .takeLast(MAX_CONTEXT_MESSAGES)
+            .takeLast(SUGGESTED_REPLIES_RECENT_CONTEXT_MESSAGES)
             .joinToString("\n\n")
         return buildString {
             appendLine("Conversation context:")
@@ -132,8 +151,6 @@ class SuggestedRepliesGenerationService(
         .toList()
 
     private companion object {
-        const val MAX_CONTEXT_MESSAGES = 10
-        const val MAX_MESSAGE_CHARACTERS = 4_000
         const val MAX_REPLY_CHARACTERS = 160
         const val MAX_REPLIES = 4
 
@@ -144,3 +161,6 @@ class SuggestedRepliesGenerationService(
         """.trimIndent()
     }
 }
+
+internal const val SUGGESTED_REPLIES_RECENT_CONTEXT_MESSAGES = 10
+internal const val SUGGESTED_REPLIES_RECENT_MESSAGE_CHARACTERS = 4_000

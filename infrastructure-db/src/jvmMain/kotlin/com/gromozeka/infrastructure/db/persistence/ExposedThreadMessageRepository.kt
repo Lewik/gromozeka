@@ -19,6 +19,7 @@ import java.sql.Connection
 import com.gromozeka.domain.repository.ThreadMessageLink
 import com.gromozeka.domain.repository.ThreadContextMessages
 import com.gromozeka.domain.repository.ThreadMessageRepository
+import com.gromozeka.domain.repository.RecentVisibleMessage
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
@@ -120,21 +121,24 @@ class ExposedThreadMessageRepository(
         resolveCurrentMessageAuthors(ids.map(found::getValue))
     }
 
-    override suspend fun recentVisibleMessagesThrough(
+    override suspend fun recentVisibleMessageTextThrough(
         threadId: Conversation.Thread.Id,
         throughMessageId: Conversation.Message.Id,
         limit: Int,
-    ): List<Conversation.Message> = newSuspendedTransaction(
+        maxCharacters: Int,
+    ): List<RecentVisibleMessage> = newSuspendedTransaction(
         Dispatchers.IO,
         transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ,
         readOnly = true,
     ) {
         require(limit in 1..100)
+        require(maxCharacters in 1..100_000)
         val newestFirst = TransactionManager.current().exec(
             RECENT_VISIBLE_MESSAGES_SQL,
             listOf(
                 TextColumnType() to threadId.value,
                 TextColumnType() to throughMessageId.value,
+                IntegerColumnType() to maxCharacters,
                 TextColumnType() to threadId.value,
                 IntegerColumnType() to limit,
             ),
@@ -142,11 +146,15 @@ class ExposedThreadMessageRepository(
         ) { rows ->
             buildList {
                 while (rows.next()) {
-                    add(json.decodeFromString<Conversation.Message>(rows.getString("message_json")))
+                    add(RecentVisibleMessage(
+                        id = Conversation.Message.Id(rows.getString("message_id")),
+                        role = Conversation.Message.Role.valueOf(rows.getString("role")),
+                        text = rows.getString("message_text"),
+                    ))
                 }
             }
         }.orEmpty()
-        resolveCurrentMessageAuthors(newestFirst.asReversed())
+        newestFirst.asReversed()
     }
 
     override suspend fun invalidToolSequenceWindow(
@@ -340,7 +348,7 @@ class ExposedThreadMessageRepository(
                 FROM thread_messages
                 WHERE thread_id = ? AND message_id = ?
             )
-            SELECT m.message_json
+            SELECT tm.message_id, m.role, left(m.message_text, ?) AS message_text
             FROM thread_messages tm
             JOIN messages m ON m.id = tm.message_id
             CROSS JOIN source s

@@ -120,7 +120,12 @@ class SuggestedRepliesGenerationServiceTest {
             Mockito.mock(AiConfigurationProvider::class.java),
         )
         suspend fun generate(messages: List<Conversation.Message>, settings: SuggestedRepliesSettings): List<String> = service.generate(
-            conversation, messages, messages.last(), agent, AiRuntimeSelection(AiModelConfiguration.Id("suggestions-model")),
+            conversation,
+            when (settings.contextMode) {
+                SuggestedRepliesSettings.ContextMode.RECENT_MESSAGES -> service.recentContext(messages)
+                SuggestedRepliesSettings.ContextMode.FULL_THREAD -> SuggestedRepliesGenerationService.Context.Full(messages)
+            },
+            messages.last(), agent, AiRuntimeSelection(AiModelConfiguration.Id("suggestions-model")),
             User.Id("user"), "suggestions", settings,
         )
     }
