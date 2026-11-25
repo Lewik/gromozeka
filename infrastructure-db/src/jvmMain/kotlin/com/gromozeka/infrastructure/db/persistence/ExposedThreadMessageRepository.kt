@@ -188,6 +188,7 @@ class ExposedThreadMessageRepository(
                                 toolResultsOnly = rows.getBoolean("tool_results_only"),
                                 fullCompactionAnchor = rows.getBoolean("full_compaction_anchor"),
                             ),
+                            requiresRepair = rows.getBoolean("requires_repair"),
                         ),
                     )
                 }
@@ -405,19 +406,20 @@ class ExposedThreadMessageRepository(
                 FROM history h
                 CROSS JOIN LATERAL unnest(h.tool_result_ids) AS result(call_id)
             ), violations AS (
-                SELECT 1
+                SELECT position
                 FROM ordinary
                 WHERE (cardinality(tool_call_ids) > 0 AND tool_call_ids IS DISTINCT FROM next_results)
                     OR (cardinality(tool_result_ids) > 0 AND tool_result_ids IS DISTINCT FROM previous_calls)
                 UNION ALL
-                SELECT 1
+                SELECT h.position
                 FROM history h
                 CROSS JOIN LATERAL unnest(h.tool_call_ids) AS call(call_id)
                 WHERE h.provider_managed_tool
                     AND NOT EXISTS (SELECT 1 FROM all_results r WHERE r.call_id = call.call_id)
             )
             SELECT h.position, h.message_id, h.role, h.tool_call_ids, h.tool_result_ids,
-                h.provider_managed_tool, h.tool_results_only, h.full_compaction_anchor
+                h.provider_managed_tool, h.tool_results_only, h.full_compaction_anchor,
+                h.position IN (SELECT position FROM violations) AS requires_repair
             FROM history h
             WHERE EXISTS (SELECT 1 FROM violations)
             ORDER BY h.position

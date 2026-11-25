@@ -7,6 +7,7 @@ import com.gromozeka.domain.model.ToolSequenceFacts
 import com.gromozeka.domain.model.UserIdentity
 import com.gromozeka.domain.model.ai.AI_PROVIDER_MANAGED_TOOL_METADATA_KEY
 import com.gromozeka.domain.model.ai.projectedMessages
+import com.gromozeka.domain.model.toolSequenceRepairBodyIds
 import com.gromozeka.domain.repository.RecentVisibleMessage
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
@@ -187,7 +188,49 @@ class PostgresRuntimeMessageReadTest {
             val invalidRead = f.measure { invalid = f.links.invalidToolSequenceWindow(thread) }
             assertEquals((2..7).toList(), invalid.map { it.position })
             assertTrue(invalid.none { it.id == checkpoint.id })
+            assertEquals(listOf(orphan.id), invalid.filter { it.requiresRepair }.map { it.id })
             assertEquals(0L, invalidRead.bodies)
+        }
+    }
+
+    @Test
+    fun `tool sequence repair hydrates only the final orphan body`() = runBlocking {
+        withFixture { f ->
+            val thread = f.conversation.currentThread
+            fun call(id: String) = f.message("$id-call").copy(
+                role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(ContentItem.ToolCall(
+                    ContentItem.ToolCall.Id(id),
+                    ContentItem.ToolCall.Data(id, JsonObject(emptyMap())),
+                )),
+            )
+            fun largeResult(id: String) = f.message("$id-result").copy(
+                role = Conversation.Message.Role.USER,
+                content = listOf(ContentItem.ToolResult(
+                    ContentItem.ToolCall.Id(id),
+                    id,
+                    listOf(ContentItem.ToolResult.Data.Text("result-$id-${"x".repeat(200_000)}")),
+                )),
+            )
+            val valid = (0 until 12).flatMap { index ->
+                val id = "valid-$index"
+                listOf(call(id), largeResult(id))
+            }
+            val orphan = call("orphan")
+            (valid + orphan).forEachIndexed { position, message -> f.save(message, thread, position) }
+
+            lateinit var window: List<com.gromozeka.domain.model.ToolSequenceMessageHeader>
+            val headerRead = f.measure { window = f.links.invalidToolSequenceWindow(thread) }
+            val bodyIds = toolSequenceRepairBodyIds(window)
+            lateinit var bodies: List<Conversation.Message>
+            val bodyRead = f.measure { bodies = f.links.compactionBodies(thread, bodyIds) }
+
+            assertEquals(0L, headerRead.bodies)
+            assertEquals(listOf(orphan.id), window.filter { it.requiresRepair }.map { it.id })
+            assertEquals(listOf(orphan.id), bodyIds)
+            assertEquals(listOf(orphan.id), bodies.map { it.id })
+            assertEquals(1L, bodyRead.bodies)
+            assertTrue(bodyRead.bytes < 100_000)
         }
     }
 

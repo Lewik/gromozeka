@@ -33,6 +33,32 @@ class ToolCallSequenceFixerServiceTest {
             updatedAt = now,
         )
         val toolCallId = Conversation.Message.ContentItem.ToolCall.Id("orphan-call")
+        val validCallId = Conversation.Message.ContentItem.ToolCall.Id("valid-call")
+        val validCall = Conversation.Message(
+            id = Conversation.Message.Id("valid-call-message"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(
+                Conversation.Message.ContentItem.ToolCall(
+                    id = validCallId,
+                    call = Conversation.Message.ContentItem.ToolCall.Data("valid_tool", JsonObject(emptyMap())),
+                ),
+            ),
+            createdAt = now,
+        )
+        val validResult = Conversation.Message(
+            id = Conversation.Message.Id("valid-result-message"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.USER,
+            content = listOf(
+                Conversation.Message.ContentItem.ToolResult(
+                    toolUseId = validCallId,
+                    toolName = "valid_tool",
+                    result = listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("large unchanged result")),
+                ),
+            ),
+            createdAt = now,
+        )
         val toolCall = Conversation.Message(
             id = Conversation.Message.Id("tool-call-message"),
             conversationId = conversationId,
@@ -53,12 +79,13 @@ class ToolCallSequenceFixerServiceTest {
             content = listOf(Conversation.Message.ContentItem.UserMessage("Keep this exact message")),
             createdAt = now,
         )
-        val replayWindow = listOf(toolCall, userMessage).mapIndexed { position, message ->
+        val replayWindow = listOf(validCall, validResult, toolCall, userMessage).mapIndexed { position, message ->
             ToolSequenceMessageHeader(
                 position = position,
                 id = message.id,
                 role = message.role,
                 facts = ToolSequenceFacts.from(message),
+                requiresRepair = message.id == toolCall.id,
             )
         }
 
@@ -121,10 +148,10 @@ class ToolCallSequenceFixerServiceTest {
 
         assertTrue(result.fixed)
         assertEquals(1, result.addedResults)
-        assertEquals(toolCall.id, copiedSuffix.first())
+        assertEquals(listOf(validCall.id, validResult.id, toolCall.id), copiedSuffix.take(3))
         assertEquals(userMessage.id, copiedSuffix.last())
-        assertEquals(3, copiedSuffix.size)
-        assertEquals(listOf(copiedSuffix[1]), savedMessages.map { it.id })
+        assertEquals(5, copiedSuffix.size)
+        assertEquals(listOf(copiedSuffix[3]), savedMessages.map { it.id })
         assertTrue(currentConversation.currentThread != sourceThreadId)
     }
 
