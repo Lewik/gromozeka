@@ -9,6 +9,10 @@ internal fun ConversationRuntimeSnapshot.projectForRemoteClient(): ConversationR
     activeTask = activeTask?.projectForRemoteClient(),
     activeInsertions = activeInsertions.map(ConversationRuntimeTask::projectForRemoteClient),
     pendingTasks = pendingTasks.map(ConversationRuntimeTask::projectForRemoteClient),
+    incidents = incidents.map { incident ->
+        val task = incident.task.projectForRemoteClient()
+        if (task === incident.task) incident else incident.copy(task = task)
+    },
 )
 
 private fun ConversationRuntimeTask.projectForRemoteClient(): ConversationRuntimeTask {

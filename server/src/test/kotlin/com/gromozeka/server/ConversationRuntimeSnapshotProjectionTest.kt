@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeTask
+import com.gromozeka.domain.service.ConversationRuntimeTaskIncident
 import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.QueuedMessagePlacement
@@ -29,7 +30,7 @@ class ConversationRuntimeSnapshotProjectionTest {
     @Test
     fun runtimeBodiesAreRemovedFromEveryMessageBearingRemoteTaskSlot() {
         val runtimeJson = JsonPrimitive("x".repeat(5 * 1024 * 1024))
-        val tasks = (1..4).map { index ->
+        val tasks = (1..5).map { index ->
             task(
                 id = "runtime-$index",
                 message = message("runtime-message-$index", Conversation.Message.Role.RUNTIME, runtimeJson),
@@ -43,6 +44,16 @@ class ConversationRuntimeSnapshotProjectionTest {
             activeTask = tasks[0],
             activeInsertions = listOf(tasks[1], tasks[2]),
             pendingTasks = listOf(tasks[3]),
+            incidents = listOf(
+                ConversationRuntimeTaskIncident(
+                    task = tasks[4],
+                    kind = ConversationRuntimeTaskIncident.Kind.DELIVERY_FAILED,
+                    message = "Delivery failed",
+                    executor = null,
+                    executionStartedAt = null,
+                    occurredAt = now,
+                ),
+            ),
         )
 
         assertTrue(encode(canonical).size > DEFAULT_WEBSOCKET_MESSAGE_BYTES)
@@ -130,7 +141,7 @@ class ConversationRuntimeSnapshotProjectionTest {
     private fun ConversationRuntimeTask.userMessage(): Conversation.Message = requireNotNull(userMessageOrNull())
 
     private fun ConversationRuntimeSnapshot.tasks(): List<ConversationRuntimeTask> =
-        listOfNotNull(activeTask) + activeInsertions + pendingTasks
+        listOfNotNull(activeTask) + activeInsertions + pendingTasks + incidents.map { it.task }
 
     private fun encode(snapshot: ConversationRuntimeSnapshot): ByteArray = RemoteProtocolCodec.encodeServerBinary(
         GromozekaServerEnvelope(
