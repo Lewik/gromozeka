@@ -1005,6 +1005,11 @@ private class InMemoryThreadMessageRepository(
         links[threadId]?.maxOfOrNull(ThreadMessageLink::position)
     override suspend fun getMessagesByThread(threadId: Conversation.Thread.Id): List<Conversation.Message> =
         messages(threadId)
+    override suspend fun hasAtLeastResponseReviewContinuations(
+        threadId: Conversation.Thread.Id,
+        turnId: String,
+        requiredCount: Int,
+    ) = error("Response review is outside this compaction fixture")
     val bodyReads = mutableListOf<Conversation.Message.Id>()
     override suspend fun compactionHeaders(threadId: Conversation.Thread.Id) = messages(threadId).map(CompactionMessageHeader::from)
     override suspend fun compactionBodies(threadId: Conversation.Thread.Id, ids: List<Conversation.Message.Id>): List<Conversation.Message> {

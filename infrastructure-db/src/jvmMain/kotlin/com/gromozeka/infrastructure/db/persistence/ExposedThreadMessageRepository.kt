@@ -94,6 +94,32 @@ class ExposedThreadMessageRepository(
             .let(::resolveCurrentMessageAuthors)
     }
 
+    override suspend fun hasAtLeastResponseReviewContinuations(
+        threadId: Conversation.Thread.Id,
+        turnId: String,
+        requiredCount: Int,
+    ): Boolean = newSuspendedTransaction(
+        Dispatchers.IO,
+        transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ,
+        readOnly = true,
+    ) {
+        require(turnId.isNotBlank())
+        require(requiredCount > 0)
+        checkNotNull(TransactionManager.current().exec(
+            RESPONSE_REVIEW_CONTINUATION_THRESHOLD_SQL,
+            listOf(
+                TextColumnType() to threadId.value,
+                TextColumnType() to "$turnId:",
+                IntegerColumnType() to requiredCount,
+                IntegerColumnType() to requiredCount,
+            ),
+            StatementType.SELECT,
+        ) { rows ->
+            check(rows.next())
+            rows.getBoolean("threshold_reached")
+        })
+    }
+
     override suspend fun compactionHeaders(threadId: Conversation.Thread.Id): List<CompactionMessageHeader> =
         newSuspendedTransaction(Dispatchers.IO, transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ, readOnly = true) {
             val rows = (ThreadMessages innerJoin Messages).select(ThreadMessages.messageId, Messages.compactionHeader)
@@ -359,6 +385,24 @@ class ExposedThreadMessageRepository(
                 AND btrim(m.message_text) <> ''
             ORDER BY tm.position DESC
             LIMIT ?
+        """.trimIndent()
+
+        val RESPONSE_REVIEW_CONTINUATION_THRESHOLD_SQL = """
+            WITH candidates AS MATERIALIZED (
+                SELECT m.message_json
+                FROM thread_messages tm
+                JOIN messages m ON m.id = tm.message_id
+                WHERE tm.thread_id = ?
+                    AND m.role = 'ASSISTANT'
+                    AND starts_with(tm.message_id, ?)
+            )
+            SELECT count(*) >= ? AS threshold_reached
+            FROM (
+                SELECT 1
+                FROM candidates candidate
+                WHERE candidate.message_json::jsonb #>> '{providerMetadata,collaborationNext}' = 'CONTINUE'
+                LIMIT ?
+            ) matching
         """.trimIndent()
 
         val TOOL_SEQUENCE_VALIDATION_SQL = """

@@ -38,6 +38,62 @@ import kotlin.time.Clock
 
 class PostgresRuntimeMessageReadTest {
     @Test
+    fun `response review continuation threshold does not hydrate the Runtime archive`() = runBlocking {
+        withFixture { f ->
+            val thread = f.conversation.currentThread
+            val turnId = "review-turn"
+            val random = java.util.Random(1)
+            val alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+            val runtimePayload = buildString(1_000_000) {
+                repeat(1_000_000) { append(alphabet[random.nextInt(alphabet.length)]) }
+            }
+            val runtime = f.message("$turnId:runtime").copy(
+                role = Conversation.Message.Role.RUNTIME,
+                author = Conversation.Message.Author.Runtime(),
+                content = listOf(ContentItem.RuntimeJson(JsonPrimitive(runtimePayload))),
+                providerMetadata = buildJsonObject { put("collaborationNext", "CONTINUE") },
+            )
+            val nonContinuation = f.message("$turnId:llm:0:assistant:0").copy(
+                role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("done"))),
+                providerMetadata = buildJsonObject { put("collaborationNext", "COMPLETE") },
+            )
+            val continuations = (1..4).map { index ->
+                f.message("$turnId:llm:$index:assistant:0").copy(
+                    role = Conversation.Message.Role.ASSISTANT,
+                    content = listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("continue $index"))),
+                    providerMetadata = buildJsonObject { put("collaborationNext", "CONTINUE") },
+                )
+            }
+            (listOf(runtime, nonContinuation) + continuations.take(3)).forEachIndexed { position, message ->
+                f.save(message, thread, position)
+            }
+
+            val calibrationBefore = f.messageToastBlocks()
+            f.readMessageBody(runtime.id)
+            assertTrue(f.messageToastBlocks() > calibrationBefore, "The Runtime body must use measured TOAST storage")
+
+            suspend fun assertThreshold(expected: Boolean) {
+                var result = false
+                val toastBefore = f.messageToastBlocks()
+                val measurement = f.measure {
+                    result = f.links.hasAtLeastResponseReviewContinuations(thread, turnId, requiredCount = 4)
+                }
+                assertEquals(expected, result)
+                assertEquals(0L, f.messageToastBlocks() - toastBefore)
+                assertEquals(0L, measurement.bodies)
+                assertEquals(1L, measurement.rows)
+                assertContains(measurement.queries.single(), "MATERIALIZED")
+                assertContains(measurement.queries.single(), "LIMIT ?")
+            }
+
+            assertThreshold(false)
+            f.save(continuations.last(), thread, 5)
+            assertThreshold(true)
+        }
+    }
+
+    @Test
     fun `supplemental JSON filters do not read Runtime bodies`() = runBlocking {
         withFixture { f ->
             val thread = f.conversation.currentThread

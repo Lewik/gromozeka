@@ -452,6 +452,8 @@ class ConversationEngineDeliveryTest {
             assertTrue(prepared.messages.any { it.id == candidate.id })
             assertTrue(prepared.messages.any { it.id.value == "draft:receipt" })
             assertEquals(2, f.applicationRequests.size)
+            assertEquals(listOf(model.turnId.value to 4), f.responseReviewContinuationChecks)
+            assertEquals(0, f.rawContextReads)
         }
     }
 
@@ -1265,6 +1267,7 @@ class ConversationEngineDeliveryTest {
         }
         val contextReads = mutableListOf<String?>()
         var rawContextReads = 0
+        val responseReviewContinuationChecks = mutableListOf<Pair<String, Int>>()
         private val contextHistory = responding<com.gromozeka.domain.repository.ThreadMessageRepository> {
             assertEquals(currentConversation.currentThread.value, it.arguments[0])
             when (it.method.name.substringBefore('-')) {
@@ -1283,6 +1286,15 @@ class ConversationEngineDeliveryTest {
                 "getMessagesByThread" -> {
                     rawContextReads++
                     messages.toList()
+                }
+                "hasAtLeastResponseReviewContinuations" -> {
+                    val turnId = it.arguments[1] as String
+                    val requiredCount = it.arguments[2] as Int
+                    responseReviewContinuationChecks += turnId to requiredCount
+                    messages.count { message ->
+                        message.id.value.startsWith("$turnId:") &&
+                            message.providerMetadata["collaborationNext"] == JsonPrimitive("CONTINUE")
+                    } >= requiredCount
                 }
                 else -> error("Unexpected context history operation: ${it.method.name}")
             }

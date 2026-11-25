@@ -128,6 +128,13 @@ interface ThreadMessageRepository {
      */
     suspend fun getMessagesByThread(threadId: Conversation.Thread.Id): List<Conversation.Message>
 
+    /** Checks the bounded text-only response-review retry threshold without hydrating thread history. */
+    suspend fun hasAtLeastResponseReviewContinuations(
+        threadId: Conversation.Thread.Id,
+        turnId: String,
+        requiredCount: Int,
+    ): Boolean
+
     /** Ordered headers with current author attribution. Message bodies are stored independently. */
     suspend fun compactionHeaders(threadId: Conversation.Thread.Id): List<CompactionMessageHeader>
 

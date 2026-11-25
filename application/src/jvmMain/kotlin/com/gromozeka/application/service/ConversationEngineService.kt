@@ -853,10 +853,11 @@ class ConversationEngineService(
         }
         ensureRuntimeTaskOwner(conversation.id, task.id, executor)
         if (runtimeCoordinator.listPending(conversation.id).any { it.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT }) return continueAfterNewInput()
-        val priorTextContinues = contextHistory.getMessagesByThread(conversation.currentThread).count {
-            it.id.value.startsWith(draft.turnId + ":") && it.providerMetadata["collaborationNext"] == JsonPrimitive("CONTINUE")
-        }
-        if (priorTextContinues >= 4) {
+        if (contextHistory.hasAtLeastResponseReviewContinuations(
+                conversation.currentThread,
+                draft.turnId,
+                MAX_RESPONSE_REVIEW_CONTINUATIONS,
+            )) {
             collaboration.repository.failDraft(draft.id, "Too many text-only continuations")
             collaboration.failRequest(draft.rootMessageId, "Recipient stopped after repeated text-only continuations")
             error("Repeated text-only continuation; draft retained, user input required")
@@ -1871,6 +1872,7 @@ class ConversationEngineService(
 
     private companion object {
         const val MAX_TOOL_LOOP_ITERATIONS = 200
+        const val MAX_RESPONSE_REVIEW_CONTINUATIONS = 4
         const val SYNTHETIC_MEMORY_PHASE_COMPLETED = "completed"
         const val SYNTHETIC_MEMORY_PHASE_PENDING = "pending"
         const val SYNTHETIC_MEMORY_PHASE_COMPLETED_ASYNC = "completed_async"
