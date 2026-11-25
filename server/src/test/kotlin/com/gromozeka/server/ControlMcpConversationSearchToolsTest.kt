@@ -9,6 +9,8 @@ import com.gromozeka.domain.model.ConversationSearchRequest
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.User
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -22,6 +24,29 @@ import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 class ControlMcpConversationSearchToolsTest {
+    @Test
+    fun `message search rejects non-conversation roles at the tool boundary`() = runBlocking<Unit> {
+        val context = testControlMcpContext()
+        val service = Mockito.mock(ConversationSearchApplicationService::class.java)
+        val tool = ConversationSearchToolContributor(testServerToolFactory(), service).callbacks.single()
+
+        for (role in listOf("SYSTEM", "RUNTIME")) {
+            val response = tool.invokeStructured(
+                context,
+                buildJsonObject {
+                    put("query", "needle")
+                    put("roles", JsonArray(listOf(JsonPrimitive(role))))
+                },
+            )
+
+            assertFalse(response.getValue("success").jsonPrimitive.content.toBoolean())
+            val error = response.getValue("error").jsonObject
+            assertEquals("invalid_argument", error.getValue("code").jsonPrimitive.content)
+            assertEquals("'roles' accepts only USER and ASSISTANT", error.getValue("message").jsonPrimitive.content)
+        }
+        Mockito.verifyNoInteractions(service)
+    }
+
     @Test
     fun `message search returns bounded page data and forwards opaque cursor`() = runBlocking<Unit> {
         val context = testControlMcpContext()
