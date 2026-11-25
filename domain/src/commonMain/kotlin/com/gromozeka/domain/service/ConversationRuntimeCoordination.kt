@@ -125,6 +125,7 @@ data class ConversationRuntimeTask(
             val returnDirect: Boolean,
             val executionTargetsByCallId: Map<String, ConversationRuntimeTaskTarget>,
             val executionToolNamesByCallId: Map<String, String> = emptyMap(),
+            val modelVisibleToolNames: List<String> = emptyList(),
         ) : Payload {
             init {
                 require(iteration >= 1) { "Conversation tool execution iteration must be positive" }
@@ -140,6 +141,12 @@ data class ConversationRuntimeTask(
                     toolCalls.any { it.id.value == callId }
                 }) {
                     "Conversation tool execution name mapping references an unknown tool call"
+                }
+                require(modelVisibleToolNames.all(String::isNotBlank)) {
+                    "Conversation tool execution model-visible tool names must not be blank"
+                }
+                require(modelVisibleToolNames.distinct().size == modelVisibleToolNames.size) {
+                    "Conversation tool execution model-visible tool names must be unique"
                 }
             }
         }

@@ -664,7 +664,8 @@ class ConversationEngineDeliveryTest {
         val call = ContentItem.ToolCall(ContentItem.ToolCall.Id("synthetic-call"),
             ContentItem.ToolCall.Data("synthetic", kotlinx.serialization.json.JsonObject(emptyMap())))
         val payload = ConversationRuntimeTask.Payload.ToolExecution(Conversation.Message.Id("root"), agentId, 1,
-            listOf(call), false, mapOf(call.id.value to ConversationRuntimeTaskTarget.Server))
+            listOf(call), false, mapOf(call.id.value to ConversationRuntimeTaskTarget.Server),
+            modelVisibleToolNames = listOf("already_loaded", "synthetic"))
         val task = running.copy(id = ConversationRuntimeTask.Id("execute-tool"), parentTaskId = running.id, payload = payload)
         f.advance(running, task)
         repeat(2) {
@@ -673,6 +674,7 @@ class ConversationEngineDeliveryTest {
                 assertIs<ConversationRuntimeTask.Payload.ToolResultProcessing>(next.payload).toolResultMessageId)
         }
         assertEquals(1, f.toolEffects)
+        assertEquals(setOf("already_loaded", "synthetic"), f.toolExecutionContexts.single().modelVisibleToolNames)
         assertEquals(0, f.historyMessageReads)
         assertEquals(1, f.messages.count { it.id.value == "execute-tool:result" })
         assertEquals(listOf("execute-tool:result"), f.emitted.map { it.id.value })
@@ -1095,7 +1097,12 @@ class ConversationEngineDeliveryTest {
     }
 
     @Test fun `ready compaction applies before tool routing while keeping the pending call and root`() = runBlocking {
-        val f = Fixture(); val task = f.begin()
+        val modelVisibleTool = object : AiToolCallback {
+            override val definition = AiToolDefinition("example", "Synthetic example", """{"type":"object"}""")
+            override val metadata = ServerToolMetadata
+            override fun call(toolInput: String, context: ToolExecutionContext?) = error("Not executed")
+        }
+        val f = Fixture(selectedTools = listOf(modelVisibleTool)); val task = f.begin()
         val call = ContentItem.ToolCall(ContentItem.ToolCall.Id("pending-call"), ContentItem.ToolCall.Data("example", JsonObject(emptyMap())))
         f.onCall = { AiRuntimeResponse(listOf(AiAssistantMessage(listOf(call))), outcome = AiStepOutcome.TOOL_CALLS) }
         var applied = false
@@ -1108,6 +1115,7 @@ class ConversationEngineDeliveryTest {
         val outcome = assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(task, executor) {})
         val next = assertIs<ConversationRuntimeTask.Payload.ToolExecution>(outcome.nextTask.payload)
         assertEquals(listOf(call), next.toolCalls)
+        assertEquals(listOf("example"), next.modelVisibleToolNames)
         assertEquals(Conversation.Message.Id("root"), next.rootUserMessageId)
         assertEquals(task.turnId, outcome.nextTask.turnId)
         assertEquals(1, f.requests.size)
@@ -1298,12 +1306,14 @@ class ConversationEngineDeliveryTest {
             }, coordinator,
         )
         var toolEffects = 0
+        val toolExecutionContexts = mutableListOf<ToolExecutionContext>()
         val toolTasks = ConversationToolExecutionTaskService(
             conversationService = conversations, conversationHistory = history, conversationMessageAppender = appender,
             workspaceService = mock(), runtimeCoordinator = coordinator, runtimeStateSyncService = mock(),
             parallelToolExecutor = responding {
                 check(it.method.name.substringBefore('-') == "executeParallel")
                 toolEffects++
+                toolExecutionContexts += it.arguments[1] as ToolExecutionContext
                 @Suppress("UNCHECKED_CAST")
                 val calls = it.arguments[0] as List<ContentItem.ToolCall>
                 ToolExecutionResult(calls.map { call -> ContentItem.ToolResult(call.id, call.call.name,

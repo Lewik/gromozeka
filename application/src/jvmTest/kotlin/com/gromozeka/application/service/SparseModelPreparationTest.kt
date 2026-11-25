@@ -42,7 +42,7 @@ class SparseModelPreparationTest {
         val call = text("search", 31).copy(role = Message.Role.ASSISTANT, content = listOf(ContentItem.ToolCall(
             ContentItem.ToolCall.Id("call"), ContentItem.ToolCall.Data(SEARCH_TOOLS_TOOL_NAME, JsonObject(emptyMap())))))
         val result = text("result", 32).copy(content = listOf(ContentItem.ToolResult(
-            ContentItem.ToolCall.Id("call"), SEARCH_TOOLS_TOOL_NAME, listOf(ContentItem.ToolResult.Data.Text("""{"tools":[{"name":"example"}]}""")))))
+            ContentItem.ToolCall.Id("call"), SEARCH_TOOLS_TOOL_NAME, listOf(ContentItem.ToolResult.Data.Text("""{"tools":["example"]}""")))))
         val full = archive + checkpoint + call + result
         val sparse = sparse(full, "OPENAI_SUBSCRIPTION")
         val expected = prepare(full, "OPENAI_SUBSCRIPTION")

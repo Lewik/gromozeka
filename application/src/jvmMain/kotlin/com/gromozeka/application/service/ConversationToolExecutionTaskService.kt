@@ -95,7 +95,8 @@ class ConversationToolExecutionTaskService(
                         TOOL_CONTEXT_MEMORY_RESULT_DELIVERY,
                         TOOL_CONTEXT_MEMORY_RESULT_DELIVERY_AUTOMATIC,
                     )
-                }
+                },
+                modelVisibleToolNames = payload.modelVisibleToolNames.toSet(),
             )
             val toolContextsByTarget = mutableMapOf<ConversationRuntimeTaskTarget, ToolExecutionContext>()
             payload.executionTargetsByCallId.values.distinct().forEach { target ->

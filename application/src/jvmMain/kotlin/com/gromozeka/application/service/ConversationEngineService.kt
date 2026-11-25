@@ -755,6 +755,9 @@ class ConversationEngineService(
                             iteration = payload.iteration,
                             toolCalls = allToolCalls,
                             routing = routing,
+                            modelVisibleToolNames = runtimeRequest.tools
+                                .map { it.definition.name }
+                                .distinct(),
                             actorUserId = task.actorUserId,
                         ),
                     )
@@ -1797,6 +1800,7 @@ class ConversationEngineService(
         iteration: Int,
         toolCalls: List<ContentItem.ToolCall>,
         routing: ConversationRuntimeToolRoutingResult.Accepted,
+        modelVisibleToolNames: List<String>,
         actorUserId: User.Id?,
     ): ConversationRuntimeTask =
         ConversationRuntimeTask(
@@ -1814,6 +1818,7 @@ class ConversationEngineService(
                 returnDirect = routing.returnDirect,
                 executionTargetsByCallId = routing.executionTargetsByCallId,
                 executionToolNamesByCallId = routing.executionToolNamesByCallId,
+                modelVisibleToolNames = modelVisibleToolNames,
             ),
             placement = QueuedMessagePlacement.END_OF_TURN,
             idempotencyKey = "conversation:${conversationId.value}:runtime:${parentTask.turnId.value}:tools:$iteration",
