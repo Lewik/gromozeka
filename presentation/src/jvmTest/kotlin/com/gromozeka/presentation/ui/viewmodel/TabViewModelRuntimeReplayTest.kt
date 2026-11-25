@@ -2,6 +2,7 @@ package com.gromozeka.presentation.ui.viewmodel
 
 import com.gromozeka.client.ArtifactTransferService
 import com.gromozeka.domain.model.AppMode
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationHistoryPage
 import com.gromozeka.domain.model.ConversationHistoryPageRequest
@@ -20,6 +21,8 @@ import com.gromozeka.domain.model.MessageDelivery
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.ActiveGenerationSnapshot
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
@@ -41,6 +44,7 @@ import kotlin.test.assertEquals
 import kotlin.time.Instant
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -154,7 +158,7 @@ class TabViewModelRuntimeReplayTest {
     }
 
     @Test
-    fun `queued composer message restores its text context and instruction selection`() = runTest {
+    fun `queued composer editability follows delivery without a new runtime snapshot`() = runTest {
         val conversationId = Conversation.Id("conversation-1")
         val runtimeEvents = MutableSharedFlow<ConversationRuntimeEvent>(extraBufferCapacity = 2)
         val inputContext = MessageInputContext(
@@ -193,10 +197,6 @@ class TabViewModelRuntimeReplayTest {
 
         assertFalse(model.pendingMessages.value.single().editable)
         deliveryMode.value = MessageDelivery.QUEUE
-        runtimeEvents.emit(ConversationRuntimeEvent.SnapshotUpdated(
-            conversationId,
-            ConversationRuntimeSnapshot(2, conversationId, null, pendingTasks = listOf(pendingTask(userMessage))),
-        ))
         runCurrent()
 
         assertTrue(model.pendingMessages.value.single().editable)
@@ -207,6 +207,86 @@ class TabViewModelRuntimeReplayTest {
         assertEquals("Editable message", model.uiState.value.userInput)
         assertEquals(inputContext, model.uiState.value.composerMessageInputContext)
         assertEquals(setOf("mode_readonly"), model.uiState.value.activeMessageInstructionIds)
+    }
+
+    @Test
+    fun `queued composer editability follows agent routing without a new runtime snapshot`() = runTest {
+        val conversationId = Conversation.Id("conversation-1")
+        val projectId = Project.Id("project-1")
+        val threadId = Conversation.Thread.Id("thread-1")
+        val now = Instant.fromEpochMilliseconds(1)
+        val user = Conversation.Message.Author.User(User.Id("user-1"), "User")
+        val agent = AgentDefinition(
+            id = AgentDefinition.Id("agent-1"),
+            name = "Agent",
+            prompts = emptyList(),
+            runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("model-1")),
+            type = AgentDefinition.Type.Global,
+            createdAt = now,
+            updatedAt = now,
+        )
+        val agents = MutableStateFlow(listOf(agent))
+        val conversations = MutableStateFlow(listOf(
+            Conversation(
+                id = conversationId,
+                projectId = projectId,
+                participants = setOf(
+                    Conversation.Participant.User(user.userId),
+                    Conversation.Participant.Agent(agent.id),
+                ),
+                currentThread = threadId,
+                createdAt = now,
+                updatedAt = now,
+            ),
+        ))
+        val message = Conversation.Message(
+            id = Conversation.Message.Id("agent-message"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.USER,
+            author = user,
+            content = listOf(Conversation.Message.ContentItem.UserMessage("@Agent Editable message")),
+            instructions = listOf(
+                com.gromozeka.domain.model.MessageInstructionGroup.defaults().single()
+                    .controls.single { it.data.id == "mode_readonly" }.data,
+            ),
+            createdAt = now,
+        )
+        val task = pendingTask(message).copy(
+            payload = ConversationRuntimeTask.Payload.AgentInvocation(message, agent.id),
+            requirements = com.gromozeka.domain.service.ConversationRuntimeTaskRequirements(
+                com.gromozeka.domain.service.ConversationRuntimeCapability.entries.toSet(),
+                com.gromozeka.domain.service.ConversationRuntimeTaskTarget.Server,
+            ),
+        )
+        val runtimeEvents = MutableSharedFlow<ConversationRuntimeEvent>(extraBufferCapacity = 2)
+        val model = viewModel(
+            backgroundScope,
+            runtimeEvents,
+            messageDeliveryMode = MutableStateFlow(MessageDelivery.QUEUE),
+            agentDefinitions = agents,
+            conversations = conversations,
+        ) {
+            ConversationHistoryPage(threadId, emptyList())
+        }
+        runCurrent()
+        runtimeEvents.emit(ConversationRuntimeEvent.SnapshotUpdated(
+            conversationId,
+            ConversationRuntimeSnapshot(1, conversationId, null, pendingTasks = listOf(task)),
+        ))
+        runCurrent()
+
+        assertTrue(model.pendingMessages.value.single().editable)
+        agents.value = listOf(agent.copy(name = "Renamed"))
+        runCurrent()
+        assertFalse(model.pendingMessages.value.single().editable)
+        model.editPendingMessage(message.id.value)
+        runCurrent()
+        assertEquals(listOf(message.id.value), model.pendingMessages.value.map { it.id })
+        assertEquals("", model.uiState.value.userInput)
+
+        agents.value = listOf(agent)
+        runCurrent()
+        assertTrue(model.pendingMessages.value.single().editable)
     }
 
     @Test
@@ -732,6 +812,8 @@ class TabViewModelRuntimeReplayTest {
         loadMessage: suspend (Conversation.Message.Id) -> Conversation.Message = { error("Unused") },
         latestUserMessage: suspend () -> Conversation.Message? = { error("Unused") },
         messageDeliveryMode: StateFlow<MessageDelivery> = MutableStateFlow(MessageDelivery.STEER),
+        agentDefinitions: Flow<List<AgentDefinition>> = emptyFlow(),
+        conversations: Flow<List<Conversation>> = emptyFlow(),
         loadPage: suspend (ConversationHistoryPageRequest) -> ConversationHistoryPage,
     ): TabViewModel {
         val conversationId = Conversation.Id("conversation-1")
@@ -744,7 +826,7 @@ class TabViewModelRuntimeReplayTest {
             currentUserAuthor = Conversation.Message.Author.User(User.Id("user-1"), "User"),
             agentService = stub { methodName ->
                 when {
-                    methodName.startsWith("observeByProject") -> emptyFlow<Nothing>()
+                    methodName.startsWith("observeByProject") -> agentDefinitions
                     else -> unsupported(methodName)
                 }
             },
@@ -758,7 +840,7 @@ class TabViewModelRuntimeReplayTest {
             },
             conversationService = stub { methodName ->
                 when {
-                    methodName.startsWith("observeByProject") -> emptyFlow<Nothing>()
+                    methodName.startsWith("observeByProject") -> conversations
                     else -> unsupported(methodName)
                 }
             },

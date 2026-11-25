@@ -343,6 +343,29 @@ class TabViewModel(
         }
 
         scope.launch {
+            combine(
+                settingsFlow.map { it.userProfile.messageInstructionGroups }.distinctUntilChanged(),
+                agentMentionCandidates,
+                messageDeliveryMode,
+            ) { instructionGroups, mentionCandidates, delivery ->
+                Triple(instructionGroups, mentionCandidates, delivery)
+            }.collect { (instructionGroups, mentionCandidates, delivery) ->
+                _pendingMessages.update { messages ->
+                    messages.map { message ->
+                        message.copy(
+                            composerRoundTripInstructionIds = message.composerRoundTripInstructionIdsOrNull(
+                                instructionGroups,
+                                currentUserAuthor,
+                                mentionCandidates,
+                                delivery,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+
+        scope.launch {
             loadMessages()
             loadTokenStats()
         }
