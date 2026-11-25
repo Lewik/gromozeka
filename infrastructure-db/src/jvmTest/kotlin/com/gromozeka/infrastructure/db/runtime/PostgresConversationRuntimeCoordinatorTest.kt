@@ -12,6 +12,8 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.assertFailsWith
 import com.gromozeka.domain.model.BinaryContent
 import kotlinx.serialization.json.double
@@ -56,6 +58,59 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class PostgresConversationRuntimeCoordinatorTest {
+    @Test fun `Runtime event journal stores an identity shell and preserves replay facts`() = runBlocking {
+        withInventoryDatabase { source, coordinator, _ ->
+            val conversationId = Conversation.Id("runtime-journal")
+            val taskId = ConversationRuntimeTask.Id("runtime-task")
+            val turnId = com.gromozeka.domain.service.ConversationRuntimeTurnId("runtime-turn")
+            val privateState = "PRIVATE_RUNTIME_STATE_${"x".repeat(250_000)}"
+            val message = Conversation.Message(
+                id = Conversation.Message.Id("runtime-message"),
+                conversationId = conversationId,
+                role = Conversation.Message.Role.RUNTIME,
+                author = Conversation.Message.Author.Runtime(),
+                content = listOf(Conversation.Message.ContentItem.RuntimeJson(JsonPrimitive(privateState))),
+                createdAt = Instant.fromEpochSeconds(1),
+            )
+            val original = ConversationRuntimeEvent.MessageEmitted(
+                conversationId,
+                taskId,
+                message,
+                turnId = turnId,
+            )
+
+            val recorded = coordinator.recordEvent(original)
+            val replayed = coordinator.listEventLogEntries(conversationId, afterSequence = 0, limit = 10).single()
+            val replayedEvent = replayed.event as ConversationRuntimeEvent.MessageEmitted
+
+            assertEquals(1L, replayed.sequence)
+            assertEquals(taskId, replayedEvent.taskId)
+            assertEquals(turnId, replayedEvent.turnId)
+            assertEquals(message.id, replayedEvent.message.id)
+            assertEquals(Conversation.Message.Role.RUNTIME, replayedEvent.message.role)
+            assertEquals(JsonNull, (replayedEvent.message.content.single() as Conversation.Message.ContentItem.RuntimeJson).json)
+            assertTrue(replayedEvent.hasMoreContent)
+            assertEquals(replayedEvent, recorded.event)
+            assertEquals(privateState, (message.content.single() as Conversation.Message.ContentItem.RuntimeJson).json.jsonPrimitive.content)
+            assertEquals(setOf(message.id), coordinator.findEmittedMessageIds(conversationId, turnId, afterSequence = 0))
+
+            source.connection.use { connection ->
+                connection.prepareStatement("""
+                    SELECT octet_length(entry_json::text), entry_json::text LIKE '%PRIVATE_RUNTIME_STATE_%'
+                    FROM conversation_runtime_events
+                    WHERE conversation_id = ? AND sequence = 1
+                """.trimIndent()).use { statement ->
+                    statement.setString(1, conversationId.value)
+                    statement.executeQuery().use { rows ->
+                        assertTrue(rows.next())
+                        assertTrue(rows.getInt(1) < 2_000)
+                        assertFalse(rows.getBoolean(2))
+                    }
+                }
+            }
+        }
+    }
+
     @Test fun `recorded completion survives recreation in both snapshot paths and absent facts remain unknown`() = runBlocking {
         withInventoryDatabase { source, coordinator, json ->
             val id = Conversation.Id("completion")

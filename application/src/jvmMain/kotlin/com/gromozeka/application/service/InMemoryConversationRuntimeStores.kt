@@ -33,6 +33,7 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistration
 import com.gromozeka.domain.service.ConversationRuntimeWorkerRegistry
+import com.gromozeka.domain.service.forDurableJournal
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.domain.tool.AiToolDescriptor
 import kotlinx.coroutines.channels.Channel
@@ -895,10 +896,11 @@ class InMemoryConversationRuntimeCoordinator(
         mutex.withLock {
             val eventSequence = (eventSequencesByConversation[event.conversationId] ?: 0L) + 1L
             eventSequencesByConversation[event.conversationId] = eventSequence
+            val durableEvent = event.forDurableJournal()
             val eventLogEntry = ConversationRuntimeEventLogEntry(
                 sequence = eventSequence,
                 conversationId = event.conversationId,
-                event = event,
+                event = durableEvent,
                 createdAt = Clock.System.now(),
             )
             eventLogByConversation.getOrPut(event.conversationId) { mutableListOf() }.apply {

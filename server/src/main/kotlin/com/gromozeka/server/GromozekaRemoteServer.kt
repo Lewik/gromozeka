@@ -1000,7 +1000,7 @@ class GromozekaRemoteServer(
                                     message = view.second.message,
                                     historyThreadId = view.first,
                                     historyPosition = view.second.position,
-                                    hasMoreContent = view.second.hasMoreContent,
+                                    hasMoreContent = event.hasMoreContent || view.second.hasMoreContent,
                                     cursorSequence = event.cursorSequence,
                                 ),
                                 encoding,

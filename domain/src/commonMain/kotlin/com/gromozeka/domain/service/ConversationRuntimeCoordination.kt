@@ -14,6 +14,7 @@ import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
+import kotlinx.serialization.json.JsonNull
 import kotlin.jvm.JvmInline
 
 /**
@@ -919,6 +920,38 @@ sealed interface ConversationRuntimeEvent {
         val failureType: String? = null,
         override val cursorSequence: Long? = null,
     ) : ConversationRuntimeEvent
+}
+
+/** Durable replay needs Runtime message identity, not a second copy of the canonical payload. */
+fun ConversationRuntimeEvent.forDurableJournal(): ConversationRuntimeEvent = when (this) {
+    is ConversationRuntimeEvent.MessageEmitted -> when (message.role) {
+        Conversation.Message.Role.USER,
+        Conversation.Message.Role.ASSISTANT,
+        Conversation.Message.Role.SYSTEM,
+        -> this
+        Conversation.Message.Role.RUNTIME -> copy(
+            message = Conversation.Message(
+                id = message.id,
+                conversationId = message.conversationId,
+                role = Conversation.Message.Role.RUNTIME,
+                author = (message.author as? Conversation.Message.Author.Runtime)?.let { author ->
+                    author.copy(displayName = author.displayName.take(256))
+                },
+                content = listOf(ContentItem.RuntimeJson(JsonNull)),
+                createdAt = message.createdAt,
+                error = message.error?.let { error ->
+                    error.copy(message = error.message.take(1_024), type = error.type?.take(128))
+                },
+            ),
+            hasMoreContent = true,
+        )
+    }
+    is ConversationRuntimeEvent.SnapshotUpdated,
+    is ConversationRuntimeEvent.ReplayCompleted,
+    is ConversationRuntimeEvent.HistoryChanged,
+    is ConversationRuntimeEvent.ExecutionCompleted,
+    is ConversationRuntimeEvent.ExecutionFailed,
+    -> this
 }
 
 interface ConversationRuntimeEventSubscription {

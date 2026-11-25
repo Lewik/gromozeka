@@ -31,6 +31,7 @@ import com.gromozeka.domain.service.ConversationRuntimeTaskOutcome
 import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
 import com.gromozeka.domain.service.ConversationRuntimeWorkItem
+import com.gromozeka.domain.service.forDurableJournal
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.service.ConversationRuntimeCapability
 import com.gromozeka.domain.service.ConversationRuntimeWorkerIdentity
@@ -975,10 +976,11 @@ class PostgresConversationRuntimeCoordinator(
             }
             val sequence = record.eventSequence + 1
             record.eventSequence = sequence
+            val durableEvent = event.forDurableJournal()
             val entry = ConversationRuntimeEventLogEntry(
                 sequence = sequence,
                 conversationId = event.conversationId,
-                event = event,
+                event = durableEvent,
                 createdAt = Clock.System.now(),
             )
             record.eventLog = record.eventLog + entry
