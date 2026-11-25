@@ -85,7 +85,7 @@ class PostgresConversationHistoryRepository(
     override suspend fun toolResults(threadId: Conversation.Thread.Id, callIds: Set<String>): List<PositionedConversationMessage> {
         if (callIds.isEmpty()) return emptyList()
         val placeholders = callIds.joinToString(",") { "?" }
-        return query("""$JOIN WHERE tm.thread_id = ? AND EXISTS (
+        return query("""$JOIN WHERE tm.thread_id = ? AND m.role <> 'RUNTIME' AND EXISTS (
             SELECT 1 FROM jsonb_array_elements(m.message_json::jsonb -> 'content') item
             WHERE item ->> 'type' = '$TOOL_RESULT_TYPE' AND item ->> 'toolUseId' IN ($placeholders)
         ) ORDER BY tm.position""", listOf(threadId.value) + callIds)
@@ -99,9 +99,9 @@ class PostgresConversationHistoryRepository(
             ConversationMessageSelection.ALL -> "TRUE"
             ConversationMessageSelection.USER -> "m.role = 'USER' AND $visible"
             ConversationMessageSelection.ASSISTANT -> "m.role = 'ASSISTANT' AND $visible"
-            ConversationMessageSelection.THINKING -> thinking
-            ConversationMessageSelection.TOOL -> "$tool OR EXISTS (SELECT 1 FROM jsonb_array_elements(m.message_json::jsonb -> 'content') item WHERE item ->> 'type' = '$TOOL_RESULT_TYPE')"
-            ConversationMessageSelection.PLAIN -> "NOT $thinking AND NOT $tool AND $visible AND m.role <> 'SYSTEM'"
+            ConversationMessageSelection.THINKING -> "m.role <> 'RUNTIME' AND $thinking"
+            ConversationMessageSelection.TOOL -> "m.role <> 'RUNTIME' AND ($tool OR EXISTS (SELECT 1 FROM jsonb_array_elements(m.message_json::jsonb -> 'content') item WHERE item ->> 'type' = '$TOOL_RESULT_TYPE'))"
+            ConversationMessageSelection.PLAIN -> "m.role <> 'RUNTIME' AND m.role <> 'SYSTEM' AND NOT $thinking AND NOT $tool AND $visible"
         }
         dataSource.connection.use { connection ->
             connection.prepareStatement("SELECT tm.message_id FROM thread_messages tm JOIN messages m ON m.id = tm.message_id WHERE tm.thread_id = ? AND ($predicate) ORDER BY tm.position").use { statement ->

@@ -2,6 +2,7 @@ package com.gromozeka.infrastructure.db.persistence
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
+import com.gromozeka.domain.model.ConversationMessageSelection
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ToolSequenceFacts
 import com.gromozeka.domain.model.UserIdentity
@@ -36,6 +37,79 @@ import kotlin.test.*
 import kotlin.time.Clock
 
 class PostgresRuntimeMessageReadTest {
+    @Test
+    fun `supplemental JSON filters do not read Runtime bodies`() = runBlocking {
+        withFixture { f ->
+            val thread = f.conversation.currentThread
+            val random = java.util.Random(0)
+            val alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+            val runtimePayload = buildString(1_000_000) {
+                repeat(1_000_000) { append(alphabet[random.nextInt(alphabet.length)]) }
+            }
+            val runtime = f.message("runtime").copy(
+                role = Conversation.Message.Role.RUNTIME,
+                author = Conversation.Message.Author.Runtime(),
+                content = listOf(ContentItem.RuntimeJson(JsonPrimitive(runtimePayload))),
+            )
+            val plain = f.message("plain")
+            val callId = ContentItem.ToolCall.Id("call")
+            val thinking = f.message("thinking").copy(
+                role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(ContentItem.Thinking("private reasoning")),
+            )
+            val call = f.message("call").copy(
+                role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(ContentItem.ToolCall(callId, ContentItem.ToolCall.Data("tool", JsonObject(emptyMap())))),
+            )
+            val result = f.message("result").copy(
+                content = listOf(ContentItem.ToolResult(
+                    callId,
+                    "tool",
+                    listOf(ContentItem.ToolResult.Data.Text("done")),
+                )),
+            )
+            listOf(runtime, plain, thinking, call, result).forEachIndexed { position, message ->
+                f.save(message, thread, position)
+            }
+
+            val calibrationBefore = f.messageToastBlocks()
+            f.readMessageBody(runtime.id)
+            assertTrue(f.messageToastBlocks() > calibrationBefore, "The Runtime body must use measured TOAST storage")
+
+            lateinit var results: List<com.gromozeka.domain.repository.PositionedConversationMessage>
+            val resultsToastBefore = f.messageToastBlocks()
+            val resultsRead = f.measure { results = f.history.toolResults(thread, setOf(callId.value)) }
+            assertEquals(listOf(result.id), results.map { it.message.id })
+            assertEquals(0L, f.messageToastBlocks() - resultsToastBefore)
+            assertEquals(1L, resultsRead.bodies)
+
+            suspend fun selected(selection: ConversationMessageSelection): Pair<List<Conversation.Message.Id>, ReadMeasurement> {
+                lateinit var ids: List<Conversation.Message.Id>
+                val toastBefore = f.messageToastBlocks()
+                val read = f.measure { ids = f.history.selectedIds(thread, selection) }
+                assertEquals(0L, f.messageToastBlocks() - toastBefore, selection.name)
+                if (selection != ConversationMessageSelection.ALL) {
+                    val sql = read.queries.single()
+                    val roleFilter = sql.indexOf("m.role <> 'RUNTIME'")
+                    val bodyInspection = sql.indexOf("m.message_json::jsonb")
+                    assertTrue(roleFilter >= 0 && bodyInspection > roleFilter, sql)
+                }
+                return ids to read
+            }
+
+            assertEquals(listOf(thinking.id), selected(ConversationMessageSelection.THINKING).first)
+            assertEquals(listOf(call.id, result.id), selected(ConversationMessageSelection.TOOL).first)
+            assertEquals(listOf(plain.id), selected(ConversationMessageSelection.PLAIN).first)
+            val (all, allRead) = selected(ConversationMessageSelection.ALL)
+            assertEquals(listOf(runtime.id, plain.id, thinking.id, call.id, result.id), all)
+            val resultsSql = resultsRead.queries.single()
+            val resultsRoleFilter = resultsSql.indexOf("m.role <> 'RUNTIME'")
+            val resultsBodyInspection = resultsSql.indexOf("m.message_json::jsonb")
+            assertTrue(resultsRoleFilter >= 0 && resultsBodyInspection > resultsRoleFilter, resultsSql)
+            assertEquals(0L, allRead.bodies)
+        }
+    }
+
     @Test
     fun `recent visible history is bounded in rows and characters without message bodies`() = runBlocking {
         withFixture { f ->
@@ -1201,6 +1275,23 @@ class PostgresRuntimeMessageReadTest {
             connection.prepareStatement("SELECT context_metadata_json FROM messages WHERE id = ?").use {
                 it.setString(1, id.value)
                 it.executeQuery().use { rows -> check(rows.next()); rows.getString(1)?.let { value -> Json.decodeFromString(value) } }
+            }
+        }
+        fun messageToastBlocks(): Long = source.connection.use { connection ->
+            connection.prepareStatement("""
+                SELECT COALESCE(toast_blks_read, 0) + COALESCE(toast_blks_hit, 0)
+                FROM pg_statio_all_tables
+                WHERE relid = 'messages'::regclass
+            """.trimIndent()).use { statement ->
+                statement.executeQuery().use { rows -> check(rows.next()); rows.getLong(1) }
+            }
+        }
+        fun readMessageBody(id: Conversation.Message.Id) {
+            source.connection.use { connection ->
+                connection.prepareStatement("SELECT md5(message_json) FROM messages WHERE id = ?").use { statement ->
+                    statement.setString(1, id.value)
+                    statement.executeQuery().use { rows -> check(rows.next()); checkNotNull(rows.getString(1)) }
+                }
             }
         }
         suspend fun measure(operation: suspend () -> Unit): ReadMeasurement {
