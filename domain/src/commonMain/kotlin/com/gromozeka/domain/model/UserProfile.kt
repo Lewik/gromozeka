@@ -194,7 +194,7 @@ data class UserProfile(
         val mode: Mode = Mode.INLINE,
         val inlinePrompt: String = DEFAULT_PROMPT,
         val separatePrompt: String = DEFAULT_PROMPT,
-        val contextMode: ContextMode = ContextMode.RECENT_MESSAGES,
+        val contextMode: ContextMode = ContextMode.FULL_THREAD,
     ) {
         init {
             require(inlinePrompt.isNotBlank()) { "Inline suggested replies prompt must not be blank" }

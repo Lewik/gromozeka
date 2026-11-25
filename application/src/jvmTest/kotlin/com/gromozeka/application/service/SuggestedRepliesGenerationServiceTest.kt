@@ -26,7 +26,11 @@ class SuggestedRepliesGenerationServiceTest {
         val f = Fixture()
         val message = message("answer", "Ответ", assistant = true)
         val custom = "Предложи короткие варианты на языке пользователя.\nНе добавляй пояснений."
-        f.generate(listOf(message), SuggestedRepliesSettings(inlinePrompt = "INLINE_ONLY", separatePrompt = custom))
+        f.generate(listOf(message), SuggestedRepliesSettings(
+            inlinePrompt = "INLINE_ONLY",
+            separatePrompt = custom,
+            contextMode = SuggestedRepliesSettings.ContextMode.RECENT_MESSAGES,
+        ))
         val request = f.requests.single()
         assertEquals(listOf("""
             You generate optional next-message suggestions for a chat user.
@@ -51,7 +55,7 @@ class SuggestedRepliesGenerationServiceTest {
         val history = (1..12).map { message("$it", "MESSAGE_$it", assistant = it % 2 == 0) } +
             message("blank", " \n\t") +
             message("long", "Z".repeat(4_000) + "CLIPPED_TAIL", assistant = true)
-        f.generate(history, SuggestedRepliesSettings())
+        f.generate(history, SuggestedRepliesSettings(contextMode = SuggestedRepliesSettings.ContextMode.RECENT_MESSAGES))
         val context = f.requests.single().text().substringAfter("<conversation>\n").substringBefore("\n</conversation>")
         assertEquals(10, context.lineSequence().count { it.startsWith("USER:") || it.startsWith("ASSISTANT:") })
         assertFalse("MESSAGE_1\n" in context)
@@ -84,7 +88,10 @@ class SuggestedRepliesGenerationServiceTest {
     fun `112 character recommendation does not become a hard output crop`() = runBlocking {
         val f = Fixture(replies = listOf("Я".repeat(130), "Ещё вариант"))
         val message = message("answer", "Ответ", assistant = true)
-        assertEquals(listOf("Я".repeat(130), "Ещё вариант"), f.generate(listOf(message), SuggestedRepliesSettings()))
+        assertEquals(listOf("Я".repeat(130), "Ещё вариант"), f.generate(
+            listOf(message),
+            SuggestedRepliesSettings(contextMode = SuggestedRepliesSettings.ContextMode.RECENT_MESSAGES),
+        ))
         assertContains(f.requests.single().text(), "recommended not to exceed 112 characters in total")
     }
 
