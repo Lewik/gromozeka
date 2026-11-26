@@ -140,7 +140,7 @@ class AgentResponseReviewService(
                 providerMetadata = JsonObject(message.providerMetadata + mapOf(
                     COLLABORATION_ORIGINAL_CONTENT to Json.encodeToJsonElement(message.content),
                     "collaborationReviewId" to JsonPrimitive(draft.id),
-                    "collaborationNext" to JsonPrimitive(decision.next.name),
+                    COLLABORATION_NEXT to JsonPrimitive(decision.next.name),
                     "collaborationResultsQueued" to JsonPrimitive(decision.requests.count { it.state == AgentRequest.State.COMPLETED }),
                 )),
             )

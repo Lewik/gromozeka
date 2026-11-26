@@ -1,5 +1,7 @@
 package com.gromozeka.infrastructure.db.persistence
 
+import com.gromozeka.domain.model.AgentResponseDecision
+import com.gromozeka.domain.model.COLLABORATION_NEXT
 import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.domain.model.ToolSequenceFacts
 import com.gromozeka.infrastructure.db.persistence.tables.Artifacts
@@ -9,6 +11,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.repository.MessageRepository
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
@@ -60,6 +63,7 @@ class ExposedMessageRepository(
                 this[Messages.providerManagedTool] = toolSequence.providerManaged
                 this[Messages.toolResultsOnly] = toolSequence.toolResultsOnly
                 this[Messages.fullCompactionAnchor] = toolSequence.fullCompactionAnchor
+                this[Messages.responseReviewContinuation] = message.isResponseReviewContinuation()
                 this[Messages.messageJson] = json.encodeToString(message)
             }
         }
@@ -93,6 +97,9 @@ class ExposedMessageRepository(
     private companion object { const val BATCH_SIZE = 256 }
 
 }
+
+internal fun Conversation.Message.isResponseReviewContinuation(): Boolean =
+    providerMetadata[COLLABORATION_NEXT] == JsonPrimitive(AgentResponseDecision.Next.CONTINUE.name)
 
 internal fun Conversation.Message.searchText(includeToolResults: Boolean = true): String = content.mapNotNull { item ->
     when (item) {

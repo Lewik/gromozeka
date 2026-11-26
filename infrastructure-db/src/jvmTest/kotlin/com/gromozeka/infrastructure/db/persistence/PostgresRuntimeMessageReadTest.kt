@@ -39,7 +39,7 @@ import kotlin.time.Duration.Companion.seconds
 
 class PostgresRuntimeMessageReadTest {
     @Test
-    fun `response review continuation threshold does not hydrate the Runtime archive`() = runBlocking {
+    fun `response review continuation threshold does not inspect canonical message JSON`() = runBlocking {
         withFixture { f ->
             val thread = f.conversation.currentThread
             val turnId = "review-turn"
@@ -63,10 +63,20 @@ class PostgresRuntimeMessageReadTest {
                 f.message("$turnId:llm:$index:assistant:0").copy(
                     role = Conversation.Message.Role.ASSISTANT,
                     content = listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("continue $index"))),
-                    providerMetadata = buildJsonObject { put("collaborationNext", "CONTINUE") },
+                    providerMetadata = buildJsonObject {
+                        put("collaborationNext", "CONTINUE")
+                        if (index == 1) put("unrelatedEscapedNul", "\u0000")
+                    },
                 )
             }
-            (listOf(runtime, nonContinuation) + continuations.take(3)).forEachIndexed { position, message ->
+            val extraCandidates = (1..8).map { index ->
+                f.message("$turnId:other:$index:assistant:0").copy(
+                    role = Conversation.Message.Role.ASSISTANT,
+                    content = listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("complete $index"))),
+                    providerMetadata = buildJsonObject { put("collaborationNext", "COMPLETE") },
+                )
+            }
+            (listOf(runtime, nonContinuation) + continuations.take(3) + extraCandidates).forEachIndexed { position, message ->
                 f.save(message, thread, position)
             }
 
@@ -84,12 +94,14 @@ class PostgresRuntimeMessageReadTest {
                 assertEquals(0L, f.messageToastBlocks() - toastBefore)
                 assertEquals(0L, measurement.bodies)
                 assertEquals(1L, measurement.rows)
-                assertContains(measurement.queries.single(), "MATERIALIZED")
+                assertContains(measurement.queries.single(), "response_review_continuation")
                 assertContains(measurement.queries.single(), "LIMIT ?")
+                assertFalse(measurement.queries.single().contains("message_json"))
+                assertFalse(measurement.queries.single().contains("jsonb"))
             }
 
             assertThreshold(false)
-            f.save(continuations.last(), thread, 5)
+            f.save(continuations.last(), thread, 13)
             assertThreshold(true)
         }
     }
@@ -425,7 +437,7 @@ class PostgresRuntimeMessageReadTest {
                 ),
             )
             listOf(writable, readonly, agentWritable).forEachIndexed { index, message ->
-                f.save(message, thread, index)
+                f.insertRaw(message, index)
             }
             assertNull(f.metadata(readonly.id))
             f.migrate()
@@ -863,7 +875,7 @@ class PostgresRuntimeMessageReadTest {
             )
             val tail = f.message("tail").copy(createdAt = f.now + 3.seconds)
             listOf(first, boundary, checkpoint, tail).forEachIndexed { position, message ->
-                f.save(message, thread, position)
+                f.insertRaw(message, position)
             }
 
             f.migrate()

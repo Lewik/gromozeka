@@ -468,6 +468,7 @@ internal object Messages : Table("messages") {
     val providerManagedTool = bool("provider_managed_tool")
     val toolResultsOnly = bool("tool_results_only")
     val fullCompactionAnchor = bool("full_compaction_anchor")
+    val responseReviewContinuation = bool("response_review_continuation")
     val messageJson = text("message_json")
     val contextMetadataJson = text("context_metadata_json").nullable().databaseGenerated()
 

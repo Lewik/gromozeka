@@ -215,9 +215,9 @@ class ExposedThreadMessageRepository(
         checkNotNull(TransactionManager.current().exec(
             RESPONSE_REVIEW_CONTINUATION_THRESHOLD_SQL,
             listOf(
+                IntegerColumnType() to requiredCount,
                 TextColumnType() to threadId.value,
                 TextColumnType() to "$turnId:",
-                IntegerColumnType() to requiredCount,
                 IntegerColumnType() to requiredCount,
             ),
             StatementType.SELECT,
@@ -536,19 +536,15 @@ class ExposedThreadMessageRepository(
         """.trimIndent()
 
         val RESPONSE_REVIEW_CONTINUATION_THRESHOLD_SQL = """
-            WITH candidates AS MATERIALIZED (
-                SELECT m.message_json
+            SELECT count(*) >= ? AS threshold_reached
+            FROM (
+                SELECT 1
                 FROM thread_messages tm
                 JOIN messages m ON m.id = tm.message_id
                 WHERE tm.thread_id = ?
                     AND m.role = 'ASSISTANT'
                     AND starts_with(tm.message_id, ?)
-            )
-            SELECT count(*) >= ? AS threshold_reached
-            FROM (
-                SELECT 1
-                FROM candidates candidate
-                WHERE candidate.message_json::jsonb #>> '{providerMetadata,collaborationNext}' = 'CONTINUE'
+                    AND m.response_review_continuation
                 LIMIT ?
             ) matching
         """.trimIndent()

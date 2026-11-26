@@ -120,3 +120,4 @@ val AGENT_COLLABORATION_TOOL_NAMES: Set<String> = setOf(
 const val COLLABORATION_ORIGINAL_CONTENT = "gromozekaCollaborationOriginalContent"
 const val COLLABORATION_MESSAGE_KIND = "gromozekaCollaborationKind"
 const val COLLABORATION_DELIVERY_ID = "gromozekaCollaborationDeliveryId"
+const val COLLABORATION_NEXT = "collaborationNext"
