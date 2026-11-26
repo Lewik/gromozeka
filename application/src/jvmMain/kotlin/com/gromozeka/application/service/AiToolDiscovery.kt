@@ -8,10 +8,14 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.isFullContextCompaction
 import com.gromozeka.domain.service.AgentDomainService
+import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ProjectDomainService
+import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolContextField
 import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.AiToolDescriptor
 import com.gromozeka.domain.tool.AiToolLoadingPolicy
 import com.gromozeka.domain.tool.PreloadedServerToolMetadata
 import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
@@ -219,7 +223,9 @@ class AiToolRuntimeCatalogService {
         messages: List<Conversation.Message>,
         memoryEnabled: Boolean,
     ): AiToolRuntimeSelection {
-        val toolsByName = catalog.tools.associateBy { it.definition.name }
+        val toolsByName = catalog.tools
+            .filter { it.isAvailableForConversation(memoryEnabled) }
+            .associateBy { it.definition.name }
         val requestedToolNames = loadedToolNames(
             agent = agent,
             catalog = catalog,
@@ -253,7 +259,7 @@ class AiToolRuntimeCatalogService {
         addAll(discoveredToolNames(messages, catalog))
         removeAll { name ->
             catalog.entries[name]?.let { entry ->
-                !agent.toolAccess.allows(
+                !entry.descriptor.isAvailableForConversation(memoryEnabled) || !agent.toolAccess.allows(
                     com.gromozeka.domain.tool.QualifiedToolName(entry.descriptor.definition.source, entry.logicalName),
                     entry.contractFingerprint,
                 )
@@ -371,6 +377,8 @@ class SearchToolsToolCallback(
     private val conversationDomainService: ConversationDomainService,
     private val distributedToolCatalog: DistributedAiToolCatalog,
     private val searchService: AiToolSearchService,
+    private val settingsProvider: SettingsProvider,
+    private val aiConfigurationProvider: AiConfigurationProvider,
 ) : AiToolCallback {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -433,8 +441,16 @@ class SearchToolsToolCallback(
             ?: error("Conversation not found: ${conversationId.value}")
         require(conversation.projectId == project.id) { "Conversation belongs to another project" }
         val catalog = distributedToolCatalog.snapshot(project, agent.toolAccess, conversation)
+        val memoryEnabled = conversationMemoryAvailability(
+            conversation,
+            settingsProvider.userProfile.memorySettings,
+            aiConfigurationProvider,
+        ).enabled
         val matches = searchService.search(
-            tools = catalog.tools.filterNot { it.definition.name in context?.modelVisibleToolNames.orEmpty() },
+            tools = catalog.tools.filter {
+                it.isAvailableForConversation(memoryEnabled) &&
+                    it.definition.name !in context?.modelVisibleToolNames.orEmpty()
+            },
             query = input.query,
             limit = input.limit,
         )
@@ -462,6 +478,15 @@ class SearchToolsToolCallback(
         return Conversation.Id(value)
     }
 }
+
+internal fun AiToolCallback.isAvailableForConversation(memoryEnabled: Boolean): Boolean =
+    metadata.isAvailableForConversation(memoryEnabled)
+
+private fun AiToolDescriptor.isAvailableForConversation(memoryEnabled: Boolean): Boolean =
+    metadata.isAvailableForConversation(memoryEnabled)
+
+private fun com.gromozeka.domain.tool.AiToolMetadata.isAvailableForConversation(memoryEnabled: Boolean): Boolean =
+    memoryEnabled || AiToolContextField.MEMORY_NAMESPACE !in contextRequirements.fields
 
 internal data class Bm25Document<T>(
     val id: T,

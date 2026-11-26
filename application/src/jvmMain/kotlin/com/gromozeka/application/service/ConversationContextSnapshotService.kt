@@ -110,11 +110,14 @@ class ConversationContextSnapshotService(
         val baseCatalog = toolCatalog.readSnapshot(project, agent.toolAccess, conversation)
         val skillContext = skills.prepare(agent, project.id, baseCatalog)
         val catalog = skillContext.toolCatalog
-        val definitions = catalog.tools.map { it.definition }
-        val memoryEnabled = conversation.externalChannel == null && (
-            (profile.memorySettings.autoRemember && configuration.availableRuntimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE) != null) ||
-                (profile.memorySettings.autoRecall && configuration.availableRuntimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_READ) != null)
-            )
+        val memoryEnabled = conversationMemoryAvailability(
+            conversation,
+            profile.memorySettings,
+            configuration,
+        ).enabled
+        val definitions = catalog.tools
+            .filter { it.isAvailableForConversation(memoryEnabled) }
+            .map { it.definition }
         val selectedTools = toolSelection.selectTools(agent, catalog, prefix, memoryEnabled)
         val peerContext = collaboration.takeIf { conversation.externalChannel == null }
         val systemPrompts = buildList {

@@ -1510,7 +1510,14 @@ class ConversationEngineService(
             toolCatalog = baseToolCatalog,
         )
         val toolCatalog = agentSkillRuntime.toolCatalog
-        val capabilityCatalogDefinitions = toolCatalog.tools.map(AiToolCallback::definition)
+        val memoryAvailability = conversationMemoryAvailability(
+            conversation,
+            settingsProvider.userProfile.memorySettings,
+            aiConfigurationProvider,
+        )
+        val capabilityCatalogDefinitions = toolCatalog.tools
+            .filter { it.isAvailableForConversation(memoryAvailability.enabled) }
+            .map(AiToolCallback::definition)
         val toolCapabilityCatalogPrompt = if (readOnlySnapshot) {
             aiToolCapabilityCatalogService.readOnlyPromptFor(capabilityCatalogDefinitions)
         } else {
@@ -1520,14 +1527,9 @@ class ConversationEngineService(
             .forMemoryPipeline(agent.toolAccess)
         val baseSystemPrompts = agentPromptAssemblyService.assembleSystemPrompt(agent, runtimeContext)
         val assistantResponseFormat = resolvedRuntime.modelConfiguration.assistantResponseFormat
-        val memorySettings = settingsProvider.userProfile.memorySettings
         val suggestedRepliesSettings = settingsProvider.userProfile.suggestedRepliesSettings.let {
             if (conversation.externalChannel != null) it.copy(mode = UserProfile.SuggestedRepliesSettings.Mode.DISABLED) else it
         }
-        val automaticMemoryRememberEnabled = conversation.externalChannel == null && memorySettings.autoRemember &&
-            aiConfigurationProvider.availableRuntimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE) != null
-        val automaticMemoryRecallEnabled = conversation.externalChannel == null && memorySettings.autoRecall &&
-            aiConfigurationProvider.availableRuntimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_READ) != null
         val runtimeSystemPrompts = assembleConversationSystemPrompts(
             base = baseSystemPrompts,
             agent = agent,
@@ -1552,8 +1554,8 @@ class ConversationEngineService(
             memorySystemPrompts = baseSystemPrompts,
             runtimeSystemPrompts = runtimeSystemPrompts,
             assistantResponseFormat = assistantResponseFormat,
-            automaticMemoryRememberEnabled = automaticMemoryRememberEnabled,
-            automaticMemoryRecallEnabled = automaticMemoryRecallEnabled,
+            automaticMemoryRememberEnabled = memoryAvailability.remember,
+            automaticMemoryRecallEnabled = memoryAvailability.recall,
             includeMessageTemporalContext =
                 settingsProvider.userProfile.agentSettings.includeMessageTemporalContext,
             suggestedRepliesSettings = suggestedRepliesSettings,
