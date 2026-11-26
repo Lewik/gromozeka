@@ -29,6 +29,11 @@ data class ThreadMessagePageEntry(
     val message: Conversation.Message,
 )
 
+data class ThreadMessageReplacement(
+    val sourceMessageId: Conversation.Message.Id,
+    val replacementMessageId: Conversation.Message.Id,
+)
+
 /** Selected sparse bodies and the physical size of the same captured thread prefix. */
 data class ThreadContextMessages(
     val messages: List<Conversation.Message>,
@@ -139,11 +144,11 @@ interface ThreadMessageRepository {
         messageId: Conversation.Message.Id,
     ): Conversation.Message?
 
-    /** Copy one branch in SQL while applying a small replacement/exclusion set. */
+    /** Atomically copy one branch while applying an optional replacement and exclusions. */
     suspend fun copyWithChanges(
         sourceThreadId: Conversation.Thread.Id,
         targetThreadId: Conversation.Thread.Id,
-        replacements: Map<Conversation.Message.Id, Conversation.Message.Id> = emptyMap(),
+        replacement: ThreadMessageReplacement? = null,
         excludedMessageIds: Set<Conversation.Message.Id> = emptySet(),
     )
 

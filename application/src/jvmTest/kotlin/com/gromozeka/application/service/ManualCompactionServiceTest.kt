@@ -33,6 +33,7 @@ import com.gromozeka.domain.repository.ConversationCompactionRepository
 import com.gromozeka.domain.repository.MessageRepository
 import com.gromozeka.domain.repository.ThreadMessageLink
 import com.gromozeka.domain.repository.ThreadMessageRepository
+import com.gromozeka.domain.repository.ThreadMessageReplacement
 import com.gromozeka.domain.repository.ThreadRepository
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiRuntime
@@ -1006,13 +1007,17 @@ private class InMemoryThreadMessageRepository(
     override suspend fun copyWithChanges(
         sourceThreadId: Conversation.Thread.Id,
         targetThreadId: Conversation.Thread.Id,
-        replacements: Map<Conversation.Message.Id, Conversation.Message.Id>,
+        replacement: ThreadMessageReplacement?,
         excludedMessageIds: Set<Conversation.Message.Id>,
     ) {
         val copied = links[sourceThreadId].orEmpty().sortedBy(ThreadMessageLink::position)
             .filterNot { it.messageId in excludedMessageIds }
             .mapIndexed { index, link ->
-                ThreadMessageLink(targetThreadId, replacements[link.messageId] ?: link.messageId, index)
+                ThreadMessageLink(
+                    targetThreadId,
+                    if (link.messageId == replacement?.sourceMessageId) replacement.replacementMessageId else link.messageId,
+                    index,
+                )
             }
         addBatch(copied)
     }

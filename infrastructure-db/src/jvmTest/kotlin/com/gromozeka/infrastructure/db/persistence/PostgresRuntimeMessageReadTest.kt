@@ -10,6 +10,7 @@ import com.gromozeka.domain.model.ai.AI_PROVIDER_MANAGED_TOOL_METADATA_KEY
 import com.gromozeka.domain.model.ai.projectedMessages
 import com.gromozeka.domain.model.toolSequenceRepairBodyIds
 import com.gromozeka.domain.repository.RecentVisibleMessage
+import com.gromozeka.domain.repository.ThreadMessageReplacement
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -1154,7 +1155,7 @@ class PostgresRuntimeMessageReadTest {
     }
 
     @Test
-    fun `paged archive and SQL branch copy apply replacements and exclusions without full reads`() = runBlocking {
+    fun `paged archive and branch copy apply replacement and exclusions without full reads`() = runBlocking {
         withFixture { f ->
             val source = f.conversation.currentThread
             val original = (0..3).map { index -> f.message("copy-$index") }
@@ -1187,7 +1188,7 @@ class PostgresRuntimeMessageReadTest {
             f.links.copyWithChanges(
                 sourceThreadId = source,
                 targetThreadId = replacedThread,
-                replacements = mapOf(original[1].id to replacement.id),
+                replacement = ThreadMessageReplacement(original[1].id, replacement.id),
                 excludedMessageIds = setOf(original[2].id),
             )
             assertEquals(
@@ -1207,6 +1208,40 @@ class PostgresRuntimeMessageReadTest {
                 f.links.readLinksForTest(deletedThread).map { it.messageId },
             )
             assertEquals(listOf(0, 1), f.links.readLinksForTest(deletedThread).map { it.position })
+        }
+    }
+
+    @Test
+    fun `branch copy chunks more than 65 thousand exclusions`() = runBlocking {
+        withFixture { f ->
+            val source = f.conversation.currentThread
+            val retained = f.message("large-exclusion-retained")
+            val excluded = f.message("large-exclusion-removed")
+            f.save(retained, source, 0)
+            f.save(excluded, source, 1)
+            val target = Conversation.Thread.Id("large-exclusion-target")
+            ExposedThreadRepository().save(Conversation.Thread(
+                id = target,
+                conversationId = f.conversation.id,
+                originalThread = source,
+                createdAt = f.now,
+                updatedAt = f.now,
+            ))
+            val excludedIds = buildSet {
+                add(excluded.id)
+                repeat(70_000) { add(Conversation.Message.Id("absent-exclusion-$it")) }
+            }
+
+            f.links.copyWithChanges(
+                sourceThreadId = source,
+                targetThreadId = target,
+                excludedMessageIds = excludedIds,
+            )
+
+            assertEquals(
+                listOf(retained.id to 0),
+                f.links.readLinksForTest(target).map { it.messageId to it.position },
+            )
         }
     }
 

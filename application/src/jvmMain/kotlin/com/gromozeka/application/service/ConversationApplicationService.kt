@@ -13,6 +13,7 @@ import com.gromozeka.domain.repository.samePersistentBodyAs
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.MessageRepository
 import com.gromozeka.domain.repository.ThreadMessageRepository
+import com.gromozeka.domain.repository.ThreadMessageReplacement
 import com.gromozeka.domain.repository.ThreadRepository
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
@@ -465,7 +466,7 @@ class ConversationApplicationService(
         threadMessageRepo.copyWithChanges(
             sourceThreadId = conversation.currentThread,
             targetThreadId = thread.id,
-            replacements = mapOf(previous.id to replacement.id),
+            replacement = ThreadMessageReplacement(previous.id, replacement.id),
         )
         conversationRepo.updateCurrentThread(conversation.id, thread.id)
         publishConversationList(conversation)
@@ -548,7 +549,7 @@ class ConversationApplicationService(
         threadMessageRepo.copyWithChanges(
             sourceThreadId = currentThreadId,
             targetThreadId = newThread.id,
-            replacements = mapOf(messageId to editedMessage.id),
+            replacement = ThreadMessageReplacement(messageId, editedMessage.id),
             excludedMessageIds = invalidated,
         )
 

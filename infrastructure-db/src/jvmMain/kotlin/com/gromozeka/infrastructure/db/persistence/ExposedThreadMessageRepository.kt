@@ -19,6 +19,7 @@ import org.jetbrains.exposed.v1.core.statements.StatementType
 import java.sql.Connection
 import com.gromozeka.domain.repository.ThreadMessageLink
 import com.gromozeka.domain.repository.ThreadMessagePageEntry
+import com.gromozeka.domain.repository.ThreadMessageReplacement
 import com.gromozeka.domain.repository.ThreadContextMessages
 import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.repository.RecentVisibleMessage
@@ -164,41 +165,54 @@ class ExposedThreadMessageRepository(
     override suspend fun copyWithChanges(
         sourceThreadId: Conversation.Thread.Id,
         targetThreadId: Conversation.Thread.Id,
-        replacements: Map<Conversation.Message.Id, Conversation.Message.Id>,
+        replacement: ThreadMessageReplacement?,
         excludedMessageIds: Set<Conversation.Message.Id>,
     ): Unit = dbQuery {
-        require(replacements.keys.intersect(excludedMessageIds).isEmpty()) {
+        require(replacement == null || replacement.sourceMessageId !in excludedMessageIds) {
             "A copied message cannot be both replaced and excluded"
         }
         check(ThreadMessages.selectAll().where { ThreadMessages.threadId eq targetThreadId.value }.empty()) {
             "Replacement thread must be empty"
         }
-        val cases = replacements.entries.joinToString(" ") { "WHEN ? THEN ?" }
-        val exclusions = excludedMessageIds.joinToString(",") { "?" }
-        val sql = buildString {
-            append("INSERT INTO thread_messages(thread_id, message_id, position) SELECT ?, ")
-            if (replacements.isEmpty()) {
-                append("tm.message_id")
-            } else {
-                append("CASE tm.message_id ")
-                append(cases)
-                append(" ELSE tm.message_id END")
+        TransactionManager.current().exec(
+            COPY_THREAD_MESSAGES_SQL,
+            listOf(
+                TextColumnType() to targetThreadId.value,
+                TextColumnType() to sourceThreadId.value,
+            ),
+        )
+
+        val deleted = excludedMessageIds.asSequence()
+            .map { it.value }
+            .chunked(MUTATION_BATCH_SIZE)
+            .sumOf { excludedIds ->
+                ThreadMessages.deleteWhere {
+                    (ThreadMessages.threadId eq targetThreadId.value) and
+                        (ThreadMessages.messageId inList excludedIds)
+                }
             }
-            append(", (row_number() OVER (ORDER BY tm.position) - 1)::integer ")
-            append("FROM thread_messages tm WHERE tm.thread_id = ?")
-            if (excludedMessageIds.isNotEmpty()) append(" AND tm.message_id NOT IN ($exclusions)")
-            append(" ORDER BY tm.position")
-        }
-        val parameters = buildList<Pair<org.jetbrains.exposed.v1.core.IColumnType<*>, Any?>> {
-            add(TextColumnType() to targetThreadId.value)
-            replacements.forEach { (from, to) ->
-                add(TextColumnType() to from.value)
-                add(TextColumnType() to to.value)
+
+        replacement?.let { change ->
+            val updated = ThreadMessages.update({
+                (ThreadMessages.threadId eq targetThreadId.value) and
+                    (ThreadMessages.messageId eq change.sourceMessageId.value)
+            }) {
+                it[ThreadMessages.messageId] = change.replacementMessageId.value
             }
-            add(TextColumnType() to sourceThreadId.value)
-            excludedMessageIds.forEach { add(TextColumnType() to it.value) }
+            check(updated == 1) {
+                "Message ${change.sourceMessageId.value} is not in copied thread ${targetThreadId.value}"
+            }
         }
-        TransactionManager.current().exec(sql, parameters)
+
+        if (deleted > 0) {
+            TransactionManager.current().exec(
+                REINDEX_THREAD_MESSAGES_SQL,
+                listOf(
+                    TextColumnType() to targetThreadId.value,
+                    TextColumnType() to targetThreadId.value,
+                ),
+            )
+        }
     }
 
     override suspend fun hasAtLeastResponseReviewContinuations(
@@ -512,6 +526,31 @@ class ExposedThreadMessageRepository(
     )
 
     private companion object {
+        const val MUTATION_BATCH_SIZE = 512
+
+        val COPY_THREAD_MESSAGES_SQL = """
+            INSERT INTO thread_messages(thread_id, message_id, position)
+            SELECT ?, tm.message_id, tm.position
+            FROM thread_messages tm
+            WHERE tm.thread_id = ?
+            ORDER BY tm.position
+        """.trimIndent()
+
+        val REINDEX_THREAD_MESSAGES_SQL = """
+            WITH ordered AS (
+                SELECT message_id,
+                    (row_number() OVER (ORDER BY position) - 1)::integer AS new_position
+                FROM thread_messages
+                WHERE thread_id = ?
+            )
+            UPDATE thread_messages target
+            SET position = ordered.new_position
+            FROM ordered
+            WHERE target.thread_id = ?
+                AND target.message_id = ordered.message_id
+                AND target.position <> ordered.new_position
+        """.trimIndent()
+
         val RECENT_VISIBLE_MESSAGES_SQL = """
             WITH source AS (
                 SELECT position
