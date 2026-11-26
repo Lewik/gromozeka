@@ -20,9 +20,11 @@ class V93__compaction_source_boundaries : BaseJavaMigration() {
     override fun migrate(context: Context) {
         val connection = context.connection
         check(connection.autoCommit) { "Compaction boundary migration requires a non-transactional Flyway connection" }
-        val updates = readFullUpdates(connection)
-        updates.filter { it.prefixes.isNotEmpty() }.forEach { validateFullPrefixes(connection, it) }
-        updates.chunked(BATCH_SIZE).forEach { writeFullBatch(connection, it) }
+        // Validate every legacy prefix before the first non-transactional write without retaining every update.
+        forEachFullUpdate(connection) { update ->
+            if (update.prefixes.isNotEmpty()) validateFullPrefixes(connection, update)
+        }
+        writeFullUpdates(connection)
         connection.createStatement().use { statement ->
             statement.executeQuery("SELECT count(*) FROM messages WHERE compaction_header IS NULL").use { rows ->
                 check(rows.next() && rows.getLong(1) == 0L) { "Compaction boundary migration found unindexed messages" }
@@ -30,26 +32,64 @@ class V93__compaction_source_boundaries : BaseJavaMigration() {
         }
     }
 
-    private fun readFullUpdates(connection: Connection): List<FullUpdate> {
-        val candidates = connection.prepareStatement(
-            """
-                SELECT id, message_json, compaction_header
-                FROM messages
-                WHERE message_json LIKE '%ContextCompactionResult%'
-                ORDER BY id
-            """.trimIndent(),
-        ).use { select ->
-            select.executeQuery().use { rows ->
-                buildList {
-                    while (rows.next()) {
-                        add(Triple(rows.getString(1), rows.getString(2), rows.getString(3)))
+    private fun forEachFullUpdate(connection: Connection, consume: (FullUpdate) -> Unit) {
+        var cursor = ""
+        while (true) {
+            val ids = connection.prepareStatement(
+                """
+                    SELECT id
+                    FROM messages
+                    WHERE id > ? AND message_json LIKE '%ContextCompactionResult%'
+                    ORDER BY id
+                    LIMIT ?
+                """.trimIndent(),
+            ).use { select ->
+                select.setString(1, cursor)
+                select.setInt(2, CANDIDATE_ID_PAGE_SIZE)
+                select.executeQuery().use { rows ->
+                    buildList {
+                        while (rows.next()) add(rows.getString(1))
                     }
                 }
             }
+            if (ids.isEmpty()) return
+            ids.forEach { id ->
+                val candidate = connection.prepareStatement(
+                    "SELECT message_json, compaction_header FROM messages WHERE id = ?",
+                ).use { select ->
+                    select.setString(1, id)
+                    select.executeQuery().use { rows ->
+                        check(rows.next()) { "Compaction candidate $id disappeared during migration" }
+                        Candidate(rows.getString(1), rows.getString(2))
+                    }
+                }
+                fullUpdate(connection, id, candidate.message, candidate.header)?.let(consume)
+            }
+            cursor = ids.last()
         }
-        return candidates.mapNotNull { (id, original, originalHeader) ->
-            fullUpdate(connection, id, original, originalHeader)
+    }
+
+    private fun writeFullUpdates(connection: Connection) {
+        val batch = mutableListOf<WriteUpdate>()
+        var batchCharacters = 0L
+        fun flush() {
+            if (batch.isEmpty()) return
+            writeFullBatch(connection, batch)
+            batch.clear()
+            batchCharacters = 0L
         }
+        forEachFullUpdate(connection) { update ->
+            val write = update.toWriteUpdate()
+            val characters = write.retainedCharacters()
+            if (batch.isNotEmpty() &&
+                (batch.size >= MAX_WRITE_BATCH_SIZE || batchCharacters + characters > MAX_WRITE_BATCH_CHARACTERS)
+            ) {
+                flush()
+            }
+            batch += write
+            batchCharacters += characters
+        }
+        flush()
     }
 
     private fun fullUpdate(
@@ -181,7 +221,7 @@ class V93__compaction_source_boundaries : BaseJavaMigration() {
         }
     }
 
-    private fun writeFullBatch(connection: Connection, batch: List<FullUpdate>) {
+    private fun writeFullBatch(connection: Connection, batch: List<WriteUpdate>) {
         check(connection.autoCommit) { "Full compaction batch started inside an existing transaction" }
         connection.autoCommit = false
         try {
@@ -228,9 +268,27 @@ class V93__compaction_source_boundaries : BaseJavaMigration() {
         val migrated: String,
         val migratedHeader: String,
         val prefixes: List<List<String>>,
-    )
+    ) {
+        fun toWriteUpdate() = WriteUpdate(id, original, originalHeader, migrated, migratedHeader)
+    }
+
+    private data class Candidate(val message: String, val header: String?)
+
+    private data class WriteUpdate(
+        val id: String,
+        val original: String,
+        val originalHeader: String?,
+        val migrated: String,
+        val migratedHeader: String,
+    ) {
+        fun retainedCharacters(): Long =
+            id.length.toLong() + original.length + (originalHeader?.length ?: 0) +
+                migrated.length + migratedHeader.length
+    }
 
     private companion object {
-        const val BATCH_SIZE = 1_000
+        const val CANDIDATE_ID_PAGE_SIZE = 1_000
+        const val MAX_WRITE_BATCH_SIZE = 1_000
+        const val MAX_WRITE_BATCH_CHARACTERS = 4L * 1024 * 1024
     }
 }

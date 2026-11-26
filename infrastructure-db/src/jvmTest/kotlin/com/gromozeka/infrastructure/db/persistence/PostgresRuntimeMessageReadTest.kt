@@ -807,6 +807,100 @@ class PostgresRuntimeMessageReadTest {
     }
 
     @Test
+    fun `V93 streams many large full checkpoints across candidate pages`() = runBlocking {
+        withFixture(target = "91") { f ->
+            val count = 1_001
+            val source = f.message("v93-source-boundary")
+            f.insertRawMessage(source)
+            val checkpoint = f.message("V93_BULK_ID").copy(
+                role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(ContentItem.ContextCompactionResult(
+                    payload = ContentItem.ContextCompactionResult.Payload.ReadableSummary("History"),
+                    origin = ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY,
+                    strategy = ContentItem.ContextCompactionResult.Strategy.COMPACT,
+                    sourceMessageIds = listOf(source.id),
+                    coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                )),
+            )
+            val document = Json.parseToJsonElement(Json.encodeToString(checkpoint)).jsonObject
+            val largeCheckpoint = JsonObject(
+                document + ("migrationPadding" to JsonPrimitive("x".repeat(64 * 1024))),
+            ).toString()
+            f.source.connection.use { connection ->
+                connection.prepareStatement(
+                    """
+                        INSERT INTO threads(id, conversation_id, created_at, updated_at)
+                        SELECT 'v93-bulk-thread-' || lpad(i::text, 4, '0'), ?, now(), now()
+                        FROM generate_series(1, ?) AS i
+                    """.trimIndent(),
+                ).use {
+                    it.setString(1, f.conversation.id.value)
+                    it.setInt(2, count)
+                    assertEquals(count, it.executeUpdate())
+                }
+                connection.prepareStatement(
+                    """
+                        INSERT INTO messages(id, conversation_id, original_ids_json, role, created_at, search_text, message_json)
+                        SELECT 'v93-bulk-' || lpad(i::text, 4, '0'), ?, '[]', 'ASSISTANT', now(), '',
+                               replace(?, 'V93_BULK_ID', 'v93-bulk-' || lpad(i::text, 4, '0'))
+                        FROM generate_series(1, ?) AS i
+                    """.trimIndent(),
+                ).use {
+                    it.setString(1, f.conversation.id.value)
+                    it.setString(2, largeCheckpoint)
+                    it.setInt(3, count)
+                    assertEquals(count, it.executeUpdate())
+                }
+                connection.prepareStatement(
+                    """
+                        INSERT INTO thread_messages(thread_id, message_id, position)
+                        SELECT 'v93-bulk-thread-' || lpad(i::text, 4, '0'), 'v93-source-boundary', 0
+                        FROM generate_series(1, ?) AS i
+                    """.trimIndent(),
+                ).use {
+                    it.setInt(1, count)
+                    assertEquals(count, it.executeUpdate())
+                }
+                connection.prepareStatement(
+                    """
+                        INSERT INTO thread_messages(thread_id, message_id, position)
+                        SELECT 'v93-bulk-thread-' || lpad(i::text, 4, '0'),
+                               'v93-bulk-' || lpad(i::text, 4, '0'), 1
+                        FROM generate_series(1, ?) AS i
+                    """.trimIndent(),
+                ).use {
+                    it.setInt(1, count)
+                    assertEquals(count, it.executeUpdate())
+                }
+            }
+            f.migrate("92")
+
+            f.migrate("93")
+
+            f.source.connection.use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.executeQuery(
+                        """
+                            SELECT count(*),
+                                   count(*) FILTER (WHERE message_json LIKE '%"sourceMessageIds"%'),
+                                   count(*) FILTER (WHERE message_json LIKE '%"sourceBoundaryMessageId":"v93-source-boundary"%'),
+                                   min(octet_length(message_json))
+                            FROM messages
+                            WHERE id LIKE 'v93-bulk-%'
+                        """.trimIndent(),
+                    ).use { rows ->
+                        assertTrue(rows.next())
+                        assertEquals(count, rows.getInt(1))
+                        assertEquals(0, rows.getInt(2))
+                        assertEquals(count, rows.getInt(3))
+                        assertTrue(rows.getInt(4) > 64 * 1024)
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     fun `V97 backfills canonical tool sequence facts including imported rows without headers`() = runBlocking {
         withFixture(target = "96") { f ->
             val bulkMessages = 2_001
@@ -934,20 +1028,31 @@ class PostgresRuntimeMessageReadTest {
     fun `V93 rejects a full checkpoint that is not an exact prefix in every branch before mutation`() = runBlocking {
         withFixture(target = "91") { f ->
             val source = f.message("source")
-            val checkpoint = f.message("checkpoint").copy(
+            val validCheckpoint = f.message("a-valid-checkpoint").copy(
                 role = Conversation.Message.Role.ASSISTANT,
                 content = listOf(ContentItem.ContextCompactionResult(
-                    payload = ContentItem.ContextCompactionResult.Payload.ReadableSummary("History"),
+                    payload = ContentItem.ContextCompactionResult.Payload.ReadableSummary("Valid history"),
                     origin = ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY,
                     strategy = ContentItem.ContextCompactionResult.Strategy.COMPACT,
                     sourceMessageIds = listOf(source.id),
                     coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
                 )),
             )
+            val checkpoint = f.message("checkpoint").copy(
+                role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(ContentItem.ContextCompactionResult(
+                    payload = ContentItem.ContextCompactionResult.Payload.ReadableSummary("History"),
+                    origin = ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY,
+                    strategy = ContentItem.ContextCompactionResult.Strategy.COMPACT,
+                    sourceMessageIds = listOf(source.id, validCheckpoint.id),
+                    coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                )),
+            )
             val tail = f.message("tail")
             f.insertRaw(source, 0)
-            f.insertRaw(checkpoint, 1)
-            f.insertRaw(tail, 2)
+            f.insertRaw(validCheckpoint, 1)
+            f.insertRaw(checkpoint, 2)
+            f.insertRaw(tail, 3)
             val branch = Conversation.Thread.Id("branch")
             ExposedThreadRepository().save(Conversation.Thread(
                 branch, f.conversation.id, originalThread = f.conversation.currentThread,
@@ -957,12 +1062,14 @@ class PostgresRuntimeMessageReadTest {
             f.links.add(branch, tail.id, 1)
             f.links.add(branch, checkpoint.id, 2)
             f.migrate("92")
-            val before = f.source.connection.use { connection ->
+            fun stored(id: Conversation.Message.Id) = f.source.connection.use { connection ->
                 connection.prepareStatement("SELECT message_json, compaction_header FROM messages WHERE id = ?").use {
-                    it.setString(1, checkpoint.id.value)
+                    it.setString(1, id.value)
                     it.executeQuery().use { rows -> assertTrue(rows.next()); rows.getString(1) to rows.getString(2) }
                 }
             }
+            val validBefore = stored(validCheckpoint.id)
+            val invalidBefore = stored(checkpoint.id)
 
             val failure = assertFails { f.migrate() }
             val details = generateSequence(failure as Throwable?) { it.cause }.joinToString("\n") { it.toString() }
@@ -976,11 +1083,10 @@ class PostgresRuntimeMessageReadTest {
                           AND table_name = 'messages'
                           AND column_name = 'compaction_header'
                     """.trimIndent()).use { rows -> assertTrue(rows.next()); assertEquals(1, rows.getInt(1)) }
-                    statement.executeQuery("SELECT message_json, compaction_header FROM messages WHERE id = 'checkpoint'").use { rows ->
-                        assertTrue(rows.next()); assertEquals(before, rows.getString(1) to rows.getString(2))
-                    }
                 }
             }
+            assertEquals(validBefore, stored(validCheckpoint.id))
+            assertEquals(invalidBefore, stored(checkpoint.id))
         }
     }
 
