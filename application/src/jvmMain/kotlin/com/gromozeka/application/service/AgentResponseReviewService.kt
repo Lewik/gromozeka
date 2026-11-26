@@ -34,31 +34,34 @@ class AgentResponseReviewService(
         val waitable = outgoing.map { it.id } +
             coordinator.findCommandTasks(conversation.id).filter { !it.isTerminal && it.agentDefinitionId == endpoint.agentId }.map { it.id.value } +
             coordinator.findCommandMonitors(conversation.id).filter { !it.isTerminal && it.agentDefinitionId == endpoint.agentId }.map { it.id.value }
+        val recentContext = mutableListOf<String>()
+        for (message in input.asReversed()) {
+            val text = message.content.mapNotNull {
+                when (it) {
+                    is ContentItem.UserMessage -> it.text
+                    is ContentItem.VisualInteraction -> it.modelText()
+                    is ContentItem.RuntimeJson -> it.json.toString()
+                    is ContentItem.AssistantMessage -> it.structured.fullText
+                    is ContentItem.Thinking,
+                    is ContentItem.System,
+                    is ContentItem.ToolCall,
+                    is ContentItem.ToolResult,
+                    is ContentItem.ImageItem,
+                    is ContentItem.DocumentItem,
+                    is ContentItem.ArtifactItem,
+                    is ContentItem.ContextCompactionResult,
+                    is ContentItem.UnknownJson,
+                    -> null
+                }
+            }.joinToString("\n").take(REVIEW_CONTEXT_MESSAGE_CHARACTERS).takeIf(String::isNotBlank) ?: continue
+            recentContext += "${message.author?.displayName ?: message.role.name} [${message.id.value}]: $text"
+            if (recentContext.size == REVIEW_CONTEXT_MESSAGES) break
+        }
         val draft = AgentResponseDraft(
             id = "${task.id.value}:review", endpoint = endpoint, actorUserId = actor,
             rootMessageId = payload.rootUserMessageId, turnId = task.turnId.value, iteration = payload.iteration,
             messages = messages, incoming = incoming, outgoing = outgoing, waitableIds = waitable,
-            contextText = input.asSequence().mapNotNull { m ->
-                val text = m.content.mapNotNull {
-                    when (it) {
-                        is ContentItem.UserMessage -> it.text
-                        is ContentItem.VisualInteraction -> it.modelText()
-                        is ContentItem.RuntimeJson -> it.json.toString()
-                        is ContentItem.AssistantMessage -> it.structured.fullText
-                        is ContentItem.Thinking,
-                        is ContentItem.System,
-                        is ContentItem.ToolCall,
-                        is ContentItem.ToolResult,
-                        is ContentItem.ImageItem,
-                        is ContentItem.DocumentItem,
-                        is ContentItem.ArtifactItem,
-                        is ContentItem.ContextCompactionResult,
-                        is ContentItem.UnknownJson,
-                        -> null
-                    }
-                }.joinToString("\n").take(4000).takeIf(String::isNotBlank) ?: return@mapNotNull null
-                "${m.author?.displayName ?: m.role.name} [${m.id.value}]: $text"
-            }.toList().takeLast(16).joinToString("\n\n").takeLast(32_000),
+            contextText = recentContext.asReversed().joinToString("\n\n").takeLast(REVIEW_CONTEXT_CHARACTERS),
             inputMessageIds = input.map { it.id.value }, createdAt = Clock.System.now(),
         )
         repository.saveDraft(draft)
@@ -145,6 +148,9 @@ class AgentResponseReviewService(
     }
 
     companion object {
+        private const val REVIEW_CONTEXT_MESSAGES = 16
+        private const val REVIEW_CONTEXT_MESSAGE_CHARACTERS = 4_000
+        private const val REVIEW_CONTEXT_CHARACTERS = 32_000
         private val strictJson = Json { ignoreUnknownKeys = false }
         fun parseAndValidate(text: String, draft: AgentResponseDraft): AgentResponseDecision =
             strictJson.decodeFromString<AgentResponseDecision>(text).also { validate(it, draft) }

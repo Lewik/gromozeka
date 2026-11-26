@@ -82,6 +82,71 @@ class AgentResponseReviewServiceTest {
         Mockito.verify(repository).saveDraft(prepared)
     }
 
+    @Test fun `review renders only the last sixteen readable context messages`() = runBlocking {
+        val collaboration = mock<AgentCollaborationService>()
+        val repository = mock<AgentCollaborationRepository>()
+        val reviewer = AgentResponseReviewService(
+            collaboration,
+            repository,
+            InMemoryConversationRuntimeCoordinator(),
+            emptyConversationPinnedPrompt(),
+            mock(),
+        )
+        Mockito.`when`(collaboration.context(b.address, user)).thenReturn(listOf(incoming))
+        val conversation = Conversation(
+            b.conversationId,
+            Project.Id("project"),
+            setOf(Conversation.Participant.User(user), Conversation.Participant.Agent(b.agentId)),
+            currentThread = b.threadId,
+            createdAt = now,
+            updatedAt = now,
+        )
+        val payload = ConversationRuntimeTask.Payload.LlmCall(Conversation.Message.Id("root"), b.agentId, 1)
+        val task = ConversationRuntimeTask(
+            ConversationRuntimeTask.Id("call"),
+            conversation.id,
+            actorUserId = user,
+            turnId = ConversationRuntimeTurnId("turn"),
+            parentTaskId = ConversationRuntimeTask.Id("root"),
+            payload = payload,
+            placement = QueuedMessagePlacement.END_OF_TURN,
+            idempotencyKey = "call",
+            requirements = ConversationRuntimeTaskRequirements(
+                setOf(ConversationRuntimeCapability.AI_REQUEST_RESPONSE, ConversationRuntimeCapability.MEMORY_PIPELINE),
+                ConversationRuntimeTaskTarget.Server,
+            ),
+            createdAt = now,
+        )
+        val archivedRuntime = message.copy(
+            id = Conversation.Message.Id("archived-runtime"),
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(ContentItem.RuntimeJson(kotlinx.serialization.json.JsonPrimitive(
+                "ARCHIVED_RUNTIME_SENTINEL" + "x".repeat(1_000_000),
+            ))),
+        )
+        val recent = (1..16).map { index ->
+            message.copy(
+                id = Conversation.Message.Id("recent-$index"),
+                role = Conversation.Message.Role.USER,
+                author = Conversation.Message.Author.User(user, "User"),
+                content = listOf(ContentItem.UserMessage("RECENT_$index")),
+            )
+        }
+
+        val prepared = assertNotNull(reviewer.prepare(
+            task,
+            payload,
+            conversation,
+            listOf(archivedRuntime) + recent,
+            listOf(message),
+        ))
+
+        assertFalse("ARCHIVED_RUNTIME_SENTINEL" in prepared.contextText)
+        assertContains(prepared.contextText, "RECENT_1")
+        assertContains(prepared.contextText, "RECENT_16")
+    }
+
     @Test fun `finished peer result may suppress user output`() {
         AgentResponseReviewService.validate(complete(), draft)
         val accepted = service.acceptedMessages(draft, complete()).single()
