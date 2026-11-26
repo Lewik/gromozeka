@@ -263,7 +263,7 @@ class PostgresRuntimeMessageReadTest {
                 messages = selected.messages,
             ).projectedMessages()
 
-            assertEquals(3, selected.sourceMessageCount)
+            assertEquals(archive.size + 3, selected.sourceMessageCount)
             assertEquals(listOf(checkpoint.id, tail.id, source.id), projected.map { it.id })
             assertFalse(selected.messages.any { it.id == later.id })
             assertEquals(3L, measurement.bodies)
@@ -924,7 +924,7 @@ class PostgresRuntimeMessageReadTest {
             assertEquals(listOf(checkpoint.id, tail.id), headers.map { it.id })
             assertEquals(state, headers.first().continuationState)
             val context = f.links.getContextMessagesByThread(thread, nativeProvider = null)
-            assertEquals(2, context.sourceMessageCount)
+            assertEquals(4, context.sourceMessageCount)
             assertEquals(state, context.continuationState)
         }
     }
@@ -1314,7 +1314,7 @@ class PostgresRuntimeMessageReadTest {
             }
             val selected = f.links.getContextMessagesByThread(f.conversation.currentThread, null)
             assertFalse(selected.messages.any { it == messages.single { message -> message.id.value == "binary" } })
-            assertEquals(messages.size - prefix.size, selected.sourceMessageCount)
+            assertEquals(messages.size, selected.sourceMessageCount)
             val postMigration = f.message("post-migration").copy(
                 instructions = listOf(Conversation.Message.Instruction.UserInstruction("new-mode", "New mode", "Value")),
             )
@@ -1345,7 +1345,7 @@ class PostgresRuntimeMessageReadTest {
                 }
                 assertEquals(com.gromozeka.domain.model.ConversationContext(archive).messagesForProvider(target),
                     com.gromozeka.domain.model.ConversationContext(selected.messages).messagesForProvider(target))
-                assertEquals(2, selected.sourceMessageCount)
+                assertEquals(archive.size, selected.sourceMessageCount)
             }
             val fork = Conversation.Thread.Id("fork")
             ExposedThreadRepository().save(Conversation.Thread(fork, f.conversation.id, originalThread = thread, createdAt = f.now, updatedAt = f.now))
@@ -1423,7 +1423,7 @@ class PostgresRuntimeMessageReadTest {
                 }
                 val sparseContext = sample("sparse_context") {
                     val selected = f.links.getContextMessagesByThread(thread, null)
-                    assertEquals(1, selected.sourceMessageCount)
+                    assertEquals(count, selected.sourceMessageCount)
                     assertEquals(listOf(summary), com.gromozeka.domain.model.ConversationContext(selected.messages).messagesForProvider(null))
                 }
                 assertEquals(count.toLong(), fullContext.bodies)

@@ -404,7 +404,7 @@ class ExposedThreadMessageRepository(
         )
         return ThreadContextMessages(
             messages = materializeContextSelection(threadId, captured, required),
-            sourceMessageCount = captured.headers.size,
+            sourceMessageCount = captured.sourceMessageCount,
             continuationState = checkpoints.asSequence()
                 .flatMap { it.compactions().asSequence() }
                 .lastOrNull { it.coversAllPrevious }
@@ -418,7 +418,7 @@ class ExposedThreadMessageRepository(
         throughMessageId: Conversation.Message.Id?,
     ): CapturedContextHeaders {
         val bounds = readContextWindowBounds(threadId, throughMessageId)
-            ?: return CapturedContextHeaders(emptyList(), mutableMapOf())
+            ?: return CapturedContextHeaders(emptyList(), mutableMapOf(), 0)
         val headers = (ThreadMessages innerJoin Messages)
             .select(ThreadMessages.messageId, Messages.contextMetadataJson)
             .where {
@@ -433,7 +433,7 @@ class ExposedThreadMessageRepository(
                     json.decodeFromString<MessageContextMetadata>(row[Messages.contextMetadataJson]),
                 )
             }
-        return CapturedContextHeaders(headers, mutableMapOf())
+        return CapturedContextHeaders(headers, mutableMapOf(), bounds.endPosition + 1)
     }
 
     /** One model read begins at the latest full checkpoint at or before its captured end. */
@@ -503,6 +503,7 @@ class ExposedThreadMessageRepository(
     private data class CapturedContextHeaders(
         val headers: List<MessageContextHeader>,
         val bodies: MutableMap<Conversation.Message.Id, Conversation.Message>,
+        val sourceMessageCount: Int,
     )
 
     private data class ContextWindowBounds(

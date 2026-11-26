@@ -1277,7 +1277,7 @@ class ConversationEngineDeliveryTest {
                     )
                     com.gromozeka.domain.repository.ThreadContextMessages(
                         messages = window.filter { message -> message.id in selected },
-                        sourceMessageCount = window.size,
+                        sourceMessageCount = messages.size,
                         continuationState = window.firstOrNull()
                             ?.compactions()
                             ?.lastOrNull { checkpoint -> checkpoint.coversAllPrevious }
