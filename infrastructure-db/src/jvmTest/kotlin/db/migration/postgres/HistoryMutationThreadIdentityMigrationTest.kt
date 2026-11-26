@@ -164,7 +164,7 @@ class HistoryMutationThreadIdentityMigrationTest {
     }
 
     private fun migrationSql(): String = requireNotNull(
-        javaClass.getResource("/db/migration/postgres/V100__history_mutation_thread_identity.sql"),
+        javaClass.getResource("/db/migration/postgres/V101__history_mutation_thread_identity.sql"),
     ).readText()
 
     private fun withSchema(block: (PGSimpleDataSource) -> Unit) {

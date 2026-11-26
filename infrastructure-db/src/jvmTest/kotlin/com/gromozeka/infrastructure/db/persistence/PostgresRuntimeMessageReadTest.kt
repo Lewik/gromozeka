@@ -1083,6 +1083,48 @@ class PostgresRuntimeMessageReadTest {
     }
 
     @Test
+    fun `V102 upgrades legacy search tool results and their compaction headers`() = runBlocking {
+        withFixture(target = "101") { f ->
+            val legacyResult = """
+                {"query":"calendar","catalog_revision":"revision","loaded_for_current_context":true,"count":1,
+                 "tools":[{"name":"calendar_create_event","description":"Create an event.","source":"calendar",
+                 "input_schema":{"type":"object","properties":{}}}]}
+            """.trimIndent().replace("\n", "")
+            val resultMessage = f.message("legacy-search-result").copy(
+                content = listOf(ContentItem.ToolResult(
+                    toolUseId = ContentItem.ToolCall.Id("search-call"),
+                    toolName = "search_tools",
+                    result = listOf(ContentItem.ToolResult.Data.Text(legacyResult)),
+                )),
+            )
+            f.save(resultMessage, f.conversation.currentThread, position = 0)
+
+            f.migrate("102")
+
+            val migrated = assertNotNull(f.links.findMessage(f.conversation.currentThread, resultMessage.id))
+            val result = migrated.content.single() as ContentItem.ToolResult
+            assertEquals(
+                """{"tools":["calendar_create_event"]}""",
+                (result.result.single() as ContentItem.ToolResult.Data.Text).content,
+            )
+            f.source.connection.use { connection ->
+                connection.prepareStatement(
+                    "SELECT compaction_header FROM messages WHERE id = ?",
+                ).use { statement ->
+                    statement.setString(1, resultMessage.id.value)
+                    statement.executeQuery().use { rows ->
+                        assertTrue(rows.next())
+                        assertEquals(
+                            com.gromozeka.domain.model.CompactionMessageHeader.from(migrated),
+                            Json.decodeFromString<com.gromozeka.domain.model.CompactionMessageHeader>(rows.getString(1)),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     fun `V93 rejects a full checkpoint that is not an exact prefix in every branch before mutation`() = runBlocking {
         withFixture(target = "91") { f ->
             val source = f.message("source")
