@@ -1025,6 +1025,64 @@ class PostgresRuntimeMessageReadTest {
     }
 
     @Test
+    fun `V99 carries continuation state across byte bounded message pages`() = runBlocking {
+        withFixture(target = "98") { f ->
+            val thread = f.conversation.currentThread
+            val early = Conversation.Message.Instruction.UserInstruction("early", "Early", "keep early")
+            val late = Conversation.Message.Instruction.UserInstruction("late", "Late", "keep late")
+            val messages = List(65) { index ->
+                f.message("v99-large-${index.toString().padStart(2, '0')}").copy(
+                    content = listOf(ContentItem.UserMessage("$index:${"x".repeat(70_000)}")),
+                    instructions = when (index) {
+                        0 -> listOf(early)
+                        64 -> listOf(late)
+                        else -> emptyList()
+                    },
+                    createdAt = f.now + index.seconds,
+                )
+            }
+            messages.forEachIndexed { position, message -> f.insertRaw(message, position) }
+            val boundary = messages.last()
+            val checkpoint = f.message("v99-large-checkpoint").copy(
+                role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(ContentItem.ContextCompactionResult(
+                    payload = ContentItem.ContextCompactionResult.Payload.ReadableSummary("history"),
+                    origin = ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY,
+                    coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                    sourceBoundaryMessageId = boundary.id,
+                )),
+                createdAt = f.now + 65.seconds,
+            )
+            f.insertRaw(checkpoint, messages.size)
+            f.source.connection.use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.executeQuery(
+                        "SELECT sum(octet_length(message_json)) FROM messages WHERE id LIKE 'v99-large-%'",
+                    ).use { rows ->
+                        assertTrue(rows.next())
+                        assertTrue(rows.getLong(1) > 4L * 1024 * 1024)
+                    }
+                }
+            }
+
+            f.migrate()
+
+            val migrated = assertNotNull(f.links.findMessage(thread, checkpoint.id))
+            val state = migrated.content.filterIsInstance<ContentItem.ContextCompactionResult>().single().continuationState
+            assertEquals(listOf(early, late), state.stickyInstructionCandidates)
+            assertEquals(boundary.createdAt, state.previousHumanMessageAt)
+            f.source.connection.use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.executeQuery("SELECT count(*) FROM messages WHERE compaction_header IS NULL").use { rows ->
+                        assertTrue(rows.next())
+                        assertEquals(0, rows.getInt(1))
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     fun `V93 rejects a full checkpoint that is not an exact prefix in every branch before mutation`() = runBlocking {
         withFixture(target = "91") { f ->
             val source = f.message("source")

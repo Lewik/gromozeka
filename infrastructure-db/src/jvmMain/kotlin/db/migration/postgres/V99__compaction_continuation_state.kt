@@ -4,13 +4,13 @@ import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageContextMetadata
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.Json
 import org.flywaydb.core.api.migration.BaseJavaMigration
 import org.flywaydb.core.api.migration.Context
 import java.sql.Connection
@@ -24,19 +24,11 @@ class V99__compaction_continuation_state : BaseJavaMigration() {
         val json = Json { ignoreUnknownKeys = true }
         var checkpointCursor = ""
         while (true) {
-            val checkpoints = connection.prepareStatement(
-                "SELECT id, message_json FROM messages WHERE full_compaction_anchor AND id > ? ORDER BY id LIMIT ?",
-            ).use { select ->
-                select.setString(1, checkpointCursor)
-                select.setInt(2, PAGE_SIZE)
-                select.executeQuery().use { rows ->
-                    buildList {
-                        while (rows.next()) add(rows.getString(1) to rows.getString(2))
-                    }
-                }
-            }
+            val checkpoints = readIdPage(connection, checkpointCursor, fullCompactionOnly = true)
             if (checkpoints.isEmpty()) break
-            checkpoints.forEach { (id, original) ->
+            checkpoints.forEach { checkpoint ->
+                val id = checkpoint.id
+                val original = checkpoint.message
                 val document = Json.parseToJsonElement(original).jsonObject
                 val message = json.decodeFromString<Conversation.Message>(original)
                 check(message.id.value == id) { "Message ID mismatch during compaction continuation migration" }
@@ -56,7 +48,7 @@ class V99__compaction_continuation_state : BaseJavaMigration() {
                 val encoded = JsonObject(document + ("content" to JsonArray(content))).toString()
                 if (encoded != original) writeMessage(connection, id, original, encoded)
             }
-            checkpointCursor = checkpoints.last().first
+            checkpointCursor = checkpoints.last().id
         }
         rewriteHeaders(connection, json)
     }
@@ -91,35 +83,16 @@ class V99__compaction_continuation_state : BaseJavaMigration() {
         var previousHumanAt: kotlin.time.Instant? = null
         var afterPosition = -1
         while (afterPosition < branch.second) {
-            val page = connection.prepareStatement(
-                """
-                SELECT tm.position, m.message_json
-                FROM thread_messages tm
-                JOIN messages m ON m.id = tm.message_id
-                WHERE tm.thread_id = ? AND tm.position > ? AND tm.position <= ?
-                ORDER BY tm.position
-                LIMIT ?
-                """.trimIndent(),
-            ).use { select ->
-                select.setString(1, branch.first)
-                select.setInt(2, afterPosition)
-                select.setInt(3, branch.second)
-                select.setInt(4, PAGE_SIZE)
-                select.executeQuery().use { rows ->
-                    buildList {
-                        while (rows.next()) add(rows.getInt(1) to rows.getString(2))
-                    }
-                }
-            }
+            val page = readPositionPage(connection, branch.first, afterPosition, branch.second)
             check(page.isNotEmpty()) { "Full checkpoint $checkpointId has a gap before its source boundary" }
-            page.forEach { (position, encoded) ->
-                val message = json.decodeFromString<Conversation.Message>(encoded)
+            page.forEach { entry ->
+                val message = json.decodeFromString<Conversation.Message>(entry.message)
                 message.instructions.filterIsInstance<Conversation.Message.Instruction.UserInstruction>().forEach { instruction ->
                     latestInstructions.remove(instruction.id)
                     latestInstructions[instruction.id] = instruction
                 }
                 if (MessageContextMetadata.from(message).humanInput) previousHumanAt = message.createdAt
-                afterPosition = position
+                afterPosition = entry.position
             }
         }
         return Conversation.Message.ContentItem.ContextCompactionResult.ContinuationState(
@@ -152,24 +125,13 @@ class V99__compaction_continuation_state : BaseJavaMigration() {
     private fun rewriteHeaders(connection: Connection, json: Json) {
         var cursor = ""
         while (true) {
-            val batch = connection.prepareStatement(
-                "SELECT id, message_json FROM messages WHERE id > ? ORDER BY id LIMIT ?",
-            ).use { select ->
-                select.setString(1, cursor)
-                select.setInt(2, PAGE_SIZE)
-                select.executeQuery().use { rows ->
-                    buildList {
-                        while (rows.next()) {
-                            val id = rows.getString(1)
-                            val encoded = rows.getString(2)
-                            val message = json.decodeFromString<Conversation.Message>(encoded)
-                            check(message.id.value == id) { "Message ID mismatch during continuation header migration" }
-                            add(HeaderUpdate(id, encoded, json.encodeToString(CompactionMessageHeader.from(message))))
-                        }
-                    }
-                }
+            val page = readIdPage(connection, cursor, fullCompactionOnly = false)
+            if (page.isEmpty()) break
+            val batch = page.map { entry ->
+                val message = json.decodeFromString<Conversation.Message>(entry.message)
+                check(message.id.value == entry.id) { "Message ID mismatch during continuation header migration" }
+                HeaderUpdate(entry.id, entry.message, json.encodeToString(CompactionMessageHeader.from(message)))
             }
-            if (batch.isEmpty()) break
             connection.autoCommit = false
             try {
                 val counts = connection.prepareStatement(
@@ -197,9 +159,126 @@ class V99__compaction_continuation_state : BaseJavaMigration() {
         }
     }
 
+    private fun readIdPage(
+        connection: Connection,
+        cursor: String,
+        fullCompactionOnly: Boolean,
+    ): List<StoredMessage> {
+        val anchorFilter = if (fullCompactionOnly) "full_compaction_anchor AND " else ""
+        val candidates = connection.prepareStatement(
+            """
+                SELECT id, octet_length(message_json)
+                FROM messages
+                WHERE ${anchorFilter}id > ?
+                ORDER BY id
+                LIMIT ?
+            """.trimIndent(),
+        ).use { select ->
+            select.setString(1, cursor)
+            select.setInt(2, MAX_PAGE_ROWS)
+            select.executeQuery().use { rows ->
+                buildList {
+                    while (rows.next()) add(SizedCursor(rows.getString(1), rows.getLong(2)))
+                }
+            }
+        }.byteBoundedPrefix()
+        if (candidates.isEmpty()) return emptyList()
+        val messages = connection.prepareStatement(
+            """
+                SELECT id, message_json
+                FROM messages
+                WHERE ${anchorFilter}id > ? AND id <= ?
+                ORDER BY id
+            """.trimIndent(),
+        ).use { select ->
+            select.setString(1, cursor)
+            select.setString(2, candidates.last().cursor)
+            select.executeQuery().use { rows ->
+                buildList {
+                    while (rows.next()) add(StoredMessage(rows.getString(1), rows.getString(2)))
+                }
+            }
+        }
+        check(messages.map { it.id } == candidates.map { it.cursor }) {
+            "Conversation history changed while reading continuation migration page"
+        }
+        return messages
+    }
+
+    private fun readPositionPage(
+        connection: Connection,
+        threadId: String,
+        afterPosition: Int,
+        boundaryPosition: Int,
+    ): List<PositionedMessage> {
+        val candidates = connection.prepareStatement(
+            """
+                SELECT tm.position, octet_length(m.message_json)
+                FROM thread_messages tm
+                JOIN messages m ON m.id = tm.message_id
+                WHERE tm.thread_id = ? AND tm.position > ? AND tm.position <= ?
+                ORDER BY tm.position
+                LIMIT ?
+            """.trimIndent(),
+        ).use { select ->
+            select.setString(1, threadId)
+            select.setInt(2, afterPosition)
+            select.setInt(3, boundaryPosition)
+            select.setInt(4, MAX_PAGE_ROWS)
+            select.executeQuery().use { rows ->
+                buildList {
+                    while (rows.next()) add(SizedCursor(rows.getInt(1), rows.getLong(2)))
+                }
+            }
+        }.byteBoundedPrefix()
+        if (candidates.isEmpty()) return emptyList()
+        val messages = connection.prepareStatement(
+            """
+                SELECT tm.position, m.message_json
+                FROM thread_messages tm
+                JOIN messages m ON m.id = tm.message_id
+                WHERE tm.thread_id = ? AND tm.position > ? AND tm.position <= ?
+                ORDER BY tm.position
+            """.trimIndent(),
+        ).use { select ->
+            select.setString(1, threadId)
+            select.setInt(2, afterPosition)
+            select.setInt(3, candidates.last().cursor)
+            select.executeQuery().use { rows ->
+                buildList {
+                    while (rows.next()) add(PositionedMessage(rows.getInt(1), rows.getString(2)))
+                }
+            }
+        }
+        check(messages.map { it.position } == candidates.map { it.cursor }) {
+            "Conversation history changed while reading compaction continuation window"
+        }
+        return messages
+    }
+
+    private fun <T> List<SizedCursor<T>>.byteBoundedPrefix(): List<SizedCursor<T>> {
+        val selected = mutableListOf<SizedCursor<T>>()
+        var bytes = 0L
+        for (candidate in this) {
+            check(candidate.bytes >= 0L) { "Conversation message has a negative encoded size" }
+            // An oversized legacy message still has to make progress as a one-row page.
+            if (selected.isNotEmpty() && bytes + candidate.bytes > MAX_PAGE_BYTES) break
+            selected += candidate
+            bytes += candidate.bytes
+        }
+        return selected
+    }
+
     private data class HeaderUpdate(val id: String, val message: String, val header: String)
 
+    private data class StoredMessage(val id: String, val message: String)
+
+    private data class PositionedMessage(val position: Int, val message: String)
+
+    private data class SizedCursor<T>(val cursor: T, val bytes: Long)
+
     private companion object {
-        const val PAGE_SIZE = 1_000
+        const val MAX_PAGE_ROWS = 1_000
+        const val MAX_PAGE_BYTES = 4L * 1024 * 1024
     }
 }
