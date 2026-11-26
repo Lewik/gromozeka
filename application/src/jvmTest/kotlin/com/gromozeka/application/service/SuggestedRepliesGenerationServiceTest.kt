@@ -85,6 +85,54 @@ class SuggestedRepliesGenerationServiceTest {
     }
 
     @Test
+    fun `full thread materializes stored tool outputs and attachments before the runtime call`() = runBlocking {
+        val toolArtifact = Artifact.Reference(
+            Artifact.Id("tool-artifact"), "tool-output.txt", "text/plain", 100,
+            Artifact.Purpose.TOOL_OUTPUT, Artifact.Kind.DOCUMENT,
+        )
+        val attachment = Artifact.Reference(
+            Artifact.Id("attachment"), "attachment.pdf", "application/pdf", 200,
+            Artifact.Purpose.USER_ATTACHMENT, Artifact.Kind.DOCUMENT,
+        )
+        val callId = Conversation.Message.ContentItem.ToolCall.Id("call")
+        val toolResult = message("tool-result", "unused").copy(content = listOf(
+            Conversation.Message.ContentItem.ToolResult(
+                callId,
+                "read_file",
+                listOf(Conversation.Message.ContentItem.ToolResult.Data.ArtifactData(toolArtifact)),
+            ),
+        ))
+        val attachedMessage = message("attachment", "unused").copy(content = listOf(
+            Conversation.Message.ContentItem.ArtifactItem(attachment),
+        ))
+        val materializedToolResult = toolResult.copy(content = listOf(
+            Conversation.Message.ContentItem.ToolResult(
+                callId,
+                "read_file",
+                listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("materialized tool output")),
+            ),
+        ))
+        val materializedAttachment = attachedMessage.copy(content = listOf(
+            Conversation.Message.ContentItem.DocumentItem(
+                Conversation.Message.DocumentSource.Base64DocumentSource(
+                    "cGRm", "application/pdf", "attachment.pdf",
+                ),
+            ),
+        ))
+        val canonical = listOf(toolResult, attachedMessage)
+        val materialized = listOf(materializedToolResult, materializedAttachment)
+        val f = Fixture(materialize = { messages ->
+            assertEquals(canonical, messages)
+            materialized
+        })
+
+        f.generate(canonical, SuggestedRepliesSettings(contextMode = SuggestedRepliesSettings.ContextMode.FULL_THREAD))
+
+        assertEquals(listOf(canonical), f.materializationInputs)
+        assertEquals(materialized, f.requests.single().messages.dropLast(1))
+    }
+
+    @Test
     fun `112 character recommendation does not become a hard output crop`() = runBlocking {
         val f = Fixture(replies = listOf("Я".repeat(130), "Ещё вариант"))
         val message = message("answer", "Ответ", assistant = true)
@@ -104,8 +152,12 @@ class SuggestedRepliesGenerationServiceTest {
 
     private fun AiRuntimeRequest.text() = (messages.single().content.single() as Conversation.Message.ContentItem.UserMessage).text
 
-    private inner class Fixture(private val replies: List<String> = listOf("Дальше")) {
+    private inner class Fixture(
+        private val replies: List<String> = listOf("Дальше"),
+        private val materialize: (List<Conversation.Message>) -> List<Conversation.Message> = { it },
+    ) {
         val requests = mutableListOf<AiRuntimeRequest>()
+        val materializationInputs = mutableListOf<List<Conversation.Message>>()
         private val runtime = object : AiRuntime {
             override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
                 requests += request
@@ -115,9 +167,20 @@ class SuggestedRepliesGenerationServiceTest {
             }
             override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = error("Unexpected streaming")
         }
+        private val artifacts = Mockito.mock(ConversationArtifactApplicationService::class.java) { invocation ->
+            when (invocation.method.name.substringBefore('-')) {
+                "materialize" -> {
+                    @Suppress("UNCHECKED_CAST")
+                    val messages = invocation.arguments[1] as List<Conversation.Message>
+                    materializationInputs += messages
+                    materialize(messages)
+                }
+                else -> Mockito.RETURNS_DEFAULTS.answer(invocation)
+            }
+        }
         private val service = SuggestedRepliesGenerationService(
             Mockito.mock(AiRuntimeProvider::class.java) { runtime }, emptyConversationPinnedPrompt(),
-            Mockito.mock(AiConfigurationProvider::class.java),
+            Mockito.mock(AiConfigurationProvider::class.java), artifacts,
         )
         suspend fun generate(messages: List<Conversation.Message>, settings: SuggestedRepliesSettings): List<String> = service.generate(
             conversation,

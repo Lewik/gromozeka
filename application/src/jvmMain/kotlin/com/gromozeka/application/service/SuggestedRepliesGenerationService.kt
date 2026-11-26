@@ -22,6 +22,7 @@ class SuggestedRepliesGenerationService(
     private val aiRuntimeProvider: AiRuntimeProvider,
     private val conversationPins: ConversationPinnedPrompt,
     private val aiConfigurationProvider: AiConfigurationProvider,
+    private val artifacts: ConversationArtifactApplicationService,
 ) {
     sealed interface Context {
         data class Recent(val messages: List<RecentVisibleMessage>) : Context
@@ -69,7 +70,7 @@ class SuggestedRepliesGenerationService(
                 systemPrompts = conversationPins.append(conversation.id, listOf(SYSTEM_PROMPT)),
                 messages = when (context) {
                     is Context.Recent -> listOf(instructionMessage)
-                    is Context.Full -> context.messages + instructionMessage
+                    is Context.Full -> artifacts.materialize(conversation.id, context.messages) + instructionMessage
                 },
                 options = AiRuntimeOptions(
                     maxOutputTokens = 256,
