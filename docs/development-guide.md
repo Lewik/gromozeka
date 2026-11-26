@@ -1718,7 +1718,12 @@ assistant-message annotation for existing synthetic async-completion provenance;
 it has no key, revision, removal marker, or history-boundary behavior, and
 authenticated user submissions cannot forge it. Worker Gateway protocol **37** is
 the coordinated Server/Worker contract for the current proactive-compaction and
-runtime task payloads; protocol 36 Workers are rejected during the handshake.
+runtime task payloads. Its upgrade is a clean cutover: stop accepting new inputs,
+wait until there is no active, continuation, insertion or queued runtime work and
+no proactive compaction is running, then stop the Server and all Workers and update
+them together. Stopping processes does not drain durable queued work. Protocol 36
+Workers are rejected during the handshake. Migration V101 also fails closed if an
+executable legacy history mutation remains despite this precondition.
 
 Managed shell commands accept an optional `description`: a short user-facing
 purpose in the user's language, preferably **at most 50 characters including
