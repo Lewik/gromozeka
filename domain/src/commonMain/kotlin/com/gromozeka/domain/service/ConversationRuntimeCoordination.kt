@@ -90,7 +90,7 @@ data class ConversationRuntimeTask(
         @SerialName("history_mutation")
         data class HistoryMutation(
             val mutation: ConversationHistoryMutation,
-            val expectedThreadId: Conversation.Thread.Id? = null,
+            val expectedThreadId: Conversation.Thread.Id,
         ) : Payload
 
         @Serializable

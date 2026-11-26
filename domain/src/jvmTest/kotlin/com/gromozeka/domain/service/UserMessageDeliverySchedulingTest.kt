@@ -88,7 +88,10 @@ class UserMessageDeliverySchedulingTest {
                 message.copy(instructions = listOf(Conversation.Message.Instruction.Source.Agent("peer"))), agent)),
             source.copy(payload = ConversationRuntimeTask.Payload.AgentInvocation(message.copy(
                 providerMetadata = kotlinx.serialization.json.buildJsonObject { putSyntheticMessageMetadata(SyntheticMessageKind.COMMAND_TASK_COMPLETION) }), agent)),
-            source.copy(payload = ConversationRuntimeTask.Payload.HistoryMutation(ConversationHistoryMutation.Delete(emptyList()))),
+            source.copy(payload = ConversationRuntimeTask.Payload.HistoryMutation(
+                ConversationHistoryMutation.Delete(emptyList()),
+                Conversation.Thread.Id("history-thread"),
+            )),
             source.copy(requirements = requirements.copy(target = ConversationRuntimeTaskTarget.Worker(ConversationRuntimeWorkerId("worker")))),
         )
         for (barrier in barriers) {

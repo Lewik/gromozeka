@@ -280,9 +280,7 @@ class ConversationEngineService(
             historyMutationExecutor.execute(
                 conversationId = task.conversationId,
                 mutation = payload.mutation,
-                expectedThreadId = requireNotNull(payload.expectedThreadId) {
-                    "Conversation history mutation has no expected thread; repeat the operation"
-                },
+                expectedThreadId = payload.expectedThreadId,
                 task = task,
                 nativeCompactRequest = { conversation, agent ->
                     val context = buildConversationRuntimeContext(agent.id, conversation, executor, readOnlySnapshot = true)
