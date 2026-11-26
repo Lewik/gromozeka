@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import javax.sql.DataSource
 import kotlin.test.*
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 
 /** Real migrated PostgreSQL and independent local files; unrelated application services are not started. */
@@ -123,6 +124,61 @@ class PostgresConversationForkTest {
             assertTrue(f.artifacts.findByConversation(target.id).all { it.state == Artifact.State.DRAFT })
             f.artifacts.commit(cloned.map { it.id }, f.now)
             assertTrue(f.artifacts.findByConversation(target.id).all { it.state == Artifact.State.COMMITTED })
+        }
+    }
+
+    @Test fun `fork preserves message time across a full checkpoint`() = runBlocking<Unit> {
+        database { f ->
+            val before = Conversation.Message(
+                Conversation.Message.Id("before-checkpoint"),
+                f.source.id,
+                role = Conversation.Message.Role.USER,
+                content = listOf(ContentItem.UserMessage("Before")),
+                createdAt = f.now - 48.hours,
+            )
+            val checkpoint = Conversation.Message(
+                Conversation.Message.Id("checkpoint"),
+                f.source.id,
+                role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(ContentItem.ContextCompactionResult(
+                    payload = ContentItem.ContextCompactionResult.Payload.ReadableSummary("Earlier conversation"),
+                    origin = ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY,
+                    coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                    sourceBoundaryMessageId = before.id,
+                    continuationState = ContentItem.ContextCompactionResult.ContinuationState(
+                        previousHumanMessageAt = before.createdAt,
+                    ),
+                )),
+                createdAt = f.now - 36.hours,
+            )
+            val tail = Conversation.Message(
+                Conversation.Message.Id("tail"),
+                f.source.id,
+                role = Conversation.Message.Role.USER,
+                content = listOf(ContentItem.UserMessage("After")),
+                createdAt = f.now - 24.hours,
+            )
+            val source = listOf(before, checkpoint, tail)
+            f.messages.saveBatch(source)
+            f.links.addBatch(source.mapIndexed { position, message ->
+                ThreadMessageLink(f.source.currentThread, message.id, position)
+            })
+
+            val fork = f.service.fork(f.source.id)
+            val copied = f.links.readArchiveForTest(fork.currentThread)
+
+            assertEquals(source.map { it.createdAt }, copied.map { it.createdAt })
+            val context = f.links.getContextMessagesByThread(fork.currentThread, nativeProvider = null)
+            val enriched = MessageTemporalContextService().enrich(
+                context.messages,
+                enabled = true,
+                previousHumanMessageAt = context.continuationState.previousHumanMessageAt,
+            )
+            val temporal = enriched.last().instructions
+                .filterIsInstance<Conversation.Message.Instruction.MessageTemporalRuntimeContext>()
+                .single()
+                .context
+            assertEquals(24.hours.inWholeSeconds, temporal.elapsedSincePreviousUserMessageSeconds)
         }
     }
 

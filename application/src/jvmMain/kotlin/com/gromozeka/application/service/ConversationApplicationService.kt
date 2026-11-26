@@ -400,7 +400,6 @@ class ConversationApplicationService(
                             historyTransition = null,
                         ) else item
                     },
-                    createdAt = now,
                 )
             }
             messageRepo.saveBatch(newMessages)
