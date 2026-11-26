@@ -126,7 +126,12 @@ internal class ClaudeCodeCliRuntime(
     override suspend fun inspectContext(request: AiRuntimeRequest, allowProviderCount: Boolean): AiContextInspection {
         val key = sessionStateKey(request)
         val projected = request.copy(messages = ConversationContext(request.messages)
-            .messagesForProvider(AiConnection.Kind.CLAUDE_CODE.name))
+            .messagesForProvider(Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(
+                provider = AiConnection.Kind.CLAUDE_CODE.name,
+                connectionId = connectionId,
+                modelConfigurationId = modelConfigurationId,
+                modelName = modelName,
+            )))
         if (key == null) return AiContextInspection(AiRequestTokenEstimate.input(projected), AiContextInspection.Precision.ESTIMATE)
         return sessionLocks.computeIfAbsent(key.lockKey()) { Mutex() }.withLock {
             val plan = planSession(key, request.messages)
@@ -638,7 +643,12 @@ internal class ClaudeCodeCliRuntime(
         }
         val attachments = ClaudeCodeAttachmentCollector()
         val replayMessages = ConversationContext(plan.messagesToSend)
-            .messagesForProvider(AiConnection.Kind.CLAUDE_CODE.name)
+            .messagesForProvider(Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(
+                provider = AiConnection.Kind.CLAUDE_CODE.name,
+                connectionId = connectionId,
+                modelConfigurationId = modelConfigurationId,
+                modelName = modelName,
+            ))
         val prompt = listOf(
             "$header\n\n${messagesToTranscript(replayMessages, attachments)}",
             contract?.reminder(),

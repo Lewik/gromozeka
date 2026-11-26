@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.CompactionNode
 import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message
+import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult
 import com.gromozeka.domain.model.ConversationCompactionIndex
 import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.withoutProviderReplay
@@ -58,27 +59,17 @@ internal class CompactionHistoryWindow(val headers: List<CompactionMessageHeader
     ): List<Message> {
         val nodes = index.project(selection.map { it.node })
         val visibleIds = nodes.mapTo(linkedSetOf()) { it.id }
-        // Foreign opaque checkpoints may need their original canonical sources for recursive recovery.
-        val required = visibleIds.toMutableSet()
-        val expanded = mutableSetOf<Message.Id>()
-        fun includeRecovery(candidates: List<CompactionNode>) {
-            for (node in candidates) {
-                val foreign = index.incompatibleCompactions(node, provider)
-                if (foreign.isEmpty() || !expanded.add(node.id)) continue
-                val recover = index.recoveryWindow(node.id, foreign).nodes
-                recover.mapTo(required) { it.id }
-                includeRecovery(recover)
-            }
-        }
-        includeRecovery(nodes)
         val invalidated = selection.flatMap { it.coverage }.flatMapTo(mutableSetOf()) { it.invalidatedReplayMessageIds }
-        val ids = headers.mapNotNull { it.id.takeIf(required::contains) }
+        val ids = headers.mapNotNull { it.id.takeIf(visibleIds::contains) }
         val bodies = repository.compactionBodies(thread, ids).map {
             if ((it.author as? Message.Author.User) != headers[positions.getValue(it.id)].author) throw CompactionScopeChangedException()
             if (it.id in visibleIds && it.id in invalidated) {
                 it.withoutProviderReplay()
             } else it
         }
-        return ConversationContext(bodies, index).messagesForProvider(provider, visibleIds)
+        return ConversationContext(bodies, index).messagesForProvider(
+            provider?.let { ContextCompactionResult.ProviderScope(it) },
+            visibleIds,
+        )
     }
 }

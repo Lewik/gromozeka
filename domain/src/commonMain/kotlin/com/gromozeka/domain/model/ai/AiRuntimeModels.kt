@@ -159,7 +159,15 @@ fun AiRuntimeRequest.projectedMessages(
     // generated blocks before compaction projection or native-session reconciliation.
     val restoredMessages = originalCollaborationMessages()
         .withPortableSyntheticToolCallIds()
-    val contextWindow = ConversationContext(restoredMessages).messagesForProvider(nativeProvider)
+    val replayTarget = nativeProvider?.let { provider ->
+        Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(
+            provider = provider,
+            connectionId = options.toolContext["aiConnectionId"] as? String,
+            modelConfigurationId = options.toolContext["aiModelConfigurationId"] as? String,
+            modelName = options.toolContext["modelName"] as? String,
+        )
+    }
+    val contextWindow = ConversationContext(restoredMessages).messagesForProvider(replayTarget)
     val window = contextWindow
     val retainedReplay = window.firstOrNull().retainedOpenAiReplayIds(nativeProvider, currentThread)
     val projected = window.map { message ->

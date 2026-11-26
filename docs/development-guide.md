@@ -630,22 +630,32 @@ including provider metadata and current author projection, not the bounded UI
 preview. Append membership checks use the thread-message repository, and append
 positions use a database `MAX` aggregate.
 
-Normal API-backed agent turns also select message bodies before loading the archive.
-V81 adds generated, compact context metadata to each canonical message, backfilling
-existing rows once. A repeatable-read transaction loads ordered headers and checkpoints,
-uses the shared coverage/recovery index, then reads only selected bodies in bounded
-batches. Checkpoints and a small set of covered anchors preserve transitive coverage,
-provider replay invalidation, sticky winners, exact human-message time intervals,
-and OpenAI context-usage observations. The final provider
-projection is unchanged; there is no last-N cutoff or mutable transcript cache.
+Conversation history is an unbounded archive, while one normal model/compaction read is
+a bounded effective window. A repeatable-read transaction starts at the latest full
+checkpoint at or before its captured end (inclusive), or at position zero when no full
+checkpoint exists. It loads compact ordered headers for that window, applies selective
+coverage, and hydrates only selected bodies in bounded batches. Raw archive traversal is
+available only as ordered pages; point reads handle exact messages. There is no public
+thread-message repository operation that materializes every message body or link at once.
 
-Native CLI sessions (Claude Code and Copilot), external-channel filtering, timeline
-reads, explicit history mutations and isolated snapshot assembly retain their existing
-raw-history contracts. They are not silently redirected to the model-sparse read.
-External channels read the complete ordered archive, including Runtime messages, with
-no role-specific generation pruning. Switching away from an opaque checkpoint's owner
-can legitimately require the original archive; missing recovery sources remain an
-explicit error.
+V81 introduced generated context metadata. V99 adds full-checkpoint continuation state:
+the latest candidate for every user-instruction ID and the exact preceding human-message
+timestamp. New full checkpoints capture that state; the migration reconstructs it in
+pages and rewrites compact headers. Sticky-instruction and temporal enrichment can
+therefore begin at the checkpoint without reopening older windows.
+
+API and native-CLI turns, external-channel generation, isolated snapshots, proactive and
+blocking compaction all use the same effective-window boundary. Explicit edit/delete
+operations read active headers plus requested bodies and copy unchanged branch rows in
+SQL. Fork is the intentional archive-wide operation, but traverses bodies in pages and
+keeps only ID/artifact remapping metadata between pages.
+
+An opaque checkpoint is replayed only when every recorded provider-scope component is
+compatible; new checkpoints record provider, connection, model configuration and model.
+Otherwise its provider-only payload is skipped rather than recovering an older archive
+window; portable tail messages remain, and an incompatible provider-managed tool
+call/result pair is removed atomically. A future model-compatibility policy may improve
+degraded cross-model context, but ordinary turns must remain bounded.
 
 PostgreSQL can reject escaped Unicode such as NUL while inspecting otherwise valid
 stored JSON. V81 represents only this `22P05` case as absent derived metadata; readers
@@ -661,10 +671,10 @@ full-message preservation and SQL aggregation against disposable PostgreSQL. Its
 normal long-history fixture contains 256 messages including a compaction result.
 For local measurements, `GROMOZEKA_HISTORY_BENCHMARK=true` expands it to 25,720
 synthetic messages (roughly 250 MiB of JSON); give `:infrastructure-db:jvmTest` a
-2 GiB heap via a local Gradle init script. It compares full-history and point reads
-on the same data, including full versus sparse context preparation, prints warmed
-median timings and asserts read counts rather than machine-dependent timing thresholds. It does not call a model or measure deployed
-turn latency.
+2 GiB heap via a local Gradle init script. Test-only code may assemble the raw archive
+from pages for comparison with point and effective-window reads. It prints warmed median
+timings and asserts read counts rather than machine-dependent timing thresholds. It does
+not call a model or measure deployed turn latency.
 
 Run the storage and migration checks against the checkout's PostgreSQL slot:
 
@@ -1034,8 +1044,9 @@ the owner Conversation row. This is **not** a new all-or-nothing guarantee for t
 rest of the pre-existing fork/history/artifact-file pipeline.
 
 Fork keeps independent message and artifact identities, including archived compaction
-sources. Message inserts, artifact metadata cloning, artifact commitment and thread links
-use bounded database batches rather than one transaction per item. Managed files are
+sources. It allocates the ID map in a first paged pass and copies message bodies in a
+second paged pass; message inserts, artifact metadata cloning, artifact commitment and
+thread links use bounded database batches rather than one transaction per item. Managed files are
 copied byte-for-byte to new files; the existing digest and searchable text are reused,
 without sharing file ownership or downloading external artifacts. Copy failure or cancellation
 cleans up the attempt's drafts; committed artifacts are never removed as speculative cleanup.

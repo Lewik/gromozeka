@@ -55,7 +55,7 @@ fun selectModelHistoryMessageIds(
     val originalIndex = ConversationCompactionIndex(headers.map {
         CompactionNode(it.id, byId[it.id]?.originalCollaborationMessage()?.compactions().orEmpty().map(::CompactionCoverage))
     })
-    val required = originalIndex.requiredHistoryIds(nativeProvider).toMutableSet()
+    val required = originalIndex.requiredHistoryIds().toMutableSet()
     // Tool discovery projects the displayed history, while provider replay restores original content.
     rawIndex.project().mapTo(required) { it.id }
     required += checkpointIds

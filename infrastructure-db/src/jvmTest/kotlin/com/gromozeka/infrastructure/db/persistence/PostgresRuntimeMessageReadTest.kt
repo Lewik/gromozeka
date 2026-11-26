@@ -35,6 +35,7 @@ import java.util.concurrent.atomic.AtomicLong
 import javax.sql.DataSource
 import kotlin.test.*
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
 
 class PostgresRuntimeMessageReadTest {
     @Test
@@ -250,10 +251,10 @@ class PostgresRuntimeMessageReadTest {
                 messages = selected.messages,
             ).projectedMessages()
 
-            assertEquals(archive.size + 3, selected.sourceMessageCount)
+            assertEquals(3, selected.sourceMessageCount)
             assertEquals(listOf(checkpoint.id, tail.id, source.id), projected.map { it.id })
             assertFalse(selected.messages.any { it.id == later.id })
-            assertEquals(4L, measurement.bodies)
+            assertEquals(3L, measurement.bodies)
         }
     }
 
@@ -384,7 +385,7 @@ class PostgresRuntimeMessageReadTest {
             listOf(writable, runtime, readonly).forEachIndexed { index, message -> f.save(message, thread, index) }
 
             lateinit var visible: List<Conversation.Message>
-            val historyRead = f.measure { visible = f.links.getMessagesByThread(thread) }
+            val historyRead = f.measure { visible = f.links.readArchiveForTest(thread) }
             lateinit var mode: String
             val modeRead = f.measure {
                 mode = checkNotNull(f.history.latestUserInstructionId(
@@ -543,7 +544,7 @@ class PostgresRuntimeMessageReadTest {
             }
 
             lateinit var selected: List<Conversation.Message>
-            val measurement = f.measure { selected = f.links.getMessagesByThread(thread) }
+            val measurement = f.measure { selected = f.links.readArchiveForTest(thread) }
 
             assertEquals(listOf(archived, oldBaseline, oldDelta, checkpoint, current, tail), selected)
             assertEquals(6L, measurement.bodies)
@@ -745,8 +746,8 @@ class PostgresRuntimeMessageReadTest {
             }
             val ids = listOf(Conversation.Message.Id("archive-16000"), Conversation.Message.Id("archive-3"))
             val headers = f.measure {
-                val all = f.links.compactionHeaders(thread)
-                assertEquals(16_000, all.size)
+                val all = f.links.compactionWindowHeaders(thread)
+                assertEquals(1_000, all.size)
                 assertEquals(ids.first(), all.last().id)
                 assertEquals("archive-16000".length.toLong(), all.last().characters)
             }
@@ -796,6 +797,7 @@ class PostgresRuntimeMessageReadTest {
                     ContentItem.ContextCompactionResult.Payload.ReadableSummary("summary"),
                     ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
                     coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                    sourceBoundaryMessageId = result.id,
                 )),
             )
             listOf(call, result, checkpoint).forEachIndexed { position, message ->
@@ -831,6 +833,51 @@ class PostgresRuntimeMessageReadTest {
                     }
                 }
             }
+        }
+    }
+
+    @Test
+    fun `V99 carries sticky candidates and previous human time across the bounded checkpoint window`() = runBlocking {
+        withFixture(target = "98") { f ->
+            val thread = f.conversation.currentThread
+            val oldMode = Conversation.Message.Instruction.UserInstruction("mode", "Old mode", "old")
+            val pinned = Conversation.Message.Instruction.UserInstruction("pinned", "Pinned", "keep")
+            val newMode = Conversation.Message.Instruction.UserInstruction("mode", "New mode", "new")
+            val first = f.message("first").copy(
+                instructions = listOf(oldMode, pinned),
+                createdAt = f.now,
+            )
+            val boundary = f.message("boundary").copy(
+                instructions = listOf(newMode),
+                createdAt = f.now + 1.seconds,
+            )
+            val checkpoint = f.message("checkpoint-v99").copy(
+                role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(ContentItem.ContextCompactionResult(
+                    payload = ContentItem.ContextCompactionResult.Payload.ReadableSummary("history"),
+                    origin = ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY,
+                    coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                    sourceBoundaryMessageId = boundary.id,
+                )),
+                createdAt = f.now + 2.seconds,
+            )
+            val tail = f.message("tail").copy(createdAt = f.now + 3.seconds)
+            listOf(first, boundary, checkpoint, tail).forEachIndexed { position, message ->
+                f.save(message, thread, position)
+            }
+
+            f.migrate()
+
+            val migrated = assertNotNull(f.links.findMessage(thread, checkpoint.id))
+            val state = migrated.content.filterIsInstance<ContentItem.ContextCompactionResult>().single().continuationState
+            assertEquals(mapOf("pinned" to pinned, "mode" to newMode), state.stickyInstructionCandidates.associateBy { it.id })
+            assertEquals(boundary.createdAt, state.previousHumanMessageAt)
+            val headers = f.links.compactionWindowHeaders(thread)
+            assertEquals(listOf(checkpoint.id, tail.id), headers.map { it.id })
+            assertEquals(state, headers.first().continuationState)
+            val context = f.links.getContextMessagesByThread(thread, nativeProvider = null)
+            assertEquals(2, context.sourceMessageCount)
+            assertEquals(state, context.continuationState)
         }
     }
 
@@ -1059,6 +1106,63 @@ class PostgresRuntimeMessageReadTest {
     }
 
     @Test
+    fun `paged archive and SQL branch copy apply replacements and exclusions without full reads`() = runBlocking {
+        withFixture { f ->
+            val source = f.conversation.currentThread
+            val original = (0..3).map { index -> f.message("copy-$index") }
+            original.forEachIndexed { position, message -> f.save(message, source, position) }
+            val replacement = original[1].copy(
+                id = Conversation.Message.Id("copy-replacement"),
+                originalIds = listOf(original[1].id),
+            )
+            ExposedMessageRepository(Json).save(replacement)
+            val replacedThread = Conversation.Thread.Id("copy-replaced")
+            val deletedThread = Conversation.Thread.Id("copy-deleted")
+            val threads = ExposedThreadRepository()
+            for (thread in listOf(replacedThread, deletedThread)) {
+                threads.save(Conversation.Thread(
+                    id = thread,
+                    conversationId = f.conversation.id,
+                    originalThread = source,
+                    createdAt = f.now,
+                    updatedAt = f.now,
+                ))
+            }
+
+            val firstPage = f.links.getMessagePage(source, limit = 2)
+            val secondPage = f.links.getMessagePage(source, afterPositionExclusive = firstPage.last().position, limit = 2)
+            assertEquals(original, (firstPage + secondPage).map { it.message })
+            val firstLinks = f.links.getLinkPage(source, limit = 2)
+            val secondLinks = f.links.getLinkPage(source, afterPositionExclusive = firstLinks.last().position, limit = 2)
+            assertEquals(original.map { it.id }, (firstLinks + secondLinks).map { it.messageId })
+
+            f.links.copyWithChanges(
+                sourceThreadId = source,
+                targetThreadId = replacedThread,
+                replacements = mapOf(original[1].id to replacement.id),
+                excludedMessageIds = setOf(original[2].id),
+            )
+            assertEquals(
+                listOf(original[0].id, replacement.id, original[3].id),
+                f.links.readLinksForTest(replacedThread).map { it.messageId },
+            )
+            assertEquals(listOf(0, 1, 2), f.links.readLinksForTest(replacedThread).map { it.position })
+            assertEquals(replacement, f.links.findMessageByIdOrOriginal(replacedThread, original[1].id))
+
+            f.links.copyWithChanges(
+                sourceThreadId = source,
+                targetThreadId = deletedThread,
+                excludedMessageIds = setOf(original[0].id, original[3].id),
+            )
+            assertEquals(
+                listOf(original[1].id, original[2].id),
+                f.links.readLinksForTest(deletedThread).map { it.messageId },
+            )
+            assertEquals(listOf(0, 1), f.links.readLinksForTest(deletedThread).map { it.position })
+        }
+    }
+
+    @Test
     fun `last human activity is reader and branch bound without loading message bodies`() = runBlocking {
         withFixture { f ->
             val thread = f.conversation.currentThread
@@ -1150,14 +1254,19 @@ class PostgresRuntimeMessageReadTest {
                 val expected = if (message == summary) summary.copy(content = listOf(
                     (summary.content.single() as ContentItem.ContextCompactionResult).copy(
                         sourceMessageIds = emptyList(), sourceBoundaryMessageId = prefix.last().id,
+                        continuationState = ContentItem.ContextCompactionResult.ContinuationState(
+                            stickyInstructionCandidates = prefix.first().instructions
+                                .filterIsInstance<Conversation.Message.Instruction.UserInstruction>(),
+                            previousHumanMessageAt = prefix.last().createdAt,
+                        ),
                     )
                 )) else message
                 assertEquals(expected, ExposedMessageRepository(Json).findById(message.id))
                 assertEquals(com.gromozeka.domain.model.MessageContextMetadata.from(message), f.metadata(message.id))
             }
             val selected = f.links.getContextMessagesByThread(f.conversation.currentThread, null)
-            assertTrue(selected.messages.any { it == messages.single { message -> message.id.value == "binary" } })
-            assertEquals(messages.size, selected.sourceMessageCount)
+            assertFalse(selected.messages.any { it == messages.single { message -> message.id.value == "binary" } })
+            assertEquals(messages.size - prefix.size, selected.sourceMessageCount)
             val replacement = messages[0].copy(providerMetadata = buildJsonObject { put("synthetic", true) }, instructions = emptyList())
             f.source.connection.use { connection ->
                 connection.prepareStatement("UPDATE messages SET message_json = ? WHERE id = ?").use {
@@ -1170,7 +1279,7 @@ class PostgresRuntimeMessageReadTest {
     }
 
     @Test
-    fun `context reads preserve branch membership and recover foreign opaque checkpoints`() = runBlocking {
+    fun `context reads preserve branch membership and skip foreign opaque checkpoints`() = runBlocking {
         withFixture { f ->
             val thread = f.conversation.currentThread
             val source = f.message("source")
@@ -1182,12 +1291,15 @@ class PostgresRuntimeMessageReadTest {
             )))
             val tail = f.message("tail")
             listOf(source, checkpoint, tail).forEachIndexed { index, message -> f.save(message, thread, index) }
-            val archive = f.links.getMessagesByThread(thread)
+            val archive = f.links.readArchiveForTest(thread)
             for (provider in listOf(null, "OPENAI_SUBSCRIPTION", "CLAUDE_CODE")) {
                 val selected = f.links.getContextMessagesByThread(thread, provider)
-                assertEquals(com.gromozeka.domain.model.ConversationContext(archive).messagesForProvider(provider),
-                    com.gromozeka.domain.model.ConversationContext(selected.messages).messagesForProvider(provider))
-                assertEquals(archive.size, selected.sourceMessageCount)
+                val target = provider?.let {
+                    ContentItem.ContextCompactionResult.ProviderScope(it)
+                }
+                assertEquals(com.gromozeka.domain.model.ConversationContext(archive).messagesForProvider(target),
+                    com.gromozeka.domain.model.ConversationContext(selected.messages).messagesForProvider(target))
+                assertEquals(2, selected.sourceMessageCount)
             }
             val fork = Conversation.Thread.Id("fork")
             ExposedThreadRepository().save(Conversation.Thread(fork, f.conversation.id, originalThread = thread, createdAt = f.now, updatedAt = f.now))
@@ -1199,8 +1311,14 @@ class PostgresRuntimeMessageReadTest {
                     sourceMessageIds = listOf(checkpoint.id),
                 )))
             f.save(bad, fork, 2)
-            val observation = f.measure { assertFailsWith<IllegalStateException> { f.links.getContextMessagesByThread(fork, null) } }
-            assertEquals(1, observation.bodies)
+            lateinit var forkContext: com.gromozeka.domain.repository.ThreadContextMessages
+            val observation = f.measure { forkContext = f.links.getContextMessagesByThread(fork, null) }
+            assertEquals(listOf(source.id, tail.id, bad.id), forkContext.messages.map { it.id })
+            assertEquals(
+                listOf(source, tail),
+                com.gromozeka.domain.model.ConversationContext(forkContext.messages).messagesForProvider(null),
+            )
+            assertEquals(3, observation.bodies)
         }
     }
 
@@ -1244,25 +1362,25 @@ class PostgresRuntimeMessageReadTest {
                 f.measure(operation).also { samples.getOrPut(name, ::mutableListOf).add(it) }
             repeat(if (large) 6 else 1) { iteration ->
                 val oldFind = sample("full_history_find") {
-                    assertEquals(summary, f.links.getMessagesByThread(thread).firstOrNull { it.id == summary.id })
+                    assertEquals(summary, f.links.readArchiveForTest(thread).firstOrNull { it.id == summary.id })
                 }
                 val find = sample("point_find") { assertEquals(summary, f.history.message(thread, summary.id)?.message) }
                 val oldExists = sample("full_history_exists") {
-                    assertTrue(f.links.getMessagesByThread(thread).any { it.id == summary.id })
+                    assertTrue(f.links.readArchiveForTest(thread).any { it.id == summary.id })
                 }
                 val exists = sample("point_exists") { assertNotNull(f.history.position(thread, summary.id)) }
-                val oldMaximum = sample("all_links_max") { assertEquals(count - 1, f.links.getByThread(thread).maxOfOrNull { it.position }) }
+                val oldMaximum = sample("all_links_max") { assertEquals(count - 1, f.links.readLinksForTest(thread).maxOfOrNull { it.position }) }
                 val maximum = sample("sql_max") { assertEquals(count - 1, f.links.getMaxPosition(thread)) }
                 val fullContext = sample("full_history_context") {
-                    assertEquals(listOf(summary), com.gromozeka.domain.model.ConversationContext(f.links.getMessagesByThread(thread)).messagesForProvider(null))
+                    assertEquals(listOf(summary), com.gromozeka.domain.model.ConversationContext(f.links.readArchiveForTest(thread)).messagesForProvider(null))
                 }
                 val sparseContext = sample("sparse_context") {
                     val selected = f.links.getContextMessagesByThread(thread, null)
-                    assertEquals(count, selected.sourceMessageCount)
+                    assertEquals(1, selected.sourceMessageCount)
                     assertEquals(listOf(summary), com.gromozeka.domain.model.ConversationContext(selected.messages).messagesForProvider(null))
                 }
                 assertEquals(count.toLong(), fullContext.bodies)
-                assertEquals(3, sparseContext.bodies)
+                assertEquals(1, sparseContext.bodies)
                 assertEquals(count.toLong(), oldFind.bodies); assertEquals(count.toLong(), oldExists.bodies)
                 assertEquals(1, find.bodies); assertEquals(0, exists.bodies)
                 assertEquals(count.toLong(), oldMaximum.rows); assertEquals(1, maximum.rows)

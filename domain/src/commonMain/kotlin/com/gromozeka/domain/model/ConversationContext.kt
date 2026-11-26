@@ -2,6 +2,9 @@ package com.gromozeka.domain.model
 
 import com.gromozeka.domain.model.Conversation.Message
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult
+import com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall
+import com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult
+import com.gromozeka.domain.model.ai.AI_PROVIDER_MANAGED_TOOL_METADATA_KEY
 import com.gromozeka.domain.model.ai.AI_REPLAY_THREAD_METADATA_KEY
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
@@ -24,15 +27,15 @@ class ConversationContext(
     fun messages(): List<Message> = project(history)
 
     /**
-     * Native state is replayed only by its owning provider. Otherwise recover the readable
-     * history it replaced; never substitute an opaque checkpoint with an empty marker.
-     * A selection is projected independently of unselected summaries elsewhere in history.
+     * Native state is replayed only by a compatible target. An incompatible opaque checkpoint
+     * is intentionally skipped: crossing older full windows would make an ordinary turn unbounded.
      */
-    fun messagesForProvider(provider: String?, selection: Set<Message.Id>? = null): List<Message> {
+    fun messagesForProvider(
+        target: ContextCompactionResult.ProviderScope?,
+        selection: Set<Message.Id>? = null,
+    ): List<Message> {
         val candidates = if (selection == null) history else history.filter { it.id in selection }
-        // Opaque recovery can restore sources covered by another selected summary.
-        // Apply coverage once more to the recovered view, not to unselected history.
-        return project(prepare(candidates, provider, emptySet()))
+        return sanitizeProviderReplay(prepare(project(candidates), target), target)
     }
 
     /** Full checkpoints protect their prefix and all transitive source versions, including themselves. */
@@ -44,23 +47,7 @@ class ConversationContext(
     }
 
     /** Invalidated selective summaries disappear from a new branch; their retained sources reappear. */
-    fun dependentSummaryIds(changedIds: Set<Message.Id>): Set<Message.Id> {
-        val affected = changedIds.toMutableSet()
-        val invalidated = mutableSetOf<Message.Id>()
-        do {
-            var changed = false
-            history.forEach { message ->
-                if (message.id !in affected && !message.isFullContextCompaction() &&
-                    message.compactions().any { result -> result.sourceMessageIds.any { it in affected } }
-                ) {
-                    affected += message.id
-                    invalidated += message.id
-                    changed = true
-                }
-            }
-        } while (changed)
-        return invalidated
-    }
+    fun dependentSummaryIds(changedIds: Set<Message.Id>): Set<Message.Id> = index.dependentSummaryIds(changedIds)
 
     private fun project(input: List<Message>): List<Message> {
         val selected = index.project(input.map(Message::compactionNode)).mapTo(mutableSetOf()) { it.id }
@@ -70,28 +57,78 @@ class ConversationContext(
             .map { if (it.id in invalidatedReplay) it.withoutProviderReplay() else it }
     }
 
-    private fun prepare(input: List<Message>, provider: String?, visiting: Set<Message.Id>): List<Message> =
-        project(input).flatMap { message ->
-            val incompatible = message.compactions().filter {
-                it.payload is ContextCompactionResult.Payload.OpaqueProviderState &&
-                    (provider == null || it.providerScope?.provider != provider)
+    private fun prepare(
+        input: List<Message>,
+        target: ContextCompactionResult.ProviderScope?,
+    ): List<Message> = buildList {
+        val carriedInstructions = mutableListOf<Message.Instruction.UserInstruction>()
+        input.forEach { message ->
+            val portableContent = message.content.filterNot { item ->
+                item is ContextCompactionResult &&
+                    item.payload is ContextCompactionResult.Payload.OpaqueProviderState &&
+                    !item.providerScope.isReplayCompatibleWith(target)
             }
-            if (incompatible.isEmpty()) return@flatMap listOf(message)
-            require(message.id !in visiting) { "Cyclic opaque compaction sources at ${message.id.value}" }
-            // There must be a real source for recovery. A provider label is not a summary.
-            val window = index.recoveryWindow(message.id, incompatible.map(::CompactionCoverage))
-            val sources = window.nodes.map { node ->
-                val source = byId[node.id]
-                    ?: error("Missing compaction source message: ${node.id.value}")
-                if (node.id in window.invalidatedReplay) source.withoutProviderReplay() else source
+            var portable = if (portableContent.size == message.content.size) message
+            else message.copy(content = portableContent).withoutProviderReplay()
+            if (portable.content.isEmpty()) {
+                carriedInstructions += portable.instructions.filterIsInstance<Message.Instruction.UserInstruction>()
+                portable = portable.copy(instructions = portable.instructions.filterNot {
+                    it is Message.Instruction.UserInstruction
+                })
+            } else if (carriedInstructions.isNotEmpty()) {
+                portable = portable.copy(instructions = carriedInstructions + portable.instructions)
+                carriedInstructions.clear()
             }
-            val recovered = prepare(sources, provider, visiting + message.id).map(Message::withoutProviderReplay)
-            val lastCheckpoint = message.content.indexOfLast { it in incompatible }
-            val tail = message.content.drop(lastCheckpoint + 1)
-            recovered + if (tail.isEmpty()) emptyList() else listOf(
-                message.copy(content = tail).withoutProviderReplay()
-            )
-        }.distinctBy(Message::id)
+            if (portable.content.isNotEmpty() || portable.instructions.isNotEmpty()) add(portable)
+        }
+    }
+
+    private fun sanitizeProviderReplay(
+        input: List<Message>,
+        target: ContextCompactionResult.ProviderScope?,
+    ): List<Message> {
+        val droppedCalls = input.asSequence()
+            .filter { it.providerMetadata[AI_PROVIDER_MANAGED_TOOL_METADATA_KEY] == JsonPrimitive(true) }
+            .filter { message -> message.replayScope()?.let { !it.isReplayCompatibleWith(target) } == true }
+            .flatMap { it.content.filterIsInstance<ToolCall>().asSequence() }
+            .mapTo(mutableSetOf()) { it.id }
+        return input.mapNotNull { message ->
+            val incompatibleReplay = message.replayScope()?.let { !it.isReplayCompatibleWith(target) } == true
+            val filtered = message.content.filterNot { item ->
+                (item is ToolCall && item.id in droppedCalls) ||
+                    (item is ToolResult && item.toolUseId in droppedCalls)
+            }
+            var portable = if (filtered.size == message.content.size) message else message.copy(content = filtered)
+            if (incompatibleReplay) portable = portable.withoutProviderReplay()
+            if (filtered.size != message.content.size) {
+                portable = portable.copy(providerMetadata = JsonObject(portable.providerMetadata.filterKeys {
+                    it != AI_PROVIDER_MANAGED_TOOL_METADATA_KEY
+                }))
+            }
+            portable.takeUnless { it.content.isEmpty() && it.instructions.isEmpty() }
+        }
+    }
+}
+
+private fun ContextCompactionResult.ProviderScope?.isReplayCompatibleWith(
+    target: ContextCompactionResult.ProviderScope?,
+): Boolean {
+    if (this == null || target == null || provider != target.provider) return false
+    fun compatible(source: String?, destination: String?) = source == null || destination == null || source == destination
+    return compatible(connectionId, target.connectionId) &&
+        compatible(modelConfigurationId, target.modelConfigurationId) &&
+        compatible(modelName, target.modelName)
+}
+
+private fun Message.replayScope(): ContextCompactionResult.ProviderScope? {
+    fun string(key: String) = (providerMetadata[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
+    val provider = string("provider") ?: return null
+    return ContextCompactionResult.ProviderScope(
+        provider = provider,
+        connectionId = string("connectionId"),
+        modelConfigurationId = string("modelConfigurationId"),
+        modelName = string("model"),
+    )
 }
 
 fun Conversation.Message.compactions(): List<Conversation.Message.ContentItem.ContextCompactionResult> =

@@ -30,6 +30,7 @@ import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.nativeCompactionProvider
 import com.gromozeka.domain.repository.ThreadMessageRepository
+import com.gromozeka.domain.repository.ThreadContextMessages
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
@@ -639,7 +640,7 @@ class ConversationEngineService(
                 message.copy(providerMetadata = JsonObject(message.providerMetadata +
                     (com.gromozeka.domain.model.ai.AI_REPLAY_THREAD_METADATA_KEY to JsonPrimitive(conversation.currentThread.value))))
             }
-            currentMessages = loadRuntimeMessages(conversation, context.connectionKind)
+            currentMessages = loadRuntimeMessages(conversation, context.connectionKind).messages
         }
         if (outcome == AiStepOutcome.COMPLETE && allToolCalls.isEmpty() && activeCollaboration != null && responseReview != null) {
             val draft = responseReview.prepare(
@@ -1001,7 +1002,7 @@ class ConversationEngineService(
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         val context = buildConversationRuntimeContext(payload.agentDefinitionId, conversation, executor)
-        val currentMessages = contextHistory.getMessagesByThread(conversation.currentThread)
+        val currentMessages = loadRuntimeMessages(conversation, context.connectionKind).messages
         if (!currentMessages.hasPendingMemoryRecall(payload.targetMessageId)) {
             log.info {
                 "Skipping memory recall without pending marker: conversation=${conversationId.value} target=${payload.targetMessageId.value}"
@@ -1353,14 +1354,16 @@ class ConversationEngineService(
         diagnosticId: String,
         readOnlySnapshot: Boolean,
     ): RuntimeRequestAssembly {
-        // Native CLI sessions fingerprint raw history; external channels apply their own history filters.
-        val currentMessages = loadRuntimeMessages(conversation, context.connectionKind)
+        val historyWindow = loadRuntimeMessages(conversation, context.connectionKind)
+        val currentMessages = historyWindow.messages
         val runtimeMessages = stickyMessageInstructionService.materialize(
             messages = messageTemporalContextService.enrich(
                 messages = currentMessages,
                 enabled = context.includeMessageTemporalContext,
+                previousHumanMessageAt = historyWindow.continuationState.previousHumanMessageAt,
             ),
             groups = settingsProvider.userProfile.messageInstructionGroups,
+            continuationState = historyWindow.continuationState,
         )
         val targetMessageId = rootUserMessageId
             ?: currentMessages.lastOrNull { it.role == Conversation.Message.Role.USER }?.id
@@ -1407,6 +1410,8 @@ class ConversationEngineService(
                     put(TOOL_CONTEXT_AGENT_DEFINITION_ID, context.agent.id.value)
                     task.actorUserId?.let { put(TOOL_CONTEXT_USER_ID, it.value) }
                     put("aiProvider", context.provider.name)
+                    put("aiConnectionId", context.connectionId)
+                    put("aiModelConfigurationId", context.modelConfigurationId)
                     put("modelName", context.modelName)
                 },
                 usagePurpose = "CONVERSATION",
@@ -1438,6 +1443,8 @@ class ConversationEngineService(
         val modelSpec: AiModelSpec,
         val provider: AiProvider,
         val connectionKind: AiConnection.Kind,
+        val connectionId: String,
+        val modelConfigurationId: String,
         val modelName: String,
         val toolCatalog: DistributedAiToolCatalogSnapshot,
         val memoryPipelineTools: List<AiToolCallback>,
@@ -1452,15 +1459,13 @@ class ConversationEngineService(
         val project get() = runtimeContext.project
     }
 
-    private suspend fun loadRuntimeMessages(conversation: Conversation, kind: AiConnection.Kind): List<Conversation.Message> =
-        if (conversation.externalChannel != null) {
-            contextHistory.getMessagesByThread(conversation.currentThread)
-        } else {
-            contextHistory.getContextMessagesByThread(
-                conversation.currentThread,
-                kind.nativeCompactionProvider(),
-            ).messages
-        }
+    private suspend fun loadRuntimeMessages(
+        conversation: Conversation,
+        kind: AiConnection.Kind,
+    ): ThreadContextMessages = contextHistory.getContextMessagesByThread(
+        conversation.currentThread,
+        kind.nativeCompactionProvider(),
+    )
 
     private suspend fun buildConversationRuntimeContext(
         agentDefinitionId: AgentDefinition.Id,
@@ -1548,6 +1553,8 @@ class ConversationEngineService(
             modelSpec = resolvedRuntime.modelSpec,
             provider = provider,
             connectionKind = resolvedRuntime.connection.kind,
+            connectionId = resolvedRuntime.connection.id.value,
+            modelConfigurationId = resolvedRuntime.modelConfiguration.id.value,
             modelName = modelName,
             toolCatalog = toolCatalog,
             memoryPipelineTools = memoryPipelineTools,
@@ -1719,7 +1726,7 @@ class ConversationEngineService(
         if (!automaticMemoryRecallEnabled) {
             return null
         }
-        val targetMessageId = contextHistory.getMessagesByThread(threadId)
+        val targetMessageId = contextHistory.getContextMessagesByThread(threadId, nativeProvider = null).messages
             .nextPendingMemoryRecallTarget()
             ?: return null
         return memoryRecallTask(

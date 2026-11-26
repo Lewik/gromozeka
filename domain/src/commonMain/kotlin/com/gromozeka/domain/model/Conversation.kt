@@ -542,6 +542,8 @@ data class Conversation(
                 val providerScope: ProviderScope? = null,
                 val promptTemplate: PromptTemplateReference? = null,
                 val coverage: Coverage,
+                /** Runtime state needed to continue after an ALL_PREVIOUS boundary without reading its archive. */
+                val continuationState: ContinuationState = ContinuationState(),
                 // Kept turns produced against the pre-compaction history must not replay
                 // signed thinking or provider-native copies of that old history.
                 val invalidatedReplayMessageIds: List<Id> = emptyList(),
@@ -591,6 +593,17 @@ data class Conversation(
                     val connectionId: String? = null,
                     val modelConfigurationId: String? = null,
                     val modelName: String? = null,
+                )
+
+                /**
+                 * A full checkpoint is the first message of the next model window. Sticky candidates retain
+                 * their last-occurrence order so the current instruction-group configuration can choose one
+                 * winner per group without loading messages before the checkpoint.
+                 */
+                @Serializable
+                data class ContinuationState(
+                    val stickyInstructionCandidates: List<Instruction.UserInstruction> = emptyList(),
+                    val previousHumanMessageAt: Instant? = null,
                 )
 
                 @Serializable

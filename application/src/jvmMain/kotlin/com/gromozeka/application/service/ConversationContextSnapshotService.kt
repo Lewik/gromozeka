@@ -79,6 +79,8 @@ class ConversationContextSnapshotService(
                 TOOL_CONTEXT_AGENT_DEFINITION_ID to agent.id.value,
                 TOOL_CONTEXT_USER_ID to actor.value,
                 "aiProvider" to resolved.connection.kind.provider.name,
+                "aiConnectionId" to resolved.connection.id.value,
+                "aiModelConfigurationId" to resolved.modelConfiguration.id.value,
                 "modelName" to resolved.modelConfiguration.providerModelId,
             ),
         )
@@ -101,8 +103,13 @@ class ConversationContextSnapshotService(
             }
         } ?: -1
         val runtimeMessages = sticky.materialize(
-            temporal.enrich(original.take(rawBoundary + 1), profile.agentSettings.includeMessageTemporalContext),
+            temporal.enrich(
+                original.take(rawBoundary + 1),
+                profile.agentSettings.includeMessageTemporalContext,
+                selectedHistory.continuationState.previousHumanMessageAt,
+            ),
             profile.messageInstructionGroups,
+            selectedHistory.continuationState,
         )
         val materializedPrefix = projectionRequest.copy(messages = runtimeMessages).projectedMessages(nativeProvider)
         if (materializedPrefix.map { it.id } != prefix.map { it.id }) throw ContextSnapshotUnavailableException(

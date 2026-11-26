@@ -84,13 +84,6 @@ class ExposedMessageRepository(
         }
     }
 
-    override suspend fun findByConversation(conversationId: Conversation.Id): List<Conversation.Message> = dbQuery {
-        Messages.select(Messages.messageJson)
-            .where { Messages.conversationId eq conversationId.value }
-            .orderBy(Messages.createdAt, SortOrder.ASC)
-            .map { json.decodeFromString<Conversation.Message>(it[Messages.messageJson]) }
-    }
-
     override suspend fun findVersions(originalId: Conversation.Message.Id): List<Conversation.Message> = dbQuery {
         Messages.select(Messages.messageJson)
             .where { Messages.originalIdsJson like "%\"${originalId.value}\"%"}

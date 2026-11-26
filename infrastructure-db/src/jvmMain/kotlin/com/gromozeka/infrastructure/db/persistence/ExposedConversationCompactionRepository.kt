@@ -18,6 +18,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.batchInsert
@@ -51,7 +52,8 @@ class ExposedConversationCompactionRepository(
             val actual = compactionMessage.compactions().single()
             check(captured.payload == actual.payload && captured.sourceMessageIds == actual.sourceMessageIds &&
                 captured.sourceBoundaryMessageId == actual.sourceBoundaryMessageId && captured.coverage == actual.coverage &&
-                captured.strategy == actual.strategy && captured.origin == actual.origin && captured.providerScope == actual.providerScope) {
+                captured.strategy == actual.strategy && captured.origin == actual.origin && captured.providerScope == actual.providerScope &&
+                captured.continuationState == actual.continuationState) {
                 "Prepared checkpoint does not match the committed compaction"
             }
             state
@@ -68,15 +70,16 @@ class ExposedConversationCompactionRepository(
         }
         if (updated != 1) return@dbQuery false
 
-        // Clone the current links under the conversation's CAS lock, not the prepare-time
-        // snapshot. Appends accepted before this commit must survive in the new version.
-        val currentIds = ThreadMessages.selectAll()
-            .where { ThreadMessages.threadId eq expectedThreadId.value }
-            .orderBy(ThreadMessages.position, SortOrder.ASC)
-            .map { it[ThreadMessages.messageId] }
-        val anchor = currentIds.indexOf(insertionAnchorId.value)
-        check(anchor >= 0) { "Compaction insertion anchor is missing from the captured thread" }
-        val newMessageIds = currentIds.take(anchor + 1) + compactionMessage.id.value + currentIds.drop(anchor + 1)
+        // Clone links in SQL under the Conversation CAS lock. The archive can be arbitrarily long;
+        // appends accepted before this transaction survive without materializing every message ID.
+        val anchor = ThreadMessages.select(ThreadMessages.position)
+            .where {
+                (ThreadMessages.threadId eq expectedThreadId.value) and
+                    (ThreadMessages.messageId eq insertionAnchorId.value)
+            }
+            .singleOrNull()
+            ?.get(ThreadMessages.position)
+            ?: error("Compaction insertion anchor is missing from the captured thread")
         val lastTurnNumber = Threads.selectAll().where { Threads.id eq expectedThreadId.value }
             .single()[Threads.lastTurnNumber]
 
@@ -105,10 +108,24 @@ class ExposedConversationCompactionRepository(
             it[createdAt] = newThread.createdAt
             it[updatedAt] = newThread.updatedAt
         }
-        ThreadMessages.batchInsert(newMessageIds.withIndex().toList()) { (position, messageId) ->
-            this[ThreadMessages.threadId] = newThread.id.value
-            this[ThreadMessages.messageId] = messageId
-            this[ThreadMessages.position] = position
+        TransactionManager.current().exec(
+            """
+            INSERT INTO thread_messages(thread_id, message_id, position)
+            SELECT ?, message_id, CASE WHEN position <= ? THEN position ELSE position + 1 END
+            FROM thread_messages
+            WHERE thread_id = ?
+            ORDER BY position
+            """.trimIndent(),
+            listOf(
+                TextColumnType() to newThread.id.value,
+                org.jetbrains.exposed.v1.core.IntegerColumnType() to anchor,
+                TextColumnType() to expectedThreadId.value,
+            ),
+        )
+        ThreadMessages.insert {
+            it[threadId] = newThread.id.value
+            it[messageId] = compactionMessage.id.value
+            it[position] = anchor + 1
         }
         if (preparedState != null) {
             val prepared = requireNotNull(preparedState.proactiveCompaction)

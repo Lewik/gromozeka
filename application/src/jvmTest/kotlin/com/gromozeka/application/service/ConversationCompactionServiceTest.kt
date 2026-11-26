@@ -345,7 +345,7 @@ class ConversationCompactionServiceTest {
         private val history = Mockito.mock(ThreadMessageRepository::class.java) { invocation ->
             when (invocation.method.name.substringBefore('-')) {
                 "contains" -> persisted
-                "compactionHeaders" -> sources.map(CompactionMessageHeader::from)
+                "compactionWindowHeaders" -> sources.map(CompactionMessageHeader::from)
                 "compactionBodies" -> (invocation.arguments[1] as List<*>).map { id -> sources.single { it.id == id } }
                 else -> Mockito.RETURNS_DEFAULTS.answer(invocation)
             }

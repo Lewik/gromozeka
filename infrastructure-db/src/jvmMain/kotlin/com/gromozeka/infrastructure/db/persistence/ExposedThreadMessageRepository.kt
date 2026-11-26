@@ -8,6 +8,7 @@ import com.gromozeka.domain.model.MessageContextHeader
 import com.gromozeka.domain.model.MessageContextMetadata
 import com.gromozeka.domain.model.ToolSequenceFacts
 import com.gromozeka.domain.model.ToolSequenceMessageHeader
+import com.gromozeka.domain.model.compactions
 import com.gromozeka.domain.model.selectModelHistoryMessageIds
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.v1.jdbc.transactions.experimental.newSuspendedTransaction
@@ -17,6 +18,7 @@ import org.jetbrains.exposed.v1.core.TextColumnType
 import org.jetbrains.exposed.v1.core.statements.StatementType
 import java.sql.Connection
 import com.gromozeka.domain.repository.ThreadMessageLink
+import com.gromozeka.domain.repository.ThreadMessagePageEntry
 import com.gromozeka.domain.repository.ThreadContextMessages
 import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.repository.RecentVisibleMessage
@@ -25,6 +27,8 @@ import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.max
+import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.jdbc.*
 import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
@@ -57,19 +61,6 @@ class ExposedThreadMessageRepository(
         }
     }
 
-    override suspend fun getByThread(threadId: Conversation.Thread.Id): List<ThreadMessageLink> = dbQuery {
-        ThreadMessages.selectAll()
-            .where { ThreadMessages.threadId eq threadId.value }
-            .orderBy(ThreadMessages.position, SortOrder.ASC)
-            .map { row ->
-                ThreadMessageLink(
-                    threadId = Conversation.Thread.Id(row[ThreadMessages.threadId]),
-                    messageId = Conversation.Message.Id(row[ThreadMessages.messageId]),
-                    position = row[ThreadMessages.position]
-                )
-            }
-    }
-
     override suspend fun contains(threadId: Conversation.Thread.Id, messageId: Conversation.Message.Id): Boolean = dbQuery {
         ThreadMessages.select(ThreadMessages.messageId)
             .where { (ThreadMessages.threadId eq threadId.value) and (ThreadMessages.messageId eq messageId.value) }
@@ -83,15 +74,131 @@ class ExposedThreadMessageRepository(
             .single()[maximum]
     }
 
-    override suspend fun getMessagesByThread(threadId: Conversation.Thread.Id): List<Conversation.Message> = dbQuery {
+    override suspend fun getLinkPage(
+        threadId: Conversation.Thread.Id,
+        afterPositionExclusive: Int,
+        limit: Int,
+    ): List<ThreadMessageLink> = dbQuery {
+        require(afterPositionExclusive >= -1)
+        require(limit in 1..1_000)
+        ThreadMessages.select(ThreadMessages.messageId, ThreadMessages.position)
+            .where {
+                (ThreadMessages.threadId eq threadId.value) and
+                    (ThreadMessages.position greater afterPositionExclusive)
+            }
+            .orderBy(ThreadMessages.position, SortOrder.ASC)
+            .limit(limit)
+            .map { row ->
+                ThreadMessageLink(
+                    threadId = threadId,
+                    messageId = Conversation.Message.Id(row[ThreadMessages.messageId]),
+                    position = row[ThreadMessages.position],
+                )
+            }
+    }
+
+    override suspend fun getMessagePage(
+        threadId: Conversation.Thread.Id,
+        afterPositionExclusive: Int,
+        limit: Int,
+    ): List<ThreadMessagePageEntry> = dbQuery {
+        require(afterPositionExclusive >= -1)
+        require(limit in 1..1_000)
+        val rows = (ThreadMessages innerJoin Messages)
+            .select(ThreadMessages.position, Messages.messageJson)
+            .where {
+                (ThreadMessages.threadId eq threadId.value) and
+                    (ThreadMessages.position greater afterPositionExclusive)
+            }
+            .orderBy(ThreadMessages.position, SortOrder.ASC)
+            .limit(limit)
+            .map { row -> row[ThreadMessages.position] to json.decodeFromString<Conversation.Message>(row[Messages.messageJson]) }
+        val resolved = resolveCurrentMessageAuthors(rows.map { it.second })
+        rows.zip(resolved) { (position, _), message -> ThreadMessagePageEntry(position, message) }
+    }
+
+    override suspend fun findMessage(
+        threadId: Conversation.Thread.Id,
+        messageId: Conversation.Message.Id,
+    ): Conversation.Message? = dbQuery {
         (ThreadMessages innerJoin Messages)
             .select(Messages.messageJson)
-            .where { ThreadMessages.threadId eq threadId.value }
-            .orderBy(ThreadMessages.position, SortOrder.ASC)
-            .map { row ->
-                json.decodeFromString<Conversation.Message>(row[Messages.messageJson])
+            .where {
+                (ThreadMessages.threadId eq threadId.value) and
+                    (ThreadMessages.messageId eq messageId.value)
             }
-            .let(::resolveCurrentMessageAuthors)
+            .singleOrNull()
+            ?.get(Messages.messageJson)
+            ?.let { json.decodeFromString<Conversation.Message>(it) }
+            ?.let { resolveCurrentMessageAuthors(listOf(it)).single() }
+    }
+
+    override suspend fun findMessageByIdOrOriginal(
+        threadId: Conversation.Thread.Id,
+        messageId: Conversation.Message.Id,
+    ): Conversation.Message? = dbQuery {
+        TransactionManager.current().exec(
+            """
+            SELECT m.message_json
+            FROM thread_messages tm
+            JOIN messages m ON m.id = tm.message_id
+            WHERE tm.thread_id = ? AND (
+                tm.message_id = ? OR
+                m.original_ids_json::jsonb @> jsonb_build_array(CAST(? AS text))
+            )
+            ORDER BY tm.position
+            LIMIT 1
+            """.trimIndent(),
+            listOf(
+                TextColumnType() to threadId.value,
+                TextColumnType() to messageId.value,
+                TextColumnType() to messageId.value,
+            ),
+            StatementType.SELECT,
+        ) { rows ->
+            if (!rows.next()) null
+            else resolveCurrentMessageAuthors(listOf(json.decodeFromString<Conversation.Message>(rows.getString(1)))).single()
+        }
+    }
+
+    override suspend fun copyWithChanges(
+        sourceThreadId: Conversation.Thread.Id,
+        targetThreadId: Conversation.Thread.Id,
+        replacements: Map<Conversation.Message.Id, Conversation.Message.Id>,
+        excludedMessageIds: Set<Conversation.Message.Id>,
+    ): Unit = dbQuery {
+        require(replacements.keys.intersect(excludedMessageIds).isEmpty()) {
+            "A copied message cannot be both replaced and excluded"
+        }
+        check(ThreadMessages.selectAll().where { ThreadMessages.threadId eq targetThreadId.value }.empty()) {
+            "Replacement thread must be empty"
+        }
+        val cases = replacements.entries.joinToString(" ") { "WHEN ? THEN ?" }
+        val exclusions = excludedMessageIds.joinToString(",") { "?" }
+        val sql = buildString {
+            append("INSERT INTO thread_messages(thread_id, message_id, position) SELECT ?, ")
+            if (replacements.isEmpty()) {
+                append("tm.message_id")
+            } else {
+                append("CASE tm.message_id ")
+                append(cases)
+                append(" ELSE tm.message_id END")
+            }
+            append(", (row_number() OVER (ORDER BY tm.position) - 1)::integer ")
+            append("FROM thread_messages tm WHERE tm.thread_id = ?")
+            if (excludedMessageIds.isNotEmpty()) append(" AND tm.message_id NOT IN ($exclusions)")
+            append(" ORDER BY tm.position")
+        }
+        val parameters = buildList<Pair<org.jetbrains.exposed.v1.core.IColumnType<*>, Any?>> {
+            add(TextColumnType() to targetThreadId.value)
+            replacements.forEach { (from, to) ->
+                add(TextColumnType() to from.value)
+                add(TextColumnType() to to.value)
+            }
+            add(TextColumnType() to sourceThreadId.value)
+            excludedMessageIds.forEach { add(TextColumnType() to it.value) }
+        }
+        TransactionManager.current().exec(sql, parameters)
     }
 
     override suspend fun hasAtLeastResponseReviewContinuations(
@@ -120,10 +227,16 @@ class ExposedThreadMessageRepository(
         })
     }
 
-    override suspend fun compactionHeaders(threadId: Conversation.Thread.Id): List<CompactionMessageHeader> =
+    override suspend fun compactionWindowHeaders(threadId: Conversation.Thread.Id): List<CompactionMessageHeader> =
         newSuspendedTransaction(Dispatchers.IO, transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ, readOnly = true) {
+            val bounds = readContextWindowBounds(threadId, throughMessageId = null) ?: return@newSuspendedTransaction emptyList()
             val rows = (ThreadMessages innerJoin Messages).select(ThreadMessages.messageId, Messages.compactionHeader)
-                .where { ThreadMessages.threadId eq threadId.value }.orderBy(ThreadMessages.position, SortOrder.ASC)
+                .where {
+                    (ThreadMessages.threadId eq threadId.value) and
+                        (ThreadMessages.position greaterEq bounds.startPosition) and
+                        (ThreadMessages.position lessEq bounds.endPosition)
+                }
+                .orderBy(ThreadMessages.position, SortOrder.ASC)
                 .map { row ->
                     val id = Conversation.Message.Id(row[ThreadMessages.messageId])
                     val header = row[Messages.compactionHeader]?.let { json.decodeFromString<CompactionMessageHeader>(it) }
@@ -292,6 +405,11 @@ class ExposedThreadMessageRepository(
         return ThreadContextMessages(
             messages = materializeContextSelection(threadId, captured, required),
             sourceMessageCount = captured.headers.size,
+            continuationState = checkpoints.asSequence()
+                .flatMap { it.compactions().asSequence() }
+                .lastOrNull { it.coversAllPrevious }
+                ?.continuationState
+                ?: Conversation.Message.ContentItem.ContextCompactionResult.ContinuationState(),
         )
     }
 
@@ -299,25 +417,15 @@ class ExposedThreadMessageRepository(
         threadId: Conversation.Thread.Id,
         throughMessageId: Conversation.Message.Id?,
     ): CapturedContextHeaders {
-        val throughPosition = throughMessageId?.let { messageId ->
-            ThreadMessages
-                .select(ThreadMessages.position)
-                .where {
-                    (ThreadMessages.threadId eq threadId.value) and
-                        (ThreadMessages.messageId eq messageId.value)
-                }
-                .singleOrNull()
-                ?.get(ThreadMessages.position)
-                ?: error("Message ${messageId.value} is not in thread ${threadId.value}")
-        }
-        val bounds = if (throughPosition == null) {
-            ThreadMessages.threadId eq threadId.value
-        } else {
-            (ThreadMessages.threadId eq threadId.value) and (ThreadMessages.position lessEq throughPosition)
-        }
+        val bounds = readContextWindowBounds(threadId, throughMessageId)
+            ?: return CapturedContextHeaders(emptyList(), mutableMapOf())
         val stored = (ThreadMessages innerJoin Messages)
             .select(ThreadMessages.messageId, Messages.contextMetadataJson)
-            .where { bounds }
+            .where {
+                (ThreadMessages.threadId eq threadId.value) and
+                    (ThreadMessages.position greaterEq bounds.startPosition) and
+                    (ThreadMessages.position lessEq bounds.endPosition)
+            }
             .orderBy(ThreadMessages.position, SortOrder.ASC)
             .map { row -> Conversation.Message.Id(row[ThreadMessages.messageId]) to row[Messages.contextMetadataJson] }
         val bodies = readContextBodies(threadId, stored.filter { it.second == null }.map { it.first })
@@ -332,6 +440,41 @@ class ExposedThreadMessageRepository(
             )
         }
         return CapturedContextHeaders(headers, bodies)
+    }
+
+    /** One model read begins at the latest full checkpoint at or before its captured end. */
+    private fun readContextWindowBounds(
+        threadId: Conversation.Thread.Id,
+        throughMessageId: Conversation.Message.Id?,
+    ): ContextWindowBounds? {
+        val endPosition = if (throughMessageId == null) {
+            val maximum = ThreadMessages.position.max()
+            ThreadMessages.select(maximum)
+                .where { ThreadMessages.threadId eq threadId.value }
+                .single()[maximum]
+        } else {
+            ThreadMessages.select(ThreadMessages.position)
+                .where {
+                    (ThreadMessages.threadId eq threadId.value) and
+                        (ThreadMessages.messageId eq throughMessageId.value)
+                }
+                .singleOrNull()
+                ?.get(ThreadMessages.position)
+                ?: error("Message ${throughMessageId.value} is not in thread ${threadId.value}")
+        } ?: return null
+        val startPosition = (ThreadMessages innerJoin Messages)
+            .select(ThreadMessages.position)
+            .where {
+                (ThreadMessages.threadId eq threadId.value) and
+                    (ThreadMessages.position lessEq endPosition) and
+                    (Messages.fullCompactionAnchor eq true)
+            }
+            .orderBy(ThreadMessages.position, SortOrder.DESC)
+            .limit(1)
+            .singleOrNull()
+            ?.get(ThreadMessages.position)
+            ?: 0
+        return ContextWindowBounds(startPosition, endPosition)
     }
 
     private fun materializeContextSelection(
@@ -366,6 +509,11 @@ class ExposedThreadMessageRepository(
     private data class CapturedContextHeaders(
         val headers: List<MessageContextHeader>,
         val bodies: MutableMap<Conversation.Message.Id, Conversation.Message>,
+    )
+
+    private data class ContextWindowBounds(
+        val startPosition: Int,
+        val endPosition: Int,
     )
 
     private companion object {

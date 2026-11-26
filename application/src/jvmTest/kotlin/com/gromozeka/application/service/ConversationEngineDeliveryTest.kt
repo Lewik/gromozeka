@@ -453,7 +453,6 @@ class ConversationEngineDeliveryTest {
             assertTrue(prepared.messages.any { it.id.value == "draft:receipt" })
             assertEquals(2, f.applicationRequests.size)
             assertEquals(listOf(model.turnId.value to 4), f.responseReviewContinuationChecks)
-            assertEquals(0, f.rawContextReads)
         }
     }
 
@@ -564,7 +563,6 @@ class ConversationEngineDeliveryTest {
         assertTrue(projected.any { message -> message.content.any { it is ContentItem.AssistantMessage && it.structured.fullText == "Answer" } })
         assertContains((projected.last().content.single() as ContentItem.UserMessage).text, "CUSTOM_SEPARATE_INSTRUCTION")
         assertFalse("CUSTOM_SEPARATE_INSTRUCTION" in f.requests.single().systemPrompts.joinToString("\n"))
-        assertEquals(0, f.rawContextReads)
         assertEquals(listOf<String?>("OPENAI_SUBSCRIPTION", "OPENAI_SUBSCRIPTION"), f.contextReads)
         assertEquals(listOf("Next"), f.messages.last().content.filterIsInstance<ContentItem.AssistantMessage>().single().structured.suggestedReplies)
     }
@@ -584,12 +582,12 @@ class ConversationEngineDeliveryTest {
         f.engine.runRuntimeTask(task, executor) {}
         assertEquals(listOf<String?>("OPENAI_SUBSCRIPTION"), f.contextReads)
         val request = f.requests.single()
-        assertEquals(3, request.messages.size)
+        assertEquals(2, request.messages.size)
         assertEquals(listOf(checkpoint.id, root.id), request.projectedMessages("OPENAI_SUBSCRIPTION").map { it.id })
         assertEquals(original, f.messages.take(original.size))
     }
 
-    @Test fun `external channel keeps raw history including Runtime messages`() = runBlocking {
+    @Test fun `external channel uses the bounded context including current Runtime messages`() = runBlocking {
         val f = Fixture()
         f.currentConversation = f.currentConversation.copy(
             externalChannel = ExternalConversationChannel("telegram", "connection", "channel"),
@@ -621,13 +619,11 @@ class ConversationEngineDeliveryTest {
         val task = f.begin()
         assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(f.engine.runRuntimeTask(task, executor) {})
 
-        assertEquals(1, f.rawContextReads)
-        assertTrue(f.contextReads.isEmpty())
+        assertEquals(listOf<String?>("OPENAI_SUBSCRIPTION"), f.contextReads)
         val requestIds = f.requests.single().messages.map { it.id }
-        assertTrue(archived.id in requestIds)
-        assertTrue(checkpoint.id in requestIds)
-        assertTrue(currentRuntime.id in requestIds)
-        assertTrue(oldRuntime.id in requestIds)
+        assertEquals(listOf(checkpoint.id, currentRuntime.id, root.id), requestIds)
+        assertFalse(archived.id in requestIds)
+        assertFalse(oldRuntime.id in requestIds)
     }
 
     @Test fun `point append and replay never load the archive`() = runBlocking {
@@ -1266,7 +1262,6 @@ class ConversationEngineDeliveryTest {
             }
         }
         val contextReads = mutableListOf<String?>()
-        var rawContextReads = 0
         val responseReviewContinuationChecks = mutableListOf<Pair<String, Int>>()
         private val contextHistory = responding<com.gromozeka.domain.repository.ThreadMessageRepository> {
             assertEquals(currentConversation.currentThread.value, it.arguments[0])
@@ -1274,18 +1269,21 @@ class ConversationEngineDeliveryTest {
                 "getContextMessagesByThread" -> {
                     val provider = it.arguments[1] as String?
                     contextReads += provider
+                    val fullCheckpoint = messages.indexOfLast(Conversation.Message::isFullContextCompaction)
+                    val window = if (fullCheckpoint < 0) messages.toList() else messages.drop(fullCheckpoint)
                     val selected = selectModelHistoryMessageIds(
-                        messages.map { message -> MessageContextHeader(message.id, MessageContextMetadata.from(message)) },
-                        messages.filter { message -> MessageContextMetadata.from(message).hasCompaction }, provider,
+                        window.map { message -> MessageContextHeader(message.id, MessageContextMetadata.from(message)) },
+                        window.filter { message -> MessageContextMetadata.from(message).hasCompaction }, provider,
                     )
                     com.gromozeka.domain.repository.ThreadContextMessages(
-                        messages = messages.filter { message -> message.id in selected },
-                        sourceMessageCount = messages.size,
+                        messages = window.filter { message -> message.id in selected },
+                        sourceMessageCount = window.size,
+                        continuationState = window.firstOrNull()
+                            ?.compactions()
+                            ?.lastOrNull { checkpoint -> checkpoint.coversAllPrevious }
+                            ?.continuationState
+                            ?: ContentItem.ContextCompactionResult.ContinuationState(),
                     )
-                }
-                "getMessagesByThread" -> {
-                    rawContextReads++
-                    messages.toList()
                 }
                 "hasAtLeastResponseReviewContinuations" -> {
                     val turnId = it.arguments[1] as String

@@ -2,6 +2,7 @@ package com.gromozeka.domain.repository
 
 import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult
 import com.gromozeka.domain.model.ToolSequenceMessageHeader
 import kotlinx.serialization.Serializable
 
@@ -22,10 +23,17 @@ data class ThreadMessageLink(
     val position: Int
 )
 
+/** One bounded raw archive row. Raw history is traversed only through pages. */
+data class ThreadMessagePageEntry(
+    val position: Int,
+    val message: Conversation.Message,
+)
+
 /** Selected sparse bodies and the physical size of the same captured thread prefix. */
 data class ThreadContextMessages(
     val messages: List<Conversation.Message>,
     val sourceMessageCount: Int,
+    val continuationState: ContextCompactionResult.ContinuationState = ContextCompactionResult.ContinuationState(),
 ) {
     init {
         require(sourceMessageCount >= messages.size) {
@@ -91,16 +99,6 @@ interface ThreadMessageRepository {
      */
     suspend fun addBatch(links: List<ThreadMessageLink>)
 
-    /**
-     * Gets all links for thread, ordered by position (ascending).
-     *
-     * Returns empty list if thread has no messages or thread doesn't exist.
-     *
-     * @param threadId thread to query
-     * @return links in position order
-     */
-    suspend fun getByThread(threadId: Conversation.Thread.Id): List<ThreadMessageLink>
-
     /** Checks the exact thread/message link without loading message bodies or other links. */
     suspend fun contains(threadId: Conversation.Thread.Id, messageId: Conversation.Message.Id): Boolean
 
@@ -115,18 +113,39 @@ interface ThreadMessageRepository {
      */
     suspend fun getMaxPosition(threadId: Conversation.Thread.Id): Int?
 
-    /**
-     * Loads thread messages with JOIN optimization.
-     *
-     * Returns fully populated Message objects in position order.
-     * More efficient than getByThread() + findByIds() - single query with JOIN.
-     *
-     * Returns empty list if thread has no messages or thread doesn't exist.
-     *
-     * @param threadId thread to load messages from
-     * @return messages in position order
-     */
-    suspend fun getMessagesByThread(threadId: Conversation.Thread.Id): List<Conversation.Message>
+    /** Raw archive link access is deliberately page-only: a thread has no bounded maximum size. */
+    suspend fun getLinkPage(
+        threadId: Conversation.Thread.Id,
+        afterPositionExclusive: Int = -1,
+        limit: Int = 1_000,
+    ): List<ThreadMessageLink>
+
+    /** Raw archive body access is deliberately page-only: a thread has no bounded maximum size. */
+    suspend fun getMessagePage(
+        threadId: Conversation.Thread.Id,
+        afterPositionExclusive: Int = -1,
+        limit: Int = 256,
+    ): List<ThreadMessagePageEntry>
+
+    /** Complete canonical body only when the exact message belongs to the thread. */
+    suspend fun findMessage(
+        threadId: Conversation.Thread.Id,
+        messageId: Conversation.Message.Id,
+    ): Conversation.Message?
+
+    /** Exact message or a current descendant whose immutable originalIds contain it. */
+    suspend fun findMessageByIdOrOriginal(
+        threadId: Conversation.Thread.Id,
+        messageId: Conversation.Message.Id,
+    ): Conversation.Message?
+
+    /** Copy one branch in SQL while applying a small replacement/exclusion set. */
+    suspend fun copyWithChanges(
+        sourceThreadId: Conversation.Thread.Id,
+        targetThreadId: Conversation.Thread.Id,
+        replacements: Map<Conversation.Message.Id, Conversation.Message.Id> = emptyMap(),
+        excludedMessageIds: Set<Conversation.Message.Id> = emptySet(),
+    )
 
     /** Checks the bounded text-only response-review retry threshold without hydrating thread history. */
     suspend fun hasAtLeastResponseReviewContinuations(
@@ -135,8 +154,11 @@ interface ThreadMessageRepository {
         requiredCount: Int,
     ): Boolean
 
-    /** Ordered headers with current author attribution. Message bodies are stored independently. */
-    suspend fun compactionHeaders(threadId: Conversation.Thread.Id): List<CompactionMessageHeader>
+    /**
+     * Ordered headers from the latest full checkpoint (inclusive) through the current tail.
+     * Conversation archives are unbounded; model and compaction paths must not materialize older windows.
+     */
+    suspend fun compactionWindowHeaders(threadId: Conversation.Thread.Id): List<CompactionMessageHeader>
 
     /** Read exactly these immutable versions in the requested order, including current author attribution. */
     suspend fun compactionBodies(threadId: Conversation.Thread.Id, ids: List<Conversation.Message.Id>): List<Conversation.Message>

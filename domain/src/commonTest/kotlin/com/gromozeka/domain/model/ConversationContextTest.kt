@@ -12,6 +12,7 @@ import kotlin.time.Instant
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 
@@ -152,24 +153,24 @@ class ConversationContextTest {
     fun selectionCanReadASingleOldMessageDespiteLaterFullCheckpoint() {
         val old = text("old"); val full = summary("full", full = true); val tail = text("tail")
         assertEquals(listOf(old), ConversationContext(listOf(old, full, tail))
-            .messagesForProvider(null, setOf(old.id)))
+            .messagesForProvider(target(null), setOf(old.id)))
     }
 
     @Test
-    fun selectAllRecoversOpaqueStateFromOriginalsRatherThanAPlaceholder() {
+    fun selectAllSkipsAnIncompatibleOpaqueCheckpointWithoutReadingItsArchive() {
         val old = text("old"); val full = opaque("full", "OPENAI_SUBSCRIPTION"); val tail = text("tail")
         val history = listOf(old, full, tail)
-        assertEquals(listOf(old, tail), ConversationContext(history)
-            .messagesForProvider(null, history.mapTo(mutableSetOf(), Message::id)))
+        assertEquals(listOf(tail), ConversationContext(history)
+            .messagesForProvider(target(null), history.mapTo(mutableSetOf(), Message::id)))
     }
 
     @Test
-    fun nativeProviderReplaysItsCheckpointWhileOtherProvidersRecoverOriginals() {
+    fun nativeProviderReplaysItsCheckpointWhileOtherProvidersContinueWithTheTail() {
         val old = text("old"); val full = opaque("full", "CLAUDE_CODE"); val tail = text("tail")
         val context = ConversationContext(listOf(old, full, tail))
-        assertEquals(listOf(full, tail), context.messagesForProvider("CLAUDE_CODE"))
-        assertEquals(listOf(old, tail), context.messagesForProvider("ANTHROPIC_API"))
-        assertEquals(listOf(old, tail), context.messagesForProvider("OPENAI_SUBSCRIPTION"))
+        assertEquals(listOf(full, tail), context.messagesForProvider(target("CLAUDE_CODE")))
+        assertEquals(listOf(tail), context.messagesForProvider(target("ANTHROPIC_API")))
+        assertEquals(listOf(tail), context.messagesForProvider(target("OPENAI_SUBSCRIPTION")))
     }
 
     @Test
@@ -182,9 +183,9 @@ class ConversationContextTest {
         val selection = history.mapTo(mutableSetOf(), Message::id)
 
         for (provider in listOf(null, "ANTHROPIC_API", "OPENAI_SUBSCRIPTION")) {
-            assertEquals(listOf(b, partial, tail), context.messagesForProvider(provider, selection))
+            assertEquals(listOf(partial, tail), context.messagesForProvider(target(provider), selection))
         }
-        assertEquals(listOf(checkpoint, partial, tail), context.messagesForProvider("CLAUDE_CODE", selection))
+        assertEquals(listOf(checkpoint, partial, tail), context.messagesForProvider(target("CLAUDE_CODE"), selection))
         assertEquals(setOf(a.id, b.id, checkpoint.id), context.protectedMessageIds())
     }
 
@@ -198,8 +199,8 @@ class ConversationContextTest {
         val history = listOf(a, b, first, partial, second, replacement, tail)
         val context = ConversationContext(history)
 
-        assertEquals(listOf(b, replacement, tail), context.messagesForProvider(null, history.mapTo(mutableSetOf(), Message::id)))
-        assertEquals(listOf(second, replacement, tail), context.messagesForProvider("CLAUDE_CODE"))
+        assertEquals(listOf(replacement, tail), context.messagesForProvider(target(null), history.mapTo(mutableSetOf(), Message::id)))
+        assertEquals(listOf(second, replacement, tail), context.messagesForProvider(target("CLAUDE_CODE")))
         assertEquals(setOf(a.id, b.id, first.id, partial.id, second.id), context.protectedMessageIds())
     }
 
@@ -211,8 +212,8 @@ class ConversationContextTest {
         val replacement = summary("replacement", listOf(readable)); val tail = text("tail")
         val context = ConversationContext(listOf(a, b, readable, checkpoint, replacement, tail))
 
-        assertEquals(listOf(replacement, tail), context.messagesForProvider(null))
-        assertEquals(listOf(checkpoint, replacement, tail), context.messagesForProvider("CLAUDE_CODE"))
+        assertEquals(listOf(replacement, tail), context.messagesForProvider(target(null)))
+        assertEquals(listOf(checkpoint, replacement, tail), context.messagesForProvider(target("CLAUDE_CODE")))
     }
 
     @Test
@@ -222,15 +223,66 @@ class ConversationContextTest {
         val partial = summary("partial", listOf(a)); val tail = text("tail")
         val context = ConversationContext(listOf(a, b, checkpoint, partial, tail))
 
-        assertEquals(listOf(a, b), context.messagesForProvider(null, setOf(checkpoint.id)))
-        assertEquals(listOf(a, b, tail), context.messagesForProvider(null, setOf(a.id, b.id, checkpoint.id, tail.id)))
+        assertEquals(emptyList(), context.messagesForProvider(target(null), setOf(checkpoint.id)))
+        assertEquals(listOf(tail), context.messagesForProvider(target(null), setOf(a.id, b.id, checkpoint.id, tail.id)))
     }
 
     @Test
-    fun opaqueCheckpointWithoutSourcesFailsExplicitly() {
-        assertFailsWith<IllegalArgumentException> {
-            ConversationContext(listOf(opaque("checkpoint", "OPENAI_SUBSCRIPTION"))).messagesForProvider("CLAUDE_CODE")
+    fun opaqueCheckpointWithoutSourcesIsSkippedForAnIncompatibleTarget() {
+        assertEquals(emptyList(), ConversationContext(listOf(opaque("checkpoint", "OPENAI_SUBSCRIPTION")))
+            .messagesForProvider(target("CLAUDE_CODE")))
+    }
+
+    @Test
+    fun opaqueCheckpointRequiresCompatibleKnownModelScope() {
+        val checkpoint = opaque("checkpoint", "OPENAI_SUBSCRIPTION").copy(content = listOf(
+            (opaque("checkpoint", "OPENAI_SUBSCRIPTION").content.single() as Compaction).copy(
+                providerScope = Compaction.ProviderScope(
+                    provider = "OPENAI_SUBSCRIPTION",
+                    connectionId = "connection",
+                    modelConfigurationId = "configuration-a",
+                    modelName = "model-a",
+                ),
+            ),
+        ))
+        val tail = text("tail")
+
+        assertEquals(listOf(checkpoint, tail), ConversationContext(listOf(checkpoint, tail)).messagesForProvider(
+            Compaction.ProviderScope("OPENAI_SUBSCRIPTION", "connection", "configuration-a", "model-a"),
+        ))
+        assertEquals(listOf(tail), ConversationContext(listOf(checkpoint, tail)).messagesForProvider(
+            Compaction.ProviderScope("OPENAI_SUBSCRIPTION", "connection", "configuration-b", "model-b"),
+        ))
+    }
+
+    @Test
+    fun incompatibleProviderManagedToolCallAndResultAreDroppedTogether() {
+        val callId = Message.ContentItem.ToolCall.Id("provider-call")
+        val metadata = buildJsonObject {
+            put(AI_PROVIDER_MANAGED_TOOL_METADATA_KEY, JsonPrimitive(true))
+            put("provider", JsonPrimitive("OPENAI_SUBSCRIPTION"))
+            put("connectionId", JsonPrimitive("connection"))
+            put("modelConfigurationId", JsonPrimitive("configuration-a"))
+            put("model", JsonPrimitive("model-a"))
         }
+        val call = text("call").copy(
+            role = Message.Role.ASSISTANT,
+            content = listOf(Message.ContentItem.ToolCall(
+                callId,
+                Message.ContentItem.ToolCall.Data("web.run", JsonObject(emptyMap())),
+            )),
+            providerMetadata = metadata,
+        )
+        val result = text("result").copy(content = listOf(Message.ContentItem.ToolResult(
+            callId,
+            "web.run",
+            listOf(Message.ContentItem.ToolResult.Data.Text("result")),
+        )))
+        val tail = text("tail")
+
+        assertEquals(listOf(tail), ConversationContext(listOf(call, result, tail)).messagesForProvider(
+            Compaction.ProviderScope("OPENAI_SUBSCRIPTION", "connection", "configuration-b", "model-b"),
+        ))
     }
 
     @Test
@@ -283,4 +335,6 @@ class ConversationContextTest {
             providerScope = Compaction.ProviderScope(provider), coverage = Compaction.Coverage.ALL_PREVIOUS,
         )),
     )
+
+    private fun target(provider: String?): Compaction.ProviderScope? = provider?.let { Compaction.ProviderScope(it) }
 }

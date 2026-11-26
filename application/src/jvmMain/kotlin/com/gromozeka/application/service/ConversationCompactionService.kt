@@ -30,6 +30,10 @@ class ConversationCompactionService internal constructor(
     private val preparations: ProactiveCompactionJobs,
     private val preparationScope: CompactionPreparationScope,
     private val toolPairs: ToolCallPairingService,
+    private val continuationStates: ConversationContinuationStateService = ConversationContinuationStateService(
+        StickyMessageInstructionService(),
+        MessageTemporalContextService(),
+    ),
 ) {
     private val log = KLoggers.logger(this)
 
@@ -52,7 +56,7 @@ class ConversationCompactionService internal constructor(
             publishHistoryChange(task)
             return conversation
         }
-        val sources = history.compactionHeaders(conversation.currentThread)
+        val sources = history.compactionWindowHeaders(conversation.currentThread)
         val nativeProvider = configurations.resolveAiRuntime(agent.runtimeSelection)
             .connection.kind.nativeCompactionProvider()
         val scopedRequest = request.forPreparedPrefix(prepared, sources, nativeProvider)
@@ -111,7 +115,7 @@ class ConversationCompactionService internal constructor(
         if (alreadyCompacted) log.info { "COMPACTION phase=verified task=${task.id.value} inputTokens=$occupied precision=${inspection.precision}" }
         var prepared = runtimeCoordinator.proactiveCompaction(conversation.id)
         if (occupied < threshold && prepared?.status != ProactiveCompaction.Status.READY) return null
-        val sources = history.compactionHeaders(conversation.currentThread)
+        val sources = history.compactionWindowHeaders(conversation.currentThread)
         if (prepared != null && prepared.status != ProactiveCompaction.Status.APPLIED) {
             if (prepared.status == ProactiveCompaction.Status.READY && history.contains(conversation.currentThread, Conversation.Message.Id(prepared.id))) {
                 preparations.finish(prepared, ProactiveCompaction.Status.APPLIED)
@@ -223,7 +227,7 @@ class ConversationCompactionService internal constructor(
         val estimate = AiContextMeasurement.portableInspection(resolved, inspectionRequest)?.inputTokens
             ?: AiRequestTokenEstimate.input(inspectionRequest.copy(messages = inspectionRequest.projectedMessages(resolved.connection.kind.nativeCompactionProvider())))
         if (estimate < threshold) return false
-        val sources = history.compactionHeaders(conversation.currentThread)
+        val sources = history.compactionWindowHeaders(conversation.currentThread)
         if (sources.isEmpty() || sources.any { it.streaming }) return false
         val window = CompactionHistoryWindow(sources)
         val prefix = window.prefix(toolPairs)
@@ -319,6 +323,7 @@ class ConversationCompactionService internal constructor(
         nativeProvider: String?,
     ): Conversation.Message {
         val compactionContext = requestContext + ("aiCallDiagnosticId" to checkpointId.value)
+        val continuationState = continuationStates.captureHeaders(prefix)
         val prefixRequest = if (request != null && runtime.capabilities.supportsDetachedNativeCompaction) {
             request.forCompactionPrefix(prefix, nativeProvider)
                 .takeIf { it.messages.lastOrNull()?.id == prefix.last().id }
@@ -339,7 +344,10 @@ class ConversationCompactionService internal constructor(
             }
             val normalized = normalizeNative(mapped.single().copy(id = checkpointId), prefix, prefixRequest.messages.map { it.id })
             val checkpoint = normalized.content.single() as Checkpoint
-            return normalized.copy(content = listOf(checkpoint.copy(origin = origin)))
+            return normalized.copy(content = listOf(checkpoint.copy(
+                origin = origin,
+                continuationState = continuationState,
+            )))
         }
         // A live-session /compact cannot compact just an older prefix while retaining its suffix.
         // Use the configured text compaction model, not a speculative mutation of that session.
@@ -349,6 +357,9 @@ class ConversationCompactionService internal constructor(
             prefix,
             provider = null,
         )
+        require(readable.isNotEmpty()) {
+            "Full compaction has no portable input and native compaction is unavailable"
+        }
         val generated = textCompactions.generateWithAi(conversation, readable,
             SquashType.COMPACT, agent.runtimeSelection, compactionContext, pins)
         log.info { "COMPACTION phase=generated id=${checkpointId.value} compactedChars=${generated.text.length}" }
@@ -360,6 +371,7 @@ class ConversationCompactionService internal constructor(
                 strategy = Checkpoint.Strategy.COMPACT, sourceBoundaryMessageId = prefix.last().id,
                 coverage = Checkpoint.Coverage.ALL_PREVIOUS, providerScope = generated.providerScope,
                 promptTemplate = generated.promptTemplate,
+                continuationState = continuationState,
             )),
         )
     }
@@ -370,7 +382,17 @@ class ConversationCompactionService internal constructor(
         nativeProvider: String?,
     ): AiRuntimeRequest {
         val ids = prefix.mapTo(hashSetOf()) { it.id }
-        return copy(messages = ConversationContext(messages).messagesForProvider(nativeProvider, ids))
+        return copy(messages = ConversationContext(messages).messagesForProvider(
+            nativeProvider?.let { provider ->
+                Checkpoint.ProviderScope(
+                    provider = provider,
+                    connectionId = options.toolContext["aiConnectionId"] as? String,
+                    modelConfigurationId = options.toolContext["aiModelConfigurationId"] as? String,
+                    modelName = options.toolContext["modelName"] as? String,
+                )
+            },
+            ids,
+        ))
     }
 
     private fun AiRuntimeRequest.forPreparedPrefix(
@@ -431,7 +453,7 @@ class ConversationCompactionService internal constructor(
         capturedInputIds: List<Conversation.Message.Id>,
         beforeCommit: suspend () -> Unit,
     ): Conversation {
-        val sources = history.compactionHeaders(conversation.currentThread)
+        val sources = history.compactionWindowHeaders(conversation.currentThread)
         val normalized = normalizeNative(message, sources, capturedInputIds)
         currentCoroutineContext().ensureActive()
         beforeCommit()
@@ -461,6 +483,7 @@ class ConversationCompactionService internal constructor(
         return message.copy(content = listOf(checkpoint.copy(
             sourceMessageIds = emptyList(),
             sourceBoundaryMessageId = sources[sourcePositions.last()].id,
+            continuationState = continuationStates.captureHeaders(sources.take(sourcePositions.last() + 1)),
         )))
     }
 

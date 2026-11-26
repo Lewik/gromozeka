@@ -184,7 +184,7 @@ class PostgresConversationCompactionRepositoryTest {
             messages.save(message)
             links.add(original.id, message.id, (links.getMaxPosition(original.id) ?: -1) + 1)
         }
-        suspend fun ids(thread: Conversation.Thread.Id) = links.getByThread(thread).map { it.messageId.value }
+        suspend fun ids(thread: Conversation.Thread.Id) = links.readLinksForTest(thread).map { it.messageId.value }
         suspend fun commit(anchor: Conversation.Message.Id = first.id, preparedId: String? = null) = repository.commitIfCurrent(original.id, summary, derived, anchor, preparedId)
         fun installPreparation(): ProactiveCompaction {
             val prepared = ProactiveCompaction(summary.id.value, conversation.id, ConversationRuntimeTask.Id("source"), ConversationRuntimeTurnId("turn"),

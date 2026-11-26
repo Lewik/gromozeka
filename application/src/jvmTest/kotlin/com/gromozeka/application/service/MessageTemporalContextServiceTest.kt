@@ -75,6 +75,19 @@ class MessageTemporalContextServiceTest {
         )
     }
 
+    @Test
+    fun `uses the full checkpoint human timestamp for the first tail message`() {
+        val message = userMessage("tail", "2026-08-17T10:02:03Z")
+
+        val enriched = service.enrich(
+            listOf(message),
+            enabled = true,
+            previousHumanMessageAt = Instant.parse("2026-08-17T10:00:00Z"),
+        )
+
+        assertEquals(123, enriched.single().temporalContext().elapsedSincePreviousUserMessageSeconds)
+    }
+
     private fun userMessage(id: String, createdAt: String) = Conversation.Message(
         id = Conversation.Message.Id(id),
         conversationId = CONVERSATION_ID,

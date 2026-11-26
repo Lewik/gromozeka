@@ -21,6 +21,10 @@ class ManualCompactionService internal constructor(
     private val textCompactions: CompactionTextService,
     private val fullCompactions: ConversationCompactionService,
     private val compactionCommitter: ContextCompactionCommitter,
+    private val continuationStates: ConversationContinuationStateService = ConversationContinuationStateService(
+        StickyMessageInstructionService(),
+        MessageTemporalContextService(),
+    ),
 ) {
     private val log = KLoggers.logger(this)
 
@@ -41,18 +45,20 @@ class ManualCompactionService internal constructor(
             ?: error("Conversation not found: ${conversationId.value}")
         val expectedThreadId = conversation.currentThread
         if (threadMessageRepository.contains(expectedThreadId, checkpointId)) return conversation
-        val headers = threadMessageRepository.compactionHeaders(expectedThreadId)
+        val headers = threadMessageRepository.compactionWindowHeaders(expectedThreadId)
         val window = CompactionHistoryWindow(headers)
         val requested = messageIds.toSet()
-        require(headers.count { it.id in requested } == requested.size) {
-            "Some messages are not in the current conversation thread"
+        val activeIds = headers.mapTo(mutableSetOf()) { it.id }
+        val activeRequested = requested.intersect(activeIds)
+        val full = window.isFullSelection(activeRequested)
+        require(full || activeRequested.size == requested.size) {
+            "Some selected messages are outside the current compaction window"
         }
 
-        val full = window.isFullSelection(requested)
         val selection = if (full && strategy == SquashType.COMPACT) window.prefix(toolCallPairingService)
         else if (full) window.fullSelection()
         else {
-            val paired = toolCallPairingService.includePairedHeaders(headers, requested)
+            val paired = toolCallPairingService.includePairedHeaders(headers, activeRequested)
             headers.filter { it.id in paired }
         }
         require(selection.size >= minimum) {
@@ -113,6 +119,8 @@ class ManualCompactionService internal constructor(
                 coverage = coverage,
                 providerScope = generated.providerScope,
                 promptTemplate = generated.promptTemplate,
+                continuationState = if (full) continuationStates.captureHeaders(selection)
+                    else Conversation.Message.ContentItem.ContextCompactionResult.ContinuationState(),
             )
             Conversation.Message(
                 id = checkpointId,

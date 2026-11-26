@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageInstructionGroup
+import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertSame
@@ -78,6 +79,53 @@ class StickyMessageInstructionServiceTest {
         assertSame(messages, restored)
         assertEquals(listOf(readonly), restored[0].instructions)
         assertEquals(listOf(writable), restored[1].instructions)
+    }
+
+    @Test
+    fun `full checkpoint continuation is stable until a tail instruction replaces it`() {
+        val checkpoint = assistantMessage()
+        val tail = message("tail")
+        val inherited = ContextCompactionResult.ContinuationState(
+            stickyInstructionCandidates = listOf(readonly, writable, readonly),
+        )
+
+        val retained = service.materialize(
+            listOf(checkpoint, tail),
+            listOf(accessGroup(MessageInstructionGroup.RetentionMode.STICKY_LATEST)),
+            inherited,
+        )
+        assertEquals(listOf(readonly), retained.first().instructions)
+        assertEquals(emptyList(), retained.last().instructions)
+
+        val replaced = service.materialize(
+            listOf(checkpoint, message("tail", writable)),
+            listOf(accessGroup(MessageInstructionGroup.RetentionMode.STICKY_LATEST)),
+            inherited,
+        )
+        assertEquals(emptyList(), replaced.first().instructions)
+        assertEquals(listOf(writable), replaced.last().instructions)
+    }
+
+    @Test
+    fun `inherited winners keep their last occurrence order across groups`() {
+        val concise = instruction("concise", "Concise")
+        val toneGroup = MessageInstructionGroup(
+            id = "tone",
+            title = "Tone",
+            controls = listOf(control(concise, "C")),
+            retentionMode = MessageInstructionGroup.RetentionMode.STICKY_LATEST,
+        )
+        val inherited = ContextCompactionResult.ContinuationState(
+            stickyInstructionCandidates = listOf(readonly, concise, writable),
+        )
+
+        val materialized = service.materialize(
+            listOf(assistantMessage()),
+            listOf(accessGroup(MessageInstructionGroup.RetentionMode.STICKY_LATEST), toneGroup),
+            inherited,
+        )
+
+        assertEquals(listOf(concise, writable), materialized.single().instructions)
     }
 
     private fun accessGroup(

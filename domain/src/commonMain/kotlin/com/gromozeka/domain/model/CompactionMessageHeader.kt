@@ -8,6 +8,7 @@ import com.gromozeka.domain.model.ai.AI_REPLAY_THREAD_METADATA_KEY
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlin.time.Instant
 
 @Serializable
 data class CompactionCoverage(
@@ -24,7 +25,7 @@ data class CompactionCoverage(
     )
 }
 
-/** Immutable selection metadata. No message text, tool arguments/results or encrypted state. */
+/** Immutable selection/continuation metadata. No conversation text, tool arguments/results or encrypted state. */
 @Serializable
 data class CompactionMessageHeader(
     val id: Message.Id,
@@ -41,26 +42,36 @@ data class CompactionMessageHeader(
     val portableStandaloneCheckpoint: Boolean = false,
     val retainedReplay: RetainedOpenAiReplay? = null,
     val replayMetadata: JsonObject = JsonObject(emptyMap()),
+    val userInstructions: List<Message.Instruction.UserInstruction> = emptyList(),
+    val humanMessageAt: Instant? = null,
+    val continuationState: ContextCompactionResult.ContinuationState = ContextCompactionResult.ContinuationState(),
 ) {
     val node get() = CompactionNode(id, coverage)
 
     companion object {
         private val replayKeys = setOf("provider", "connectionId", "model", "modelConfigurationId", AI_REPLAY_THREAD_METADATA_KEY)
-        fun from(message: Message) = CompactionMessageHeader(
-            message.id, message.role, MessageCompactionTextRenderer.characterCount(message),
-            thinkingCharacters = message.content.filterIsInstance<ContentItem.Thinking>()
-                .sumOf { if (it.thinking.isBlank()) 0L else it.thinking.length.toLong() },
-            author = message.author as? Message.Author.User,
-            streaming = message.content.any { it.state == Message.BlockState.STREAMING },
-            calls = message.content.filterIsInstance<ContentItem.ToolCall>().mapTo(mutableSetOf()) { it.id },
-            results = message.content.filterIsInstance<ContentItem.ToolResult>().mapTo(mutableSetOf()) { it.toolUseId },
-            providerManaged = message.providerMetadata[AI_PROVIDER_MANAGED_TOOL_METADATA_KEY] == JsonPrimitive(true),
-            coverage = message.compactions().map(::CompactionCoverage),
-            standaloneCheckpoint = message.content.singleOrNull() is ContextCompactionResult,
-            portableStandaloneCheckpoint = message.compactions().isNotEmpty() &&
-                message.content.count { it !is ContentItem.Thinking } == 1,
-            retainedReplay = message.retainedOpenAiReplay(),
-            replayMetadata = JsonObject(message.providerMetadata.filterKeys { it in replayKeys }),
-        )
+        fun from(message: Message): CompactionMessageHeader {
+            val contextMetadata = MessageContextMetadata.from(message)
+            return CompactionMessageHeader(
+                message.id, message.role, MessageCompactionTextRenderer.characterCount(message),
+                thinkingCharacters = message.content.filterIsInstance<ContentItem.Thinking>()
+                    .sumOf { if (it.thinking.isBlank()) 0L else it.thinking.length.toLong() },
+                author = message.author as? Message.Author.User,
+                streaming = message.content.any { it.state == Message.BlockState.STREAMING },
+                calls = message.content.filterIsInstance<ContentItem.ToolCall>().mapTo(mutableSetOf()) { it.id },
+                results = message.content.filterIsInstance<ContentItem.ToolResult>().mapTo(mutableSetOf()) { it.toolUseId },
+                providerManaged = message.providerMetadata[AI_PROVIDER_MANAGED_TOOL_METADATA_KEY] == JsonPrimitive(true),
+                coverage = message.compactions().map(::CompactionCoverage),
+                standaloneCheckpoint = message.content.singleOrNull() is ContextCompactionResult,
+                portableStandaloneCheckpoint = message.compactions().isNotEmpty() &&
+                    message.content.count { it !is ContentItem.Thinking } == 1,
+                retainedReplay = message.retainedOpenAiReplay(),
+                replayMetadata = JsonObject(message.providerMetadata.filterKeys { it in replayKeys }),
+                userInstructions = message.instructions.filterIsInstance<Message.Instruction.UserInstruction>(),
+                humanMessageAt = message.createdAt.takeIf { contextMetadata.humanInput },
+                continuationState = message.compactions().lastOrNull { it.coversAllPrevious }?.continuationState
+                    ?: ContextCompactionResult.ContinuationState(),
+            )
+        }
     }
 }

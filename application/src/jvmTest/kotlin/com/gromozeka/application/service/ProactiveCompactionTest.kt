@@ -598,7 +598,7 @@ class ProactiveCompactionTest {
         val bodyReads = mutableListOf<Conversation.Message.Id>()
         val history = Mockito.mock(ThreadMessageRepository::class.java) { invocation -> when {
             invocation.method.name.startsWith("contains") -> messages.any { it.id.value == invocation.arguments[1] }
-            invocation.method.name.startsWith("compactionHeaders") -> messages.map(CompactionMessageHeader::from)
+            invocation.method.name.startsWith("compactionWindowHeaders") -> messages.map(CompactionMessageHeader::from)
             invocation.method.name.startsWith("compactionBodies") -> {
                 val versions = messages.associateBy { it.id }
                 (invocation.arguments[1] as List<*>).map { versions.getValue(it as Conversation.Message.Id).also { msg -> bodyReads += msg.id } }

@@ -1,8 +1,9 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.Artifact
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.ConversationContext
+import com.gromozeka.domain.model.ConversationCompactionIndex
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ProjectPermission
 import com.gromozeka.domain.model.User
@@ -361,46 +362,53 @@ class ConversationApplicationService(
         createPinCopy(newConversation, sourceConversation.id)
         threadRepo.save(newThread)
         
-        val sourceLinks = threadMessageRepo.getByThread(sourceConversation.currentThread)
-        val sourceMessagesById = messageRepo.findByIds(sourceLinks.map { it.messageId }).associateBy { it.id }
-        val activeSourceMessages = sourceLinks.map { link ->
-            sourceMessagesById[link.messageId]
-                ?: error("Message ${link.messageId.value} disappeared while forking conversation")
+        // Allocate every destination ID before copying bodies so checkpoint references can
+        // be remapped without ever materializing the unbounded archive in one collection.
+        val messageIdMap = mutableMapOf<Conversation.Message.Id, Conversation.Message.Id>()
+        var afterPosition = -1
+        while (true) {
+            val page = threadMessageRepo.getLinkPage(sourceConversation.currentThread, afterPosition, ARCHIVE_PAGE_SIZE)
+            if (page.isEmpty()) break
+            page.forEach { link ->
+                check(messageIdMap.put(link.messageId, Conversation.Message.Id(uuid7())) == null) {
+                    "Duplicate message ${link.messageId.value} while forking conversation"
+                }
+            }
+            afterPosition = page.last().position
         }
-        val sourceMessages = artifactService.cloneReferences(
-            sourceConversationId = sourceConversation.id,
-            targetConversation = newConversation,
-            messages = activeSourceMessages,
-        )
 
-        // Allocate all IDs before copying: coverage and replay-invalidations belong to
-        // the fork, while originalIds remain immutable provenance back to the source.
-        val messageIdMap = sourceMessages.associate { it.id to Conversation.Message.Id(uuid7()) }
-        val newMessages = sourceMessages.map { message ->
-            message.copy(
-                id = messageIdMap.getValue(message.id),
-                conversationId = newConversationId,
-                content = message.content.map { item ->
-                    if (item is Conversation.Message.ContentItem.ContextCompactionResult) item.copy(
-                        sourceMessageIds = item.sourceMessageIds.map { messageIdMap[it] ?: it },
-                        sourceBoundaryMessageId = item.sourceBoundaryMessageId?.let { messageIdMap[it] ?: it },
-                        invalidatedReplayMessageIds = item.invalidatedReplayMessageIds.map { messageIdMap[it] ?: it },
-                        historyTransition = null,
-                    ) else item
-                },
-                createdAt = now
+        val artifactReplacements = mutableMapOf<Artifact.Id, Artifact.Reference>()
+        afterPosition = -1
+        while (true) {
+            val page = threadMessageRepo.getMessagePage(sourceConversation.currentThread, afterPosition, ARCHIVE_PAGE_SIZE)
+            if (page.isEmpty()) break
+            val sourceMessages = artifactService.cloneReferences(
+                sourceConversationId = sourceConversation.id,
+                targetConversation = newConversation,
+                messages = page.map { it.message },
+                replacements = artifactReplacements,
             )
+            val newMessages = sourceMessages.map { message ->
+                message.copy(
+                    id = messageIdMap.getValue(message.id),
+                    conversationId = newConversationId,
+                    content = message.content.map { item ->
+                        if (item is Conversation.Message.ContentItem.ContextCompactionResult) item.copy(
+                            sourceMessageIds = item.sourceMessageIds.map { messageIdMap[it] ?: it },
+                            sourceBoundaryMessageId = item.sourceBoundaryMessageId?.let { messageIdMap[it] ?: it },
+                            invalidatedReplayMessageIds = item.invalidatedReplayMessageIds.map { messageIdMap[it] ?: it },
+                            historyTransition = null,
+                        ) else item
+                    },
+                    createdAt = now,
+                )
+            }
+            messageRepo.saveBatch(newMessages)
+            threadMessageRepo.addBatch(page.zip(newMessages) { entry, message ->
+                com.gromozeka.domain.repository.ThreadMessageLink(newThread.id, message.id, entry.position)
+            })
+            afterPosition = page.last().position
         }
-        messageRepo.saveBatch(newMessages)
-
-        val newLinks = sourceLinks.map { link ->
-            link.copy(
-                threadId = newThread.id,
-                messageId = messageIdMap[link.messageId]!!
-            )
-        }
-        
-        threadMessageRepo.addBatch(newLinks)
         
         log.debug("Forked conversation $conversationId to ${newConversation.id}")
         
@@ -441,9 +449,8 @@ class ConversationApplicationService(
     internal suspend fun replaceExternalRuntimeMessage(originalId: Conversation.Message.Id, message: Conversation.Message) {
         val conversation = requireNotNull(conversationRepo.findById(message.conversationId))
         require(conversation.externalChannel != null)
-        val messages = threadMessageRepo.getMessagesByThread(conversation.currentThread)
-        if (messages.any { it.id == message.id }) return
-        val previous = messages.firstOrNull { it.id == originalId || originalId in it.originalIds }
+        if (threadMessageRepo.contains(conversation.currentThread, message.id)) return
+        val previous = threadMessageRepo.findMessageByIdOrOriginal(conversation.currentThread, originalId)
         if (previous == null) {
             appendRuntimeMessage(conversation.id, message)
             return
@@ -456,9 +463,11 @@ class ConversationApplicationService(
         val thread = Conversation.Thread(id = Conversation.Thread.Id(uuid7()), conversationId = conversation.id,
             originalThread = conversation.currentThread, createdAt = now, updatedAt = now)
         threadRepo.save(thread)
-        threadMessageRepo.addBatch(threadMessageRepo.getByThread(conversation.currentThread).map { link ->
-            link.copy(threadId = thread.id, messageId = if (link.messageId == previous.id) replacement.id else link.messageId)
-        })
+        threadMessageRepo.copyWithChanges(
+            sourceThreadId = conversation.currentThread,
+            targetThreadId = thread.id,
+            replacements = mapOf(previous.id to replacement.id),
+        )
         conversationRepo.updateCurrentThread(conversation.id, thread.id)
         publishConversationList(conversation)
     }
@@ -506,14 +515,11 @@ class ConversationApplicationService(
             ?: throw IllegalStateException("Conversation not found: $conversationId")
 
         val currentThreadId = conversation.currentThread
-        val currentThread = threadRepo.findById(currentThreadId)!!
-        val messages = threadMessageRepo.getMessagesByThread(currentThreadId)
-        val links = threadMessageRepo.getByThread(currentThreadId)
-
-        val targetMessage = messages.find { it.id == messageId }
+        val targetMessage = threadMessageRepo.findMessage(currentThreadId, messageId)
             ?: throw IllegalArgumentException("Message $messageId not found in thread $currentThreadId")
+        val headers = threadMessageRepo.compactionWindowHeaders(currentThreadId)
         com.gromozeka.domain.model.requireEditableConversationMessage(targetMessage)
-        ensureMessagesAreNotCoveredByCompaction(messages, setOf(messageId), "edit")
+        ensureMessagesAreInMutableCompactionWindow(headers, setOf(messageId), "edit")
         artifactService.validateReferences(conversationId, newContent)
 
         val editedMessage = Conversation.Message(
@@ -539,16 +545,13 @@ class ConversationApplicationService(
 
         threadRepo.save(newThread)
 
-        val invalidated = ConversationContext(messages).dependentSummaryIds(setOf(messageId))
-        val newLinks = links.filterNot { it.messageId in invalidated }.mapIndexed { index, link ->
-            link.copy(
-                threadId = newThread.id,
-                messageId = if (link.messageId == messageId) editedMessage.id else link.messageId,
-                position = index,
-            )
-        }
-
-        threadMessageRepo.addBatch(newLinks)
+        val invalidated = ConversationCompactionIndex(headers.map { it.node }).dependentSummaryIds(setOf(messageId))
+        threadMessageRepo.copyWithChanges(
+            sourceThreadId = currentThreadId,
+            targetThreadId = newThread.id,
+            replacements = mapOf(messageId to editedMessage.id),
+            excludedMessageIds = invalidated,
+        )
 
         conversationRepo.updateCurrentThread(conversationId, newThread.id)
 
@@ -582,20 +585,18 @@ class ConversationApplicationService(
             ?: throw IllegalStateException("Conversation not found: $conversationId")
 
         val currentThreadId = conversation.currentThread
-        val currentThread = threadRepo.findById(currentThreadId)!!
-        val messages = threadMessageRepo.getMessagesByThread(currentThreadId)
-        val links = threadMessageRepo.getByThread(currentThreadId)
-
-        val targetMessages = messages.filter { it.id in messageIds }
-        if (targetMessages.size != messageIds.size) {
+        val selectedIds = messageIds.toSet()
+        if (selectedIds.size != messageIds.size || messageIds.any { threadMessageRepo.findMessage(currentThreadId, it) == null }) {
             throw IllegalArgumentException("Some messages not found in thread $currentThreadId")
         }
-        ensureMessagesAreNotCoveredByCompaction(messages, messageIds.toSet(), "delete")
+        val headers = threadMessageRepo.compactionWindowHeaders(currentThreadId)
+        ensureMessagesAreInMutableCompactionWindow(headers, selectedIds, "delete")
 
-        val requestedDeletes = toolCallPairingService.includePairedToolMessages(messages, messageIds)
+        val requestedDeletes = toolCallPairingService.includePairedHeaders(headers, selectedIds)
         // Pair expansion must not bypass a full checkpoint's protected prefix.
-        ensureMessagesAreNotCoveredByCompaction(messages, requestedDeletes, "delete")
-        val allIdsToDelete = requestedDeletes + ConversationContext(messages).dependentSummaryIds(requestedDeletes)
+        ensureMessagesAreInMutableCompactionWindow(headers, requestedDeletes, "delete")
+        val allIdsToDelete = requestedDeletes +
+            ConversationCompactionIndex(headers.map { it.node }).dependentSummaryIds(requestedDeletes)
 
         val newThread = Conversation.Thread(
             id = Conversation.Thread.Id(uuid7()),
@@ -607,13 +608,11 @@ class ConversationApplicationService(
 
         threadRepo.save(newThread)
 
-        val newLinks = links
-            .filter { it.messageId !in allIdsToDelete }
-            .mapIndexed { index, link ->
-                link.copy(threadId = newThread.id, position = index)
-            }
-
-        threadMessageRepo.addBatch(newLinks)
+        threadMessageRepo.copyWithChanges(
+            sourceThreadId = currentThreadId,
+            targetThreadId = newThread.id,
+            excludedMessageIds = allIdsToDelete,
+        )
 
         conversationRepo.updateCurrentThread(conversationId, newThread.id)
 
@@ -644,3 +643,5 @@ class ConversationApplicationService(
 }
 
 private infix fun <T> Set<T>.xor(other: Set<T>): Set<T> = (this - other) + (other - this)
+
+private const val ARCHIVE_PAGE_SIZE = 1_000

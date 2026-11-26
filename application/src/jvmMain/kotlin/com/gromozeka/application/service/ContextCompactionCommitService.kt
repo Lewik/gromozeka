@@ -64,14 +64,15 @@ internal class ContextCompactionCommitService(
                 checkpoint.payload == result.payload && checkpoint.sourceMessageIds == result.sourceMessageIds &&
                 checkpoint.sourceBoundaryMessageId == result.sourceBoundaryMessageId && checkpoint.coverage == result.coverage &&
                 checkpoint.providerScope == result.providerScope && checkpoint.strategy == result.strategy &&
-                checkpoint.origin == result.origin && checkpoint.promptTemplate == result.promptTemplate) {
+                checkpoint.origin == result.origin && checkpoint.promptTemplate == result.promptTemplate &&
+                checkpoint.continuationState == result.continuationState) {
                 "Compaction ID belongs to another operation"
             }
             return conversation
         }
         check(conversation.currentThread == expectedThreadId) { "Conversation changed while compaction was generated" }
 
-        val messages = threadMessageRepository.compactionHeaders(expectedThreadId)
+        val messages = threadMessageRepository.compactionWindowHeaders(expectedThreadId)
         val selected = when (result.coverage) {
             ContextCompactionResult.Coverage.SELECTED_MESSAGES -> {
                 val sourceIdSet = result.sourceMessageIds.toSet()

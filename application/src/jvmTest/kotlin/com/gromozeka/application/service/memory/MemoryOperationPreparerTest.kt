@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.repository.ThreadMessageRepository
+import com.gromozeka.domain.repository.ThreadContextMessages
 import com.gromozeka.domain.service.ConversationDomainService
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -49,7 +50,9 @@ class MemoryOperationPreparerTest {
         val conversations = Mockito.mock(ConversationDomainService::class.java)
         val messages = Mockito.mock(ThreadMessageRepository::class.java)
         Mockito.`when`(conversations.findById(conversationId)).thenReturn(conversation)
-        Mockito.`when`(messages.getMessagesByThread(threadId)).thenReturn(listOf(userMessage, runtimeMessage))
+        Mockito.`when`(messages.getContextMessagesByThread(threadId, null)).thenReturn(
+            ThreadContextMessages(listOf(userMessage, runtimeMessage), 2),
+        )
         val preparer = MemoryOperationPreparer(conversations, messages)
 
         val prepared = preparer.prepareRememberMessage(
