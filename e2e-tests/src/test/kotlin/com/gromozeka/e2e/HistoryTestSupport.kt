@@ -3,6 +3,7 @@ package com.gromozeka.e2e
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationHistoryPageRequest
 import com.gromozeka.domain.model.CompactionMessageHeader
+import com.gromozeka.domain.model.MessageContextMetadata
 import com.gromozeka.domain.model.ToolSequenceFacts
 import com.gromozeka.presentation.AppComponents
 import io.ktor.client.HttpClient
@@ -60,8 +61,9 @@ internal fun seedHistory(database: PostgresTestDatabase, conversation: Conversat
             connection.prepareStatement("""
                 INSERT INTO messages(
                     id, conversation_id, role, created_at, message_json, search_text, compaction_header,
-                    tool_call_ids, tool_result_ids, provider_managed_tool, tool_results_only, full_compaction_anchor
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    tool_call_ids, tool_result_ids, provider_managed_tool, tool_results_only, full_compaction_anchor,
+                    context_metadata_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """.trimIndent()).use { insert ->
                 messages.forEach { message ->
                     val facts = ToolSequenceFacts.from(message)
@@ -79,6 +81,7 @@ internal fun seedHistory(database: PostgresTestDatabase, conversation: Conversat
                     insert.setBoolean(10, facts.providerManaged)
                     insert.setBoolean(11, facts.toolResultsOnly)
                     insert.setBoolean(12, facts.fullCompactionAnchor)
+                    insert.setString(13, Json.encodeToString(MessageContextMetadata.from(message)))
                     insert.addBatch()
                 }
                 insert.executeBatch()

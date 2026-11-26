@@ -64,6 +64,7 @@ class ExposedMessageRepository(
                 this[Messages.toolResultsOnly] = toolSequence.toolResultsOnly
                 this[Messages.fullCompactionAnchor] = toolSequence.fullCompactionAnchor
                 this[Messages.responseReviewContinuation] = message.isResponseReviewContinuation()
+                this[Messages.contextMetadataJson] = message.contextMetadataJson(json)
                 this[Messages.messageJson] = json.encodeToString(message)
             }
         }

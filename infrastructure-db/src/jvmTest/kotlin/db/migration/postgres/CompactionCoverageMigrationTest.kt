@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.domain.model.ToolSequenceFacts
 import com.gromozeka.domain.model.compactions
+import com.gromozeka.infrastructure.db.persistence.contextMetadataJson
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult as Compaction
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeEventLogEntry
@@ -209,6 +210,15 @@ class CompactionCoverageMigrationTest {
             return
         }
         val decoded = Json.decodeFromJsonElement<Conversation.Message>(message)
+        val storesContextMetadata = connection.prepareStatement("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_schema = current_schema() AND table_name = 'messages'
+                  AND column_name = 'context_metadata_json' AND is_generated = 'NEVER'
+            )
+        """.trimIndent()).use { statement ->
+            statement.executeQuery().use { rows -> check(rows.next()); rows.getBoolean(1) }
+        }
         val facts = ToolSequenceFacts.from(decoded)
         val calls = connection.createArrayOf("text", facts.callIds.toTypedArray())
         val results = connection.createArrayOf("text", facts.resultIds.toTypedArray())
@@ -217,7 +227,9 @@ class CompactionCoverageMigrationTest {
                 INSERT INTO messages(
                     id, conversation_id, role, created_at, message_json, compaction_header,
                     tool_call_ids, tool_result_ids, provider_managed_tool, tool_results_only, full_compaction_anchor
-                ) VALUES (?, 'conversation', ?, now(), ?, ?, ?, ?, ?, ?, ?)
+                    ${if (storesContextMetadata) ", context_metadata_json" else ""}
+                ) VALUES (?, 'conversation', ?, now(), ?, ?, ?, ?, ?, ?, ?
+                    ${if (storesContextMetadata) ", ?" else ""})
             """.trimIndent()).use {
                 it.setString(1, decoded.id.value)
                 it.setString(2, decoded.role.name)
@@ -228,6 +240,7 @@ class CompactionCoverageMigrationTest {
                 it.setBoolean(7, facts.providerManaged)
                 it.setBoolean(8, facts.toolResultsOnly)
                 it.setBoolean(9, facts.fullCompactionAnchor)
+                if (storesContextMetadata) it.setString(10, decoded.contextMetadataJson(Json))
                 it.executeUpdate()
             }
         } finally {

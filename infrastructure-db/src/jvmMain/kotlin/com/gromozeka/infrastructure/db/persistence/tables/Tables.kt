@@ -470,7 +470,7 @@ internal object Messages : Table("messages") {
     val fullCompactionAnchor = bool("full_compaction_anchor")
     val responseReviewContinuation = bool("response_review_continuation")
     val messageJson = text("message_json")
-    val contextMetadataJson = text("context_metadata_json").nullable().databaseGenerated()
+    val contextMetadataJson = text("context_metadata_json")
 
     override val primaryKey = PrimaryKey(id)
 }

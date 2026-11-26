@@ -419,7 +419,7 @@ class ExposedThreadMessageRepository(
     ): CapturedContextHeaders {
         val bounds = readContextWindowBounds(threadId, throughMessageId)
             ?: return CapturedContextHeaders(emptyList(), mutableMapOf())
-        val stored = (ThreadMessages innerJoin Messages)
+        val headers = (ThreadMessages innerJoin Messages)
             .select(ThreadMessages.messageId, Messages.contextMetadataJson)
             .where {
                 (ThreadMessages.threadId eq threadId.value) and
@@ -427,19 +427,13 @@ class ExposedThreadMessageRepository(
                     (ThreadMessages.position lessEq bounds.endPosition)
             }
             .orderBy(ThreadMessages.position, SortOrder.ASC)
-            .map { row -> Conversation.Message.Id(row[ThreadMessages.messageId]) to row[Messages.contextMetadataJson] }
-        val bodies = readContextBodies(threadId, stored.filter { it.second == null }.map { it.first })
-            .associateByTo(mutableMapOf()) { it.id }
-        val headers = stored.map { (id, metadata) ->
-            MessageContextHeader(
-                id,
-                if (metadata != null) json.decodeFromString<MessageContextMetadata>(metadata)
-                else MessageContextMetadata.from(
-                    bodies[id] ?: error("Missing body for Unicode context metadata: ${id.value}"),
-                ),
-            )
-        }
-        return CapturedContextHeaders(headers, bodies)
+            .map { row ->
+                MessageContextHeader(
+                    Conversation.Message.Id(row[ThreadMessages.messageId]),
+                    json.decodeFromString<MessageContextMetadata>(row[Messages.contextMetadataJson]),
+                )
+            }
+        return CapturedContextHeaders(headers, mutableMapOf())
     }
 
     /** One model read begins at the latest full checkpoint at or before its captured end. */

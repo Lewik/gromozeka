@@ -99,6 +99,7 @@ class ExposedConversationCompactionRepository(
             it[toolResultsOnly] = toolSequence.toolResultsOnly
             it[fullCompactionAnchor] = toolSequence.fullCompactionAnchor
             it[responseReviewContinuation] = compactionMessage.isResponseReviewContinuation()
+            it[contextMetadataJson] = compactionMessage.contextMetadataJson(json)
             it[messageJson] = json.encodeToString(compactionMessage)
         }
         Threads.insert {

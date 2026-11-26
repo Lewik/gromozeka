@@ -460,6 +460,42 @@ class PostgresRuntimeMessageReadTest {
     }
 
     @Test
+    fun `context metadata rejects NUL in a user instruction ID`() = runBlocking {
+        withFixture { f ->
+            val message = f.message("invalid-context-metadata").copy(
+                instructions = listOf(
+                    Conversation.Message.Instruction.UserInstruction("mode\u0000readonly", "Readonly", "No changes"),
+                ),
+            )
+
+            val failure = assertFailsWith<IllegalArgumentException> {
+                f.save(message, f.conversation.currentThread, 0)
+            }
+
+            assertContains(checkNotNull(failure.message), "contains NUL")
+            assertContains(checkNotNull(failure.message), message.id.value)
+        }
+    }
+
+    @Test
+    fun `V98 rejects legacy NUL in a user instruction ID without normalizing it`() = runBlocking {
+        withFixture(target = "97") { f ->
+            val message = f.message("legacy-invalid-context-metadata").copy(
+                instructions = listOf(
+                    Conversation.Message.Instruction.UserInstruction("mode\u0000readonly", "Readonly", "No changes"),
+                ),
+            )
+            f.insertRaw(message, 0)
+            assertNull(f.metadata(message.id))
+
+            val failure = assertFails { f.migrate() }
+            val details = generateSequence(failure as Throwable?) { it.cause }.joinToString("\n") { it.toString() }
+            assertContains(details, "contains NUL")
+            assertContains(details, message.id.value)
+        }
+    }
+
+    @Test
     fun `large Runtime escaped NUL instruction remains body-free`() = runBlocking {
         withFixture { f ->
             val thread = f.conversation.currentThread
@@ -1227,7 +1263,7 @@ class PostgresRuntimeMessageReadTest {
     }
 
     @Test
-    fun `context metadata backfills and follows canonical writes without rewriting payloads`() = runBlocking {
+    fun `context metadata backfills exactly and canonical writers preserve payloads`() = runBlocking {
         withFixture(target = "80") { f ->
             val prefix = listOf(
                 f.message("normal").copy(instructions = listOf(Conversation.Message.Instruction.UserInstruction("mode", "Mode", "Value"))),
@@ -1279,14 +1315,12 @@ class PostgresRuntimeMessageReadTest {
             val selected = f.links.getContextMessagesByThread(f.conversation.currentThread, null)
             assertFalse(selected.messages.any { it == messages.single { message -> message.id.value == "binary" } })
             assertEquals(messages.size - prefix.size, selected.sourceMessageCount)
-            val replacement = messages[0].copy(providerMetadata = buildJsonObject { put("synthetic", true) }, instructions = emptyList())
-            f.source.connection.use { connection ->
-                connection.prepareStatement("UPDATE messages SET message_json = ? WHERE id = ?").use {
-                    it.setString(1, Json.encodeToString(replacement)); it.setString(2, replacement.id.value); it.executeUpdate()
-                }
-            }
-            assertEquals(com.gromozeka.domain.model.MessageContextMetadata.from(replacement), f.metadata(replacement.id))
-            assertFailsWith<java.sql.SQLException> { f.sql("UPDATE messages SET context_metadata_json = '{}' WHERE id = 'normal'") }
+            val postMigration = f.message("post-migration").copy(
+                instructions = listOf(Conversation.Message.Instruction.UserInstruction("new-mode", "New mode", "Value")),
+            )
+            f.save(postMigration, f.conversation.currentThread, messages.size)
+            assertEquals(postMigration, ExposedMessageRepository(Json).findById(postMigration.id))
+            assertEquals(com.gromozeka.domain.model.MessageContextMetadata.from(postMigration), f.metadata(postMigration.id))
         }
     }
 
@@ -1345,15 +1379,16 @@ class PostgresRuntimeMessageReadTest {
                 connection.autoCommit = false
                 connection.prepareStatement("""
                     INSERT INTO messages(
-                        id, conversation_id, original_ids_json, role, created_at, search_text, message_json,
+                        id, conversation_id, original_ids_json, role, created_at, search_text, message_json, context_metadata_json,
                         tool_call_ids, tool_result_ids, provider_managed_tool, tool_results_only, full_compaction_anchor
-                    ) VALUES (?, ?, '[]', 'USER', now(), '', ?, '{}', '{}', false, false, false)
+                    ) VALUES (?, ?, '[]', 'USER', now(), '', ?, ?, '{}', '{}', false, false, false)
                 """.trimIndent()).use { messages ->
                     connection.prepareStatement("INSERT INTO thread_messages(thread_id, message_id, position) VALUES (?, ?, ?)").use { links ->
                         repeat(count - 1) { i ->
                             val message = template.copy(id = Conversation.Message.Id("archive-$i"))
                             messages.setString(1, message.id.value); messages.setString(2, f.conversation.id.value)
-                            messages.setString(3, Json.encodeToString(message)); messages.addBatch()
+                            messages.setString(3, Json.encodeToString(message))
+                            messages.setString(4, message.contextMetadataJson(Json)); messages.addBatch()
                             links.setString(1, thread.value); links.setString(2, message.id.value); links.setInt(3, i); links.addBatch()
                             if (i % 128 == 127) { messages.executeBatch(); links.executeBatch() }
                         }
@@ -1484,6 +1519,15 @@ class PostgresRuntimeMessageReadTest {
                 }
                 return
             }
+            val storesContextMetadata = connection.prepareStatement("""
+                SELECT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_schema = current_schema() AND table_name = 'messages'
+                      AND column_name = 'context_metadata_json' AND is_generated = 'NEVER'
+                )
+            """.trimIndent()).use { statement ->
+                statement.executeQuery().use { rows -> check(rows.next()); rows.getBoolean(1) }
+            }
             val facts = ToolSequenceFacts.from(message)
             val calls = connection.createArrayOf("text", facts.callIds.toTypedArray())
             val results = connection.createArrayOf("text", facts.resultIds.toTypedArray())
@@ -1492,12 +1536,15 @@ class PostgresRuntimeMessageReadTest {
                     INSERT INTO messages(
                         id, conversation_id, original_ids_json, role, created_at, search_text, message_json,
                         tool_call_ids, tool_result_ids, provider_managed_tool, tool_results_only, full_compaction_anchor
-                    ) VALUES (?, ?, '[]', ?, now(), '', ?, ?, ?, ?, ?, ?)
+                        ${if (storesContextMetadata) ", context_metadata_json" else ""}
+                    ) VALUES (?, ?, '[]', ?, now(), '', ?, ?, ?, ?, ?, ?
+                        ${if (storesContextMetadata) ", ?" else ""})
                 """.trimIndent()).use {
                     it.setString(1, message.id.value); it.setString(2, message.conversationId.value)
                     it.setString(3, message.role.name); it.setString(4, Json.encodeToString(message))
                     it.setArray(5, calls); it.setArray(6, results); it.setBoolean(7, facts.providerManaged)
                     it.setBoolean(8, facts.toolResultsOnly); it.setBoolean(9, facts.fullCompactionAnchor)
+                    if (storesContextMetadata) it.setString(10, message.contextMetadataJson(Json))
                     it.executeUpdate()
                 }
             } finally {
