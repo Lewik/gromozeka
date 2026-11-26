@@ -26,6 +26,8 @@ import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.service.UserConversationTabLayoutService
 import klog.KLoggers
 import com.gromozeka.shared.uuid.uuid7
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -332,10 +334,11 @@ class ConversationApplicationService(
      * @return new forked conversation
      * @throws IllegalStateException if source conversation doesn't exist
      */
-    @Transactional
     override suspend fun fork(conversationId: Conversation.Id): Conversation {
         val sourceConversation = conversationRepo.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
+        val sourceThreadId = sourceConversation.currentThread
+        val sourceBoundaryPosition = threadMessageRepo.getMaxPosition(sourceThreadId)
         
         val now = Clock.System.now()
         
@@ -360,54 +363,78 @@ class ConversationApplicationService(
             updatedAt = now,
         )
         
-        createPinCopy(newConversation, sourceConversation.id)
-        threadRepo.save(newThread)
-        
-        // Allocate every destination ID before copying bodies so checkpoint references can
-        // be remapped without ever materializing the unbounded archive in one collection.
-        val messageIdMap = mutableMapOf<Conversation.Message.Id, Conversation.Message.Id>()
-        var afterPosition = -1
-        while (true) {
-            val page = threadMessageRepo.getLinkPage(sourceConversation.currentThread, afterPosition, ARCHIVE_PAGE_SIZE)
-            if (page.isEmpty()) break
-            page.forEach { link ->
-                check(messageIdMap.put(link.messageId, Conversation.Message.Id(uuid7())) == null) {
-                    "Duplicate message ${link.messageId.value} while forking conversation"
-                }
-            }
-            afterPosition = page.last().position
-        }
+        var targetCreated = false
+        try {
+            createPinCopy(newConversation, sourceConversation.id)
+            targetCreated = true
+            threadRepo.save(newThread)
 
-        val artifactReplacements = mutableMapOf<Artifact.Id, Artifact.Reference>()
-        afterPosition = -1
-        while (true) {
-            val page = threadMessageRepo.getMessagePage(sourceConversation.currentThread, afterPosition, ARCHIVE_PAGE_SIZE)
-            if (page.isEmpty()) break
-            val sourceMessages = artifactService.cloneReferences(
-                sourceConversationId = sourceConversation.id,
-                targetConversation = newConversation,
-                messages = page.map { it.message },
-                replacements = artifactReplacements,
-            )
-            val newMessages = sourceMessages.map { message ->
-                message.copy(
-                    id = messageIdMap.getValue(message.id),
-                    conversationId = newConversationId,
-                    content = message.content.map { item ->
-                        if (item is Conversation.Message.ContentItem.ContextCompactionResult) item.copy(
-                            sourceMessageIds = item.sourceMessageIds.map { messageIdMap[it] ?: it },
-                            sourceBoundaryMessageId = item.sourceBoundaryMessageId?.let { messageIdMap[it] ?: it },
-                            invalidatedReplayMessageIds = item.invalidatedReplayMessageIds.map { messageIdMap[it] ?: it },
-                            historyTransition = null,
-                        ) else item
-                    },
+            // Allocate every destination ID before copying bodies so checkpoint references can
+            // be remapped without ever materializing the unbounded archive in one collection.
+            val messageIdMap = mutableMapOf<Conversation.Message.Id, Conversation.Message.Id>()
+            var afterPosition = -1
+            while (sourceBoundaryPosition != null && afterPosition < sourceBoundaryPosition) {
+                val page = threadMessageRepo.getLinkPage(
+                    sourceThreadId,
+                    afterPosition,
+                    ARCHIVE_PAGE_SIZE,
+                    throughPositionInclusive = sourceBoundaryPosition,
                 )
+                check(page.isNotEmpty()) {
+                    "Source archive ended before captured position $sourceBoundaryPosition"
+                }
+                page.forEach { link ->
+                    check(messageIdMap.put(link.messageId, Conversation.Message.Id(uuid7())) == null) {
+                        "Duplicate message ${link.messageId.value} while forking conversation"
+                    }
+                }
+                afterPosition = page.last().position
             }
-            messageRepo.saveBatch(newMessages)
-            threadMessageRepo.addBatch(page.zip(newMessages) { entry, message ->
-                com.gromozeka.domain.repository.ThreadMessageLink(newThread.id, message.id, entry.position)
-            })
-            afterPosition = page.last().position
+
+            val artifactReplacements = mutableMapOf<Artifact.Id, Artifact.Reference>()
+            afterPosition = -1
+            while (sourceBoundaryPosition != null && afterPosition < sourceBoundaryPosition) {
+                val page = threadMessageRepo.getMessagePage(
+                    sourceThreadId,
+                    afterPosition,
+                    ARCHIVE_PAGE_SIZE,
+                    throughPositionInclusive = sourceBoundaryPosition,
+                )
+                check(page.isNotEmpty()) {
+                    "Source archive ended before captured position $sourceBoundaryPosition"
+                }
+                val sourceMessages = artifactService.cloneReferences(
+                    sourceConversationId = sourceConversation.id,
+                    targetConversation = newConversation,
+                    messages = page.map { it.message },
+                    replacements = artifactReplacements,
+                )
+                val newMessages = sourceMessages.map { message ->
+                    message.copy(
+                        id = messageIdMap.getValue(message.id),
+                        conversationId = newConversationId,
+                        content = message.content.map { item ->
+                            if (item is Conversation.Message.ContentItem.ContextCompactionResult) item.copy(
+                                sourceMessageIds = item.sourceMessageIds.map { messageIdMap[it] ?: it },
+                                sourceBoundaryMessageId = item.sourceBoundaryMessageId?.let { messageIdMap[it] ?: it },
+                                invalidatedReplayMessageIds = item.invalidatedReplayMessageIds.map { messageIdMap[it] ?: it },
+                                historyTransition = null,
+                            ) else item
+                        },
+                    )
+                }
+                messageRepo.saveBatch(newMessages)
+                threadMessageRepo.addBatch(page.zip(newMessages) { entry, message ->
+                    com.gromozeka.domain.repository.ThreadMessageLink(newThread.id, message.id, entry.position)
+                })
+                afterPosition = page.last().position
+            }
+        } catch (failure: Throwable) {
+            if (targetCreated) withContext(NonCancellable) {
+                runCatching { conversationRepo.delete(newConversation.id) }
+                    .onFailure(failure::addSuppressed)
+            }
+            throw failure
         }
         
         log.debug("Forked conversation $conversationId to ${newConversation.id}")

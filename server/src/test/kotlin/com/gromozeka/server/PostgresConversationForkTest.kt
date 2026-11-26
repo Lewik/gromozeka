@@ -4,6 +4,8 @@ import com.gromozeka.application.service.*
 import com.gromozeka.domain.model.*
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.repository.ThreadMessageLink
+import com.gromozeka.domain.repository.ThreadMessagePageEntry
+import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.repository.MessageRepository
 import com.gromozeka.domain.repository.ArtifactRepository
 import com.gromozeka.domain.service.*
@@ -47,8 +49,7 @@ class PostgresConversationForkTest {
             val transactions = f.observed.commits.get()
             println("FORK_COPY messages=${history.size} artifacts=${sourceArtifacts.size} elapsed_ms=$elapsed jdbc_executions=$executions commits=$transactions")
             assertTrue(executions < 250, "Fork must use chunked JDBC batches, not per-message/artifact calls: $executions")
-            // This direct fixture has no Spring proxy around @Transactional fork(), so each
-            // repository page commits independently. Keep that bounded by pages, never items.
+            // Repository pages commit independently. Keep that bounded by pages, never items.
             val archivePages = (history.size + 999) / 1_000
             assertTrue(transactions <= archivePages * 8, "Fork transactions must stay page-bounded: $transactions")
             val copied = f.links.readArchiveForTest(fork.currentThread)
@@ -98,6 +99,81 @@ class PostgresConversationForkTest {
             assertFailsWith<IllegalArgumentException> { f.artifactService.materialize(f.source.id, listOf(toolMessage)) }
             f.store.delete(original.id)
             assertContentEquals(f.bytes, f.store.read(clone.id))
+        }
+    }
+
+    @Test fun `fork keeps one source boundary when a message is appended between archive scans`() = runBlocking<Unit> {
+        database { f ->
+            val history = f.seed(messageCount = 4, artifactCount = 0)
+            val late = Conversation.Message(
+                id = Conversation.Message.Id("late-append"),
+                conversationId = f.source.id,
+                role = Conversation.Message.Role.USER,
+                content = listOf(ContentItem.UserMessage("Late append")),
+                createdAt = f.now + 10.milliseconds,
+            )
+            var appended = false
+            val appendingLinks = object : ThreadMessageRepository by f.links {
+                override suspend fun getMessagePage(
+                    threadId: Conversation.Thread.Id,
+                    afterPositionExclusive: Int,
+                    limit: Int,
+                    throughPositionInclusive: Int?,
+                ): List<ThreadMessagePageEntry> {
+                    if (!appended) {
+                        f.messages.save(late)
+                        f.links.add(f.source.currentThread, late.id, history.size)
+                        appended = true
+                    }
+                    return f.links.getMessagePage(
+                        threadId,
+                        afterPositionExclusive,
+                        limit,
+                        throughPositionInclusive,
+                    )
+                }
+            }
+
+            val fork = f.forkService(links = appendingLinks).fork(f.source.id)
+            val copied = f.links.readArchiveForTest(fork.currentThread)
+
+            assertTrue(appended)
+            assertEquals(history.size, copied.size)
+            assertTrue(copied.none { message ->
+                message.content.any { it is ContentItem.UserMessage && it.text == "Late append" }
+            })
+            assertEquals(history.size + 1, f.links.readArchiveForTest(f.source.currentThread).size)
+        }
+    }
+
+    @Test fun `fork failure after a committed page removes the partial destination`() = runBlocking<Unit> {
+        database { f ->
+            f.seed(messageCount = 1_001, artifactCount = 0)
+            var savedBatches = 0
+            var destinationId: Conversation.Id? = null
+            val failingMessages = object : MessageRepository by f.messages {
+                override suspend fun saveBatch(messages: List<Conversation.Message>) {
+                    if (savedBatches++ == 1) error("Synthetic second-page failure")
+                    destinationId = messages.first().conversationId
+                    f.messages.saveBatch(messages)
+                }
+            }
+
+            assertFailsWith<IllegalStateException> {
+                f.forkService(messages = failingMessages).fork(f.source.id)
+            }
+
+            val failedDestination = requireNotNull(destinationId)
+            assertNull(f.conversations.findById(failedDestination))
+            assertEquals(
+                0,
+                f.sql.queryForObject(
+                    "SELECT count(*) FROM messages WHERE conversation_id = ?",
+                    Int::class.java,
+                    failedDestination.value,
+                ),
+            )
+            assertEquals(1_001, f.links.readArchiveForTest(f.source.currentThread).size)
         }
     }
 
@@ -256,7 +332,11 @@ class PostgresConversationForkTest {
         val project = Project(Project.Id("project"), "Test", createdAt = now, lastUsedAt = now)
         lateinit var source: Conversation
         val service get() = forkService()
-        fun forkService(messages: MessageRepository = this.messages, artifacts: ArtifactRepository = this.artifacts) =
+        fun forkService(
+            messages: MessageRepository = this.messages,
+            artifacts: ArtifactRepository = this.artifacts,
+            links: ThreadMessageRepository = this.links,
+        ) =
             ConversationApplicationService(conversations, threads, messages, links, mock(), mock(), mock(),
                 ToolCallPairingService(), mock(), mock(), ConversationArtifactApplicationService(artifacts, store), mock(), mock(),
                 com.gromozeka.infrastructure.db.persistence.ExposedConversationMessageBatchRepository(Json, this.messages))

@@ -79,13 +79,16 @@ class ExposedThreadMessageRepository(
         threadId: Conversation.Thread.Id,
         afterPositionExclusive: Int,
         limit: Int,
+        throughPositionInclusive: Int?,
     ): List<ThreadMessageLink> = dbQuery {
         require(afterPositionExclusive >= -1)
         require(limit in 1..1_000)
+        require(throughPositionInclusive == null || throughPositionInclusive >= 0)
         ThreadMessages.select(ThreadMessages.messageId, ThreadMessages.position)
             .where {
-                (ThreadMessages.threadId eq threadId.value) and
+                val afterStart = (ThreadMessages.threadId eq threadId.value) and
                     (ThreadMessages.position greater afterPositionExclusive)
+                throughPositionInclusive?.let { afterStart and (ThreadMessages.position lessEq it) } ?: afterStart
             }
             .orderBy(ThreadMessages.position, SortOrder.ASC)
             .limit(limit)
@@ -102,14 +105,17 @@ class ExposedThreadMessageRepository(
         threadId: Conversation.Thread.Id,
         afterPositionExclusive: Int,
         limit: Int,
+        throughPositionInclusive: Int?,
     ): List<ThreadMessagePageEntry> = dbQuery {
         require(afterPositionExclusive >= -1)
         require(limit in 1..1_000)
+        require(throughPositionInclusive == null || throughPositionInclusive >= 0)
         val rows = (ThreadMessages innerJoin Messages)
             .select(ThreadMessages.position, Messages.messageJson)
             .where {
-                (ThreadMessages.threadId eq threadId.value) and
+                val afterStart = (ThreadMessages.threadId eq threadId.value) and
                     (ThreadMessages.position greater afterPositionExclusive)
+                throughPositionInclusive?.let { afterStart and (ThreadMessages.position lessEq it) } ?: afterStart
             }
             .orderBy(ThreadMessages.position, SortOrder.ASC)
             .limit(limit)

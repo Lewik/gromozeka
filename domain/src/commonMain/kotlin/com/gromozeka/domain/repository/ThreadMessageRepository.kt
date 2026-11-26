@@ -123,6 +123,7 @@ interface ThreadMessageRepository {
         threadId: Conversation.Thread.Id,
         afterPositionExclusive: Int = -1,
         limit: Int = 1_000,
+        throughPositionInclusive: Int? = null,
     ): List<ThreadMessageLink>
 
     /** Raw archive body access is deliberately page-only: a thread has no bounded maximum size. */
@@ -130,6 +131,7 @@ interface ThreadMessageRepository {
         threadId: Conversation.Thread.Id,
         afterPositionExclusive: Int = -1,
         limit: Int = 256,
+        throughPositionInclusive: Int? = null,
     ): List<ThreadMessagePageEntry>
 
     /** Complete canonical body only when the exact message belongs to the thread. */

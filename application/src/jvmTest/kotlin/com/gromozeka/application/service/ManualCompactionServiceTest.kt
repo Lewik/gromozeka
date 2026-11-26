@@ -981,8 +981,10 @@ private class InMemoryThreadMessageRepository(
         threadId: Conversation.Thread.Id,
         afterPositionExclusive: Int,
         limit: Int,
+        throughPositionInclusive: Int?,
     ) = links[threadId].orEmpty().asSequence()
         .filter { it.position > afterPositionExclusive }
+        .filter { throughPositionInclusive == null || it.position <= throughPositionInclusive }
         .sortedBy(ThreadMessageLink::position)
         .take(limit)
         .toList()
@@ -990,8 +992,10 @@ private class InMemoryThreadMessageRepository(
         threadId: Conversation.Thread.Id,
         afterPositionExclusive: Int,
         limit: Int,
+        throughPositionInclusive: Int?,
     ) = links[threadId].orEmpty().asSequence()
         .filter { it.position > afterPositionExclusive }
+        .filter { throughPositionInclusive == null || it.position <= throughPositionInclusive }
         .sortedBy(ThreadMessageLink::position)
         .take(limit)
         .map { link -> com.gromozeka.domain.repository.ThreadMessagePageEntry(link.position, messages.values.getValue(link.messageId)) }
