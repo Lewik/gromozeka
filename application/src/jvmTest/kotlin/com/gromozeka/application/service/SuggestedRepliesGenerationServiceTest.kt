@@ -85,10 +85,10 @@ class SuggestedRepliesGenerationServiceTest {
     }
 
     @Test
-    fun `full thread materializes stored tool outputs and attachments before the runtime call`() = runBlocking {
+    fun `full thread keeps text previews and projects media to bounded placeholders`() = runBlocking {
         val toolArtifact = Artifact.Reference(
-            Artifact.Id("tool-artifact"), "tool-output.txt", "text/plain", 100,
-            Artifact.Purpose.TOOL_OUTPUT, Artifact.Kind.DOCUMENT,
+            Artifact.Id("tool-artifact"), "capture.png", "image/png", 100,
+            Artifact.Purpose.TOOL_OUTPUT, Artifact.Kind.IMAGE,
         )
         val attachment = Artifact.Reference(
             Artifact.Id("attachment"), "attachment.pdf", "application/pdf", 200,
@@ -99,20 +99,27 @@ class SuggestedRepliesGenerationServiceTest {
             Conversation.Message.ContentItem.ToolResult(
                 callId,
                 "read_file",
-                listOf(Conversation.Message.ContentItem.ToolResult.Data.ArtifactData(toolArtifact)),
+                listOf(
+                    Conversation.Message.ContentItem.ToolResult.Data.Text("stored text preview"),
+                    Conversation.Message.ContentItem.ToolResult.Data.ArtifactData(toolArtifact),
+                    Conversation.Message.ContentItem.ToolResult.Data.Base64Data(
+                        "aW1hZ2U=", Conversation.Message.MediaType.parse("image/png"), "inline.png",
+                    ),
+                    Conversation.Message.ContentItem.ToolResult.Data.UrlData(
+                        "https://example.test/image.png", Conversation.Message.MediaType.parse("image/png"),
+                    ),
+                    Conversation.Message.ContentItem.ToolResult.Data.UrlData(
+                        "https://example.test/result", Conversation.Message.MediaType.parse("text/html"),
+                    ),
+                ),
             ),
         ))
         val attachedMessage = message("attachment", "unused").copy(content = listOf(
+            Conversation.Message.ContentItem.UserMessage("Please inspect the attachment"),
             Conversation.Message.ContentItem.ArtifactItem(attachment),
-        ))
-        val materializedToolResult = toolResult.copy(content = listOf(
-            Conversation.Message.ContentItem.ToolResult(
-                callId,
-                "read_file",
-                listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("materialized tool output")),
+            Conversation.Message.ContentItem.ImageItem(
+                Conversation.Message.ImageSource.Base64ImageSource("aW1hZ2U=", "image/png"),
             ),
-        ))
-        val materializedAttachment = attachedMessage.copy(content = listOf(
             Conversation.Message.ContentItem.DocumentItem(
                 Conversation.Message.DocumentSource.Base64DocumentSource(
                     "cGRm", "application/pdf", "attachment.pdf",
@@ -120,16 +127,26 @@ class SuggestedRepliesGenerationServiceTest {
             ),
         ))
         val canonical = listOf(toolResult, attachedMessage)
-        val materialized = listOf(materializedToolResult, materializedAttachment)
-        val f = Fixture(materialize = { messages ->
-            assertEquals(canonical, messages)
-            materialized
-        })
+        val f = Fixture()
 
         f.generate(canonical, SuggestedRepliesSettings(contextMode = SuggestedRepliesSettings.ContextMode.FULL_THREAD))
 
-        assertEquals(listOf(canonical), f.materializationInputs)
-        assertEquals(materialized, f.requests.single().messages.dropLast(1))
+        val projected = f.requests.single().messages.dropLast(1)
+        val projectedToolResult = projected.first().content.single() as Conversation.Message.ContentItem.ToolResult
+        assertEquals("stored text preview", (projectedToolResult.result[0] as Conversation.Message.ContentItem.ToolResult.Data.Text).content)
+        assertContains((projectedToolResult.result[1] as Conversation.Message.ContentItem.ToolResult.Data.Text).content, "capture.png")
+        assertContains((projectedToolResult.result[2] as Conversation.Message.ContentItem.ToolResult.Data.Text).content, "inline.png")
+        assertContains((projectedToolResult.result[3] as Conversation.Message.ContentItem.ToolResult.Data.Text).content, "Tool image omitted")
+        assertIs<Conversation.Message.ContentItem.ToolResult.Data.UrlData>(projectedToolResult.result[4])
+        assertEquals("Please inspect the attachment", (projected[1].content[0] as Conversation.Message.ContentItem.UserMessage).text)
+        assertContains((projected[1].content[1] as Conversation.Message.ContentItem.UserMessage).text, "attachment.pdf")
+        assertContains((projected[1].content[2] as Conversation.Message.ContentItem.UserMessage).text, "Image omitted")
+        assertContains((projected[1].content[3] as Conversation.Message.ContentItem.UserMessage).text, "attachment.pdf")
+        assertTrue(projected.flatMap { it.content }.none {
+            it is Conversation.Message.ContentItem.ImageItem ||
+                it is Conversation.Message.ContentItem.DocumentItem ||
+                it is Conversation.Message.ContentItem.ArtifactItem
+        })
     }
 
     @Test
@@ -154,10 +171,8 @@ class SuggestedRepliesGenerationServiceTest {
 
     private inner class Fixture(
         private val replies: List<String> = listOf("Дальше"),
-        private val materialize: (List<Conversation.Message>) -> List<Conversation.Message> = { it },
     ) {
         val requests = mutableListOf<AiRuntimeRequest>()
-        val materializationInputs = mutableListOf<List<Conversation.Message>>()
         private val runtime = object : AiRuntime {
             override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
                 requests += request
@@ -167,20 +182,9 @@ class SuggestedRepliesGenerationServiceTest {
             }
             override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = error("Unexpected streaming")
         }
-        private val artifacts = Mockito.mock(ConversationArtifactApplicationService::class.java) { invocation ->
-            when (invocation.method.name.substringBefore('-')) {
-                "materialize" -> {
-                    @Suppress("UNCHECKED_CAST")
-                    val messages = invocation.arguments[1] as List<Conversation.Message>
-                    materializationInputs += messages
-                    materialize(messages)
-                }
-                else -> Mockito.RETURNS_DEFAULTS.answer(invocation)
-            }
-        }
         private val service = SuggestedRepliesGenerationService(
             Mockito.mock(AiRuntimeProvider::class.java) { runtime }, emptyConversationPinnedPrompt(),
-            Mockito.mock(AiConfigurationProvider::class.java), artifacts,
+            Mockito.mock(AiConfigurationProvider::class.java),
         )
         suspend fun generate(messages: List<Conversation.Message>, settings: SuggestedRepliesSettings): List<String> = service.generate(
             conversation,

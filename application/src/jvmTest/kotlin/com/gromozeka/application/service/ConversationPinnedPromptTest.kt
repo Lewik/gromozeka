@@ -133,15 +133,10 @@ class ConversationPinnedPromptTest {
             override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = error("unused")
         }
         val provider = Mockito.mock(AiRuntimeProvider::class.java) { runtime }
-        val artifacts = Mockito.mock(ConversationArtifactApplicationService::class.java) { invocation ->
-            if (invocation.method.name.substringBefore('-') == "materialize") invocation.arguments[1]
-            else Mockito.RETURNS_DEFAULTS.answer(invocation)
-        }
         val service = SuggestedRepliesGenerationService(
             provider,
             ConversationPinnedPrompt(pins),
             Mockito.mock(AiConfigurationProvider::class.java),
-            artifacts,
         )
         val agent = AgentDefinition.Id("agent")
         val conversation = Conversation(owner, project.id, setOf(Conversation.Participant.User(User.Id("user")), Conversation.Participant.Agent(agent)),

@@ -1394,7 +1394,7 @@ class ConversationEngineDeliveryTest {
                         "resolveAiRuntime" -> resolved
                         else -> Mockito.RETURNS_DEFAULTS.answer(invocation)
                     }
-                }, artifacts,
+                },
             ),
             conversationPins = ConversationPinnedPrompt(pins),
             requestEnrichers = buildList {

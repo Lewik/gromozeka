@@ -22,7 +22,6 @@ class SuggestedRepliesGenerationService(
     private val aiRuntimeProvider: AiRuntimeProvider,
     private val conversationPins: ConversationPinnedPrompt,
     private val aiConfigurationProvider: AiConfigurationProvider,
-    private val artifacts: ConversationArtifactApplicationService,
 ) {
     sealed interface Context {
         data class Recent(val messages: List<RecentVisibleMessage>) : Context
@@ -70,7 +69,7 @@ class SuggestedRepliesGenerationService(
                 systemPrompts = conversationPins.append(conversation.id, listOf(SYSTEM_PROMPT)),
                 messages = when (context) {
                     is Context.Recent -> listOf(instructionMessage)
-                    is Context.Full -> artifacts.materialize(conversation.id, context.messages) + instructionMessage
+                    is Context.Full -> context.messages.projectTextOnly() + instructionMessage
                 },
                 options = AiRuntimeOptions(
                     maxOutputTokens = 256,
@@ -143,6 +142,123 @@ class SuggestedRepliesGenerationService(
         }
     }.joinToString("\n").trim()
 
+    private fun List<Conversation.Message>.projectTextOnly(): List<Conversation.Message> = map { message ->
+        val projected = message.content.map { item ->
+            when (item) {
+                is Conversation.Message.ContentItem.ImageItem -> {
+                    val mediaType = when (val source = item.source) {
+                        is Conversation.Message.ImageSource.Base64ImageSource -> source.mediaType
+                        is Conversation.Message.ImageSource.UrlImageSource,
+                        is Conversation.Message.ImageSource.FileImageSource,
+                        -> null
+                    }
+                    message.placeholder(
+                        omittedMediaPlaceholder(label = "Image", mediaType = mediaType),
+                        item.state,
+                    )
+                }
+
+                is Conversation.Message.ContentItem.DocumentItem -> when (val source = item.source) {
+                    is Conversation.Message.DocumentSource.Base64DocumentSource -> message.placeholder(
+                        omittedMediaPlaceholder("Document", source.fileName, source.mediaType),
+                        item.state,
+                    )
+                }
+
+                is Conversation.Message.ContentItem.ArtifactItem -> message.placeholder(
+                    omittedMediaPlaceholder("Attachment", item.artifact.fileName, item.artifact.mediaType),
+                    item.state,
+                )
+
+                is Conversation.Message.ContentItem.ToolResult -> item.copy(
+                    result = item.result.map { data ->
+                        when (data) {
+                            is Conversation.Message.ContentItem.ToolResult.Data.Text -> data
+                            is Conversation.Message.ContentItem.ToolResult.Data.Base64Data ->
+                                Conversation.Message.ContentItem.ToolResult.Data.Text(
+                                    omittedMediaPlaceholder("Tool output", data.fileName, data.mediaType.value)
+                                )
+
+                            is Conversation.Message.ContentItem.ToolResult.Data.UrlData -> {
+                                val mediaType = data.mediaType?.value
+                                if (mediaType?.startsWith("image/") == true) {
+                                    Conversation.Message.ContentItem.ToolResult.Data.Text(
+                                        omittedMediaPlaceholder("Tool image", mediaType = mediaType)
+                                    )
+                                } else {
+                                    data
+                                }
+                            }
+
+                            is Conversation.Message.ContentItem.ToolResult.Data.ArtifactData ->
+                                Conversation.Message.ContentItem.ToolResult.Data.Text(
+                                    omittedMediaPlaceholder(
+                                        "Tool attachment",
+                                        data.artifact.fileName,
+                                        data.artifact.mediaType,
+                                    )
+                                )
+                        }
+                    }
+                )
+
+                is Conversation.Message.ContentItem.UserMessage,
+                is Conversation.Message.ContentItem.VisualInteraction,
+                is Conversation.Message.ContentItem.RuntimeJson,
+                is Conversation.Message.ContentItem.AssistantMessage,
+                is Conversation.Message.ContentItem.Thinking,
+                is Conversation.Message.ContentItem.System,
+                is Conversation.Message.ContentItem.ToolCall,
+                is Conversation.Message.ContentItem.ContextCompactionResult,
+                is Conversation.Message.ContentItem.UnknownJson,
+                -> item
+            }
+        }
+        if (projected == message.content) message else message.copy(content = projected)
+    }
+
+    private fun Conversation.Message.placeholder(
+        text: String,
+        state: Conversation.Message.BlockState,
+    ): Conversation.Message.ContentItem = when (role) {
+        Conversation.Message.Role.USER,
+        Conversation.Message.Role.RUNTIME,
+        -> Conversation.Message.ContentItem.UserMessage(text, state)
+
+        Conversation.Message.Role.ASSISTANT -> Conversation.Message.ContentItem.AssistantMessage(
+            Conversation.Message.StructuredText(text),
+            state,
+        )
+
+        Conversation.Message.Role.SYSTEM -> Conversation.Message.ContentItem.System(
+            Conversation.Message.ContentItem.System.SystemLevel.INFO,
+            text,
+            state = state,
+        )
+    }
+
+    private fun omittedMediaPlaceholder(
+        label: String,
+        fileName: String? = null,
+        mediaType: String? = null,
+    ): String = buildString {
+        append('[')
+        append(label)
+        append(" omitted from suggested replies")
+        fileName?.takeIf(String::isNotBlank)?.let {
+            append("; file=")
+            append(it.boundedPlaceholderPart())
+        }
+        mediaType?.takeIf(String::isNotBlank)?.let {
+            append("; media_type=")
+            append(it.boundedPlaceholderPart())
+        }
+        append(']')
+    }.take(MAX_MEDIA_PLACEHOLDER_CHARACTERS)
+
+    private fun String.boundedPlaceholderPart(): String =
+        replace('\n', ' ').replace('\r', ' ').trim().take(MAX_MEDIA_PLACEHOLDER_PART_CHARACTERS)
+
     private fun List<String>.sanitizeSuggestedReplies(): List<String> = asSequence()
         .map { it.trim() }
         .filter { it.isNotEmpty() }
@@ -154,6 +270,8 @@ class SuggestedRepliesGenerationService(
     private companion object {
         const val MAX_REPLY_CHARACTERS = 160
         const val MAX_REPLIES = 4
+        const val MAX_MEDIA_PLACEHOLDER_CHARACTERS = 512
+        const val MAX_MEDIA_PLACEHOLDER_PART_CHARACTERS = 160
 
         val SYSTEM_PROMPT = """
             You generate optional next-message suggestions for a chat user.
