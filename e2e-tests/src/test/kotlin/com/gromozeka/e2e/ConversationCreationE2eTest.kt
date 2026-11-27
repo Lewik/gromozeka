@@ -1,8 +1,9 @@
 package com.gromozeka.e2e
 
 import androidx.compose.ui.test.assertTextContains
-import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.gromozeka.domain.model.Conversation
@@ -111,8 +112,9 @@ class ConversationCreationE2eTest {
                     conversation to agents
                 }
                 waitForTag(UiTestTag.MessageInput)
-                onNodeWithTag("side-panel-toggle").performClick()
-                waitForTag("side-panel-tab-runtime")
+                waitUntil(timeoutMillis = 30_000) {
+                    onAllNodesWithTag("side-panel-tab-runtime").fetchSemanticsNodes().isNotEmpty()
+                }
                 onNodeWithTag("side-panel-tab-runtime").performClick()
                 waitUntil(timeoutMillis = 30_000) {
                     onAllNodesWithText("Replies: Alpha").fetchSemanticsNodes().isNotEmpty()
