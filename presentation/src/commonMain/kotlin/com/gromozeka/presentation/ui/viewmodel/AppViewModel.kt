@@ -403,7 +403,11 @@ open class AppViewModel(
         sharedProjectAgents.getOrPut(projectId) {
             agentService.observeByProject(projectId)
                 .retryProjectObservation("agents", projectId)
-                .stateIn(scope, SharingStarted.WhileSubscribed(), emptyList())
+                .stateIn(
+                    scope,
+                    SharingStarted.WhileSubscribed(replayExpirationMillis = 0),
+                    emptyList(),
+                )
         }
 
     private fun <T> Flow<T>.retryProjectObservation(kind: String, projectId: Project.Id): Flow<T> =

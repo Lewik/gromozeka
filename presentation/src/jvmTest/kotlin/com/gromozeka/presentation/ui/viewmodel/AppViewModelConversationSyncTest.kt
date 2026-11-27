@@ -13,6 +13,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.test.assertFailsWith
 import kotlin.time.Instant
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -87,6 +88,28 @@ class AppViewModelConversationSyncTest {
 
         assertEquals("Recovered agent", fixture.app.tabs.value.single().agentMentionCandidates.value.single().name)
         assertEquals(2, fixture.startedAgentObservers[conversation.projectId])
+    }
+
+    @Test
+    fun reopeningAProjectDoesNotReplayAgentsFromItsClosedTab() = runTest {
+        val fixture = Fixture(backgroundScope)
+        val conversation = fixture.add("one", "project-a")
+        fixture.open(conversation)
+        runCurrent()
+        assertEquals("Default", fixture.app.tabs.value.single().agentMentionCandidates.value.single().name)
+
+        fixture.app.closeTab(0)
+        runCurrent()
+        fixture.updateAgents(conversation.projectId, listOf(fixture.defaultAgent.copy(name = "Fresh agent")))
+        val observationGate = fixture.pauseNextAgentObservation(conversation.projectId)
+
+        fixture.open(conversation)
+        runCurrent()
+        assertTrue(fixture.app.tabs.value.single().agentMentionCandidates.value.isEmpty())
+
+        observationGate.complete(Unit)
+        runCurrent()
+        assertEquals("Fresh agent", fixture.app.tabs.value.single().agentMentionCandidates.value.single().name)
     }
 
     @Test
@@ -291,6 +314,7 @@ class AppViewModelConversationSyncTest {
         private val records = mutableMapOf<String, Conversation>()
         private val projects = mutableMapOf<Project.Id, MutableStateFlow<List<Conversation>>>()
         private val projectAgents = mutableMapOf<Project.Id, MutableStateFlow<List<AgentDefinition>>>()
+        private val agentObserverGates = mutableMapOf<Project.Id, CompletableDeferred<Unit>>()
         private val failingConversationObservers = mutableSetOf<Project.Id>()
         private val failingAgentObservers = mutableSetOf<Project.Id>()
         val activeObservers = mutableMapOf<Project.Id, Int>()
@@ -358,6 +382,7 @@ class AppViewModelConversationSyncTest {
                             activeAgentObservers[projectId] = activeAgentObservers.getOrDefault(projectId, 0) + 1
                             startedAgentObservers[projectId] = startedAgentObservers.getOrDefault(projectId, 0) + 1
                             try {
+                                agentObserverGates.remove(projectId)?.await()
                                 emitAll(projectAgents.getOrPut(projectId) {
                                     MutableStateFlow(listOf(defaultAgent))
                                 }.map { agents ->
@@ -472,6 +497,9 @@ class AppViewModelConversationSyncTest {
         fun updateAgents(projectId: Project.Id, agents: List<AgentDefinition>) {
             projectAgents.getOrPut(projectId) { MutableStateFlow(listOf(defaultAgent)) }.value = agents
         }
+
+        fun pauseNextAgentObservation(projectId: Project.Id): CompletableDeferred<Unit> =
+            CompletableDeferred<Unit>().also { agentObserverGates[projectId] = it }
     }
 
     private class TestSettingsService : SettingsService {
