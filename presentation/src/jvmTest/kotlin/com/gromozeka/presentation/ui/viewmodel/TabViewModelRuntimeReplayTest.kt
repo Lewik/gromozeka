@@ -18,6 +18,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import com.gromozeka.domain.model.MessageInputContext
 import com.gromozeka.domain.model.MessageDelivery
+import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.User
@@ -155,6 +156,43 @@ class TabViewModelRuntimeReplayTest {
 
         assertEquals(messages.map { it.id.value }, model.pendingMessages.value.map { it.id })
         assertEquals("", model.uiState.value.userInput)
+    }
+
+    @Test
+    fun `queued composer remains editable after the current user is renamed`() = runTest {
+        val conversationId = Conversation.Id("conversation-1")
+        val runtimeEvents = MutableSharedFlow<ConversationRuntimeEvent>(extraBufferCapacity = 1)
+        val readonly = MessageInstructionGroup.defaults().single()
+            .controls.single { it.data.id == "mode_readonly" }.data
+        val userMessage = Conversation.Message(
+            id = Conversation.Message.Id("renamed-user-message"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.USER,
+            author = Conversation.Message.Author.User(
+                userId = User.Id("user-1"),
+                displayName = "Renamed User",
+                identityKey = "updated-identity",
+            ),
+            content = listOf(Conversation.Message.ContentItem.UserMessage("Still editable")),
+            instructions = listOf(readonly),
+            createdAt = Instant.fromEpochMilliseconds(1),
+        )
+        val model = viewModel(
+            backgroundScope,
+            runtimeEvents,
+            messageDeliveryMode = MutableStateFlow(MessageDelivery.QUEUE),
+        ) {
+            ConversationHistoryPage(Conversation.Thread.Id("thread-1"), emptyList())
+        }
+        runCurrent()
+
+        runtimeEvents.emit(ConversationRuntimeEvent.SnapshotUpdated(
+            conversationId,
+            ConversationRuntimeSnapshot(1, conversationId, null, pendingTasks = listOf(pendingTask(userMessage))),
+        ))
+        runCurrent()
+
+        assertTrue(model.pendingMessages.value.single().editable)
     }
 
     @Test

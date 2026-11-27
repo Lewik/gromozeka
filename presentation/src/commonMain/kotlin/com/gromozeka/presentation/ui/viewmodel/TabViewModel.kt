@@ -1690,7 +1690,7 @@ private fun Conversation.Message.composerRoundTripInstructionIdsOrNull(
 ): Set<String>? {
     if (
         role != Conversation.Message.Role.USER ||
-        author != currentUserAuthor ||
+        (author as? Conversation.Message.Author.User)?.userId != currentUserAuthor.userId ||
         originalIds.isNotEmpty() ||
         replyTo != null ||
         providerMetadata.isNotEmpty() ||
