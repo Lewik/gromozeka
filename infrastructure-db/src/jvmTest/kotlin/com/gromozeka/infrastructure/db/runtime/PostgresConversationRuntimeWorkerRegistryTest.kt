@@ -12,16 +12,68 @@ import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolDescriptor
 import com.gromozeka.domain.tool.PreloadedWorkspaceToolMetadata
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.SerializationException
 import kotlin.time.Instant
 import org.postgresql.ds.PGSimpleDataSource
 import java.util.UUID
 import javax.sql.DataSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class PostgresConversationRuntimeWorkerRegistryTest {
+    @Test
+    fun `migration removes obsolete inline-only metadata from worker registrations`() = runBlocking {
+        if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") {
+            return@runBlocking
+        }
+
+        val schema = "runtime_worker_inline_only_${UUID.randomUUID().toString().replace("-", "")}"
+        val adminDataSource = dataSource()
+        adminDataSource.connection.use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute("CREATE SCHEMA $schema")
+            }
+        }
+
+        try {
+            val registryDataSource = dataSource(schema)
+            createWorkerRegistrySchema(registryDataSource)
+            val registry = PostgresConversationRuntimeWorkerRegistry(registryDataSource)
+            val identity = worker("legacy-worker", "session")
+            val command = AiToolDescriptor(
+                AiToolDefinition("grz_execute_command", "Execute a command", "{}"),
+                PreloadedWorkspaceToolMetadata,
+            )
+            val current = registration(identity, Instant.fromEpochMilliseconds(10_000)).copy(tools = listOf(command))
+            assertTrue(registry.register(current, staleBefore = Instant.fromEpochMilliseconds(0)))
+            registryDataSource.connection.use { connection ->
+                connection.prepareStatement(
+                    "UPDATE conversation_runtime_workers SET registration_json = jsonb_set(registration_json, " +
+                        "'{tools,0,metadata,inlineOnlyReason}', '\"Secret delivery is bound to one request\"') " +
+                        "WHERE worker_id = ?"
+                ).use { statement ->
+                    statement.setString(1, identity.workerId.value)
+                    assertEquals(1, statement.executeUpdate())
+                }
+            }
+
+            assertFailsWith<SerializationException> { registry.find(identity.workerId) }
+            applyMigration(registryDataSource, "V104__remove_inline_only_worker_metadata.sql")
+            assertEquals(current, registry.find(identity.workerId))
+            applyMigration(registryDataSource, "V104__remove_inline_only_worker_metadata.sql")
+            assertEquals(current, registry.find(identity.workerId))
+        } finally {
+            adminDataSource.connection.use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.execute("DROP SCHEMA $schema CASCADE")
+                }
+            }
+        }
+    }
+
     @Test
     fun `postgres registry rejects split brain and fences a stale session`() = runBlocking {
         if (System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") != "true") {
