@@ -170,7 +170,7 @@ information are available from:
 ## CPython and Code Mode packages
 
 Desktop Worker distributions include CPython 3.14.10 from the unmodified
-`python-build-standalone` release `20261110`, plus the following unmodified
+`python-build-standalone` release `20261124`, plus the following unmodified
 pure-Python packages. Server distributions do not include this runtime.
 
 | Package | Version | License |
@@ -195,7 +195,7 @@ and SHA-256 values are in `runtime/python/legal/python-runtime-lock.json`.
 Source and license information:
 
 - https://www.python.org/downloads/release/python-31410/
-- https://github.com/astral-sh/python-build-standalone/releases/tag/20261110
+- https://github.com/astral-sh/python-build-standalone/releases/tag/20261124
 - https://pypi.org/project/httpx/0.28.1/
 - https://pypi.org/project/httpcore/1.0.9/
 - https://pypi.org/project/anyio/4.16.0/
