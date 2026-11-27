@@ -27,15 +27,17 @@ class ConversationContext(
     fun messages(): List<Message> = project(history)
 
     /**
-     * Native state is replayed only by a compatible target. An incompatible opaque checkpoint
-     * is intentionally skipped: crossing older full windows would make an ordinary turn unbounded.
+     * Opaque checkpoints require native-compaction support, while ordinary signed replay only
+     * requires a compatible provider scope. An incompatible checkpoint is intentionally skipped:
+     * crossing older full windows would make an ordinary turn unbounded.
      */
     fun messagesForProvider(
-        target: ContextCompactionResult.ProviderScope?,
+        nativeCompactionTarget: ContextCompactionResult.ProviderScope?,
         selection: Set<Message.Id>? = null,
+        replayTarget: ContextCompactionResult.ProviderScope? = nativeCompactionTarget,
     ): List<Message> {
         val candidates = if (selection == null) history else history.filter { it.id in selection }
-        return sanitizeProviderReplay(prepare(project(candidates), target), target)
+        return sanitizeProviderReplay(prepare(project(candidates), nativeCompactionTarget), replayTarget)
     }
 
     /** Full checkpoints protect their prefix and all transitive source versions, including themselves. */

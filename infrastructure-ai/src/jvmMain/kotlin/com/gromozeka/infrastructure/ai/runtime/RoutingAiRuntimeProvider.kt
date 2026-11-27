@@ -88,7 +88,7 @@ class AiInputValidatingRuntime(
     }
 
     private fun prepare(request: AiRuntimeRequest): AiRuntimeRequest = request.copy(
-        messages = request.projectedMessages(runtime.connection.kind.nativeCompactionProvider()),
+        messages = request.projectedMessages(runtime.connection.kind),
     )
 
     private fun AiRuntimeResponse.withReplayScope(request: AiRuntimeRequest): AiRuntimeResponse {

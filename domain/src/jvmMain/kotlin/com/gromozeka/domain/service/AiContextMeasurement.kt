@@ -51,7 +51,7 @@ data class AiContextMeasurement(
 
         fun prepare(runtime: ResolvedAiRuntime, request: AiRuntimeRequest): AiRuntimeRequest = request.copy(
             messages = if (runtime.connection.kind == AiConnection.Kind.CLAUDE_CODE) request.originalCollaborationMessages()
-                else request.projectedMessages(runtime.connection.kind.nativeCompactionProvider()),
+                else request.projectedMessages(runtime.connection.kind),
         )
 
         fun capture(runtime: ResolvedAiRuntime, request: AiRuntimeRequest, response: AiRuntimeResponse,

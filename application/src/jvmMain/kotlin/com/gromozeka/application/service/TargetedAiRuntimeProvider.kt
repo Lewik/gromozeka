@@ -141,7 +141,7 @@ class TargetedAiRuntimeProvider(
                 request.copy(messages = request.messages.map { it.copy(conversationId = com.gromozeka.domain.model.Conversation.Id(isolated)) },
                     options = request.options.copy(toolContext = request.options.toolContext + mapOf("conversationId" to isolated, "threadId" to isolated)))
             } else request.copy(messages = request.originalCollaborationMessages())
-            runtime.modelSpec.requireSupportsInputs(request.projectedMessages(runtime.connection.kind.nativeCompactionProvider()))
+            runtime.modelSpec.requireSupportsInputs(request.projectedMessages(runtime.connection.kind))
             val client = remoteClient()
             val target = workerTargetResolver.requireRegistered(workerId, ConversationRuntimeCapability.AI_REQUEST_RESPONSE)
             if (request.options.usagePurpose == com.gromozeka.domain.model.ai.AI_CONTEXT_QUERY_PURPOSE) {

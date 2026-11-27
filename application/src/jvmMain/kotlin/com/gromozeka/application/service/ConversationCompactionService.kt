@@ -225,7 +225,7 @@ class ConversationCompactionService internal constructor(
         val pins = preparationScope.pinPrompts(conversation)
         val inspectionRequest = request.copy(systemPrompts = request.systemPrompts + pins, messages = textCompactions.materializeSnapshot(conversation.id, inspectionWindow))
         val estimate = AiContextMeasurement.portableInspection(resolved, inspectionRequest)?.inputTokens
-            ?: AiRequestTokenEstimate.input(inspectionRequest.copy(messages = inspectionRequest.projectedMessages(resolved.connection.kind.nativeCompactionProvider())))
+            ?: AiRequestTokenEstimate.input(inspectionRequest.copy(messages = inspectionRequest.projectedMessages(resolved.connection.kind)))
         if (estimate < threshold) return false
         val sources = history.compactionWindowHeaders(conversation.currentThread)
         if (sources.isEmpty() || sources.any { it.streaming }) return false
@@ -409,7 +409,7 @@ class ConversationCompactionService internal constructor(
     private suspend fun inspectContext(resolved: ResolvedAiRuntime, runtime: AiRuntime, request: AiRuntimeRequest): AiContextInspection {
         AiContextMeasurement.portableInspection(resolved, request)?.let { return it }
         val policy = resolved.modelConfiguration.compaction.tokenCounting
-        val projected = request.copy(messages = request.projectedMessages(resolved.connection.kind.nativeCompactionProvider()))
+        val projected = request.copy(messages = request.projectedMessages(resolved.connection.kind))
         fun local() = AiContextInspection(AiRequestTokenEstimate.input(projected), AiContextInspection.Precision.ESTIMATE)
         return when (policy.mode) {
             AiModelConfiguration.TokenCounting.Mode.LOCAL -> local()

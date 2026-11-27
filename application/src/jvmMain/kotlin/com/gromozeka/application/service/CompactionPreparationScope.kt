@@ -52,7 +52,7 @@ class CompactionPreparationScope(
             request?.let {
                 put("request", compactionRequestFingerprint(
                     request = it,
-                    nativeProvider = selected.connection.kind.nativeCompactionProvider(),
+                    connectionKind = selected.connection.kind,
                     pins = currentPins,
                 ))
             }
@@ -63,13 +63,13 @@ class CompactionPreparationScope(
 /** Model-visible request state that may change without mutating canonical history. */
 private fun compactionRequestFingerprint(
     request: AiRuntimeRequest,
-    nativeProvider: String?,
+    connectionKind: AiConnection.Kind,
     pins: List<String>,
 ): String {
     val unpinnedPrompts = if (pins.isNotEmpty() && request.systemPrompts.takeLast(pins.size) == pins) {
         request.systemPrompts.dropLast(pins.size)
     } else request.systemPrompts
-    val messages = request.projectedMessages(nativeProvider)
+    val messages = request.projectedMessages(connectionKind)
     val digest = MessageDigest.getInstance("SHA-256")
     digest.updateFramed("compaction-request-v1")
     digest.updateFramed("systemPrompts:${unpinnedPrompts.size}")

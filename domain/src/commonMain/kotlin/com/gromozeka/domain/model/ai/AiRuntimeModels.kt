@@ -152,24 +152,27 @@ fun AiConnection.Kind.nativeCompactionProvider(): String? = when (this) {
 }
 
 fun AiRuntimeRequest.projectedMessages(
-    nativeProvider: String? = null,
+    nativeCompactionProvider: String? = null,
+    replayProvider: String? = nativeCompactionProvider,
 ): List<Conversation.Message> {
     val currentThread = options.toolContext["threadId"] as? String
     // UI corrections never rewrite signed/native provider history. Restore the actual
     // generated blocks before compaction projection or native-session reconciliation.
     val restoredMessages = originalCollaborationMessages()
         .withPortableSyntheticToolCallIds()
-    val replayTarget = nativeProvider?.let { provider ->
+    fun target(provider: String) =
         Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(
             provider = provider,
             connectionId = options.toolContext["aiConnectionId"] as? String,
             modelConfigurationId = options.toolContext["aiModelConfigurationId"] as? String,
             modelName = options.toolContext["modelName"] as? String,
         )
-    }
-    val contextWindow = ConversationContext(restoredMessages).messagesForProvider(replayTarget)
+    val contextWindow = ConversationContext(restoredMessages).messagesForProvider(
+        nativeCompactionTarget = nativeCompactionProvider?.let(::target),
+        replayTarget = replayProvider?.let(::target),
+    )
     val window = contextWindow
-    val retainedReplay = window.firstOrNull().retainedOpenAiReplayIds(nativeProvider, currentThread)
+    val retainedReplay = window.firstOrNull().retainedOpenAiReplayIds(nativeCompactionProvider, currentThread)
     val projected = window.map { message ->
         val sourceThread = message.providerMetadata[AI_REPLAY_THREAD_METADATA_KEY]?.jsonPrimitive?.contentOrNull
         if (currentThread != null && sourceThread != currentThread && message.id !in retainedReplay) {
@@ -180,6 +183,9 @@ fun AiRuntimeRequest.projectedMessages(
     }
     return projected
 }
+
+fun AiRuntimeRequest.projectedMessages(connectionKind: AiConnection.Kind): List<Conversation.Message> =
+    projectedMessages(connectionKind.nativeCompactionProvider(), connectionKind.name)
 
 /** Preserve native CLI fingerprints while keeping human-facing corrections out of raw replay. */
 fun AiRuntimeRequest.originalCollaborationMessages(): List<Conversation.Message> =

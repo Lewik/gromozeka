@@ -85,7 +85,7 @@ class ConversationContextSnapshotService(
             ),
         )
         val projectionRequest = AiRuntimeRequest(emptyList(), original, options = options)
-        val projected = projectionRequest.projectedMessages(nativeProvider)
+        val projected = projectionRequest.projectedMessages(resolved.connection.kind)
         val prefix = completeToolGroupPrefix(projected)
         // Empty projection is not proof of empty usable history: a checkpoint in the discarded
         // tail may already have hidden a complete canonical prefix. Fail closed in that case.
@@ -111,7 +111,7 @@ class ConversationContextSnapshotService(
             profile.messageInstructionGroups,
             selectedHistory.continuationState,
         )
-        val materializedPrefix = projectionRequest.copy(messages = runtimeMessages).projectedMessages(nativeProvider)
+        val materializedPrefix = projectionRequest.copy(messages = runtimeMessages).projectedMessages(resolved.connection.kind)
         if (materializedPrefix.map { it.id } != prefix.map { it.id }) throw ContextSnapshotUnavailableException(
             "Incomplete history checkpoint prevents a stable projected context prefix")
         val baseCatalog = toolCatalog.readSnapshot(project, agent.toolAccess, conversation)

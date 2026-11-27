@@ -256,6 +256,33 @@ class ConversationContextTest {
     }
 
     @Test
+    fun ordinaryProviderReplayDoesNotRequireNativeCompactionSupport() {
+        val checkpoint = opaque("checkpoint", AiConnection.Kind.ANTHROPIC_API.name)
+        val replay = text("assistant").copy(
+            role = Message.Role.ASSISTANT,
+            content = listOf(Message.ContentItem.Thinking("reason", signature = "signed")) + text("assistant").content,
+            providerMetadata = buildJsonObject {
+                put("provider", JsonPrimitive(AiConnection.Kind.ANTHROPIC_API.name))
+                put("connectionId", JsonPrimitive("connection"))
+                put("modelConfigurationId", JsonPrimitive("configuration"))
+                put("model", JsonPrimitive("model"))
+                put("anthropicContent", JsonPrimitive("signed-content"))
+            },
+        )
+        val target = Compaction.ProviderScope(
+            AiConnection.Kind.ANTHROPIC_API.name,
+            "connection",
+            "configuration",
+            "model",
+        )
+
+        assertEquals(listOf(replay), ConversationContext(listOf(checkpoint, replay)).messagesForProvider(
+            nativeCompactionTarget = null,
+            replayTarget = target,
+        ))
+    }
+
+    @Test
     fun incompatibleProviderManagedToolCallAndResultAreDroppedTogether() {
         val callId = Message.ContentItem.ToolCall.Id("provider-call")
         val metadata = buildJsonObject {
