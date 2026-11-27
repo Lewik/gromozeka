@@ -34,7 +34,6 @@ import kotlinx.coroutines.withTimeout
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.any
 import org.mockito.Mockito.anyString
-import org.mockito.Mockito.RETURNS_SELF
 import org.mockito.Mockito.doAnswer
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
@@ -397,12 +396,18 @@ class SpringWebSocketTransportTest {
     fun `production routes apply distinct binary limits`() {
         val handlers = mutableMapOf<String, WebSocketHandler>()
         val registry = mock(WebSocketHandlerRegistry::class.java)
-        val registration = mock(WebSocketHandlerRegistration::class.java, RETURNS_SELF)
+        val registration = mock(WebSocketHandlerRegistration::class.java)
+        doAnswer { registration }.`when`(registration).addInterceptors(any())
+        doAnswer { registration }.`when`(registration).setAllowedOriginPatterns(anyString())
         doAnswer { invocation ->
             handlers[invocation.getArgument<String>(1)] = invocation.getArgument(0)
             registration
         }.`when`(registry).addHandler(any(WebSocketHandler::class.java), anyString())
-        val configuration = GromozekaWebSocketConfiguration(mock(GromozekaRemoteServer::class.java), mock(WorkerGatewayService::class.java))
+        val remoteConstructor = GromozekaRemoteServer::class.java.constructors.single()
+        val remote = remoteConstructor.newInstance(
+            *remoteConstructor.parameterTypes.map { mock(it) }.toTypedArray(),
+        ) as GromozekaRemoteServer
+        val configuration = GromozekaWebSocketConfiguration(remote, mock(WorkerGatewayService::class.java))
         try {
             configuration.registerWebSocketHandlers(registry)
             assertEquals(setOf("/ws", "/worker/ws"), handlers.keys)
