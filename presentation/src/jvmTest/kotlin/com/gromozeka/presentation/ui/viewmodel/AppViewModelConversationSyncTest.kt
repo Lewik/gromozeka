@@ -55,6 +55,26 @@ class AppViewModelConversationSyncTest {
     }
 
     @Test
+    fun projectObservationReplacesMissingConversationsAndAnEmptySnapshot() = runTest {
+        val fixture = Fixture(backgroundScope)
+        val first = fixture.add("one", "project-a")
+        val removed = fixture.add("two", "project-a")
+        val otherProject = fixture.add("three", "project-b")
+        fixture.open(first)
+        fixture.open(otherProject)
+        runCurrent()
+        assertEquals(setOf(first.id, removed.id, otherProject.id), fixture.app.conversations.value.keys)
+
+        fixture.removeExternally(removed)
+        runCurrent()
+        assertEquals(setOf(first.id, otherProject.id), fixture.app.conversations.value.keys)
+
+        fixture.removeExternally(first)
+        runCurrent()
+        assertEquals(setOf(otherProject.id), fixture.app.conversations.value.keys)
+    }
+
+    @Test
     fun conversationObservationRecoversWhileItsTabRemainsOpen() = runTest {
         val fixture = Fixture(backgroundScope)
         val conversation = fixture.add("one", "project-a")
@@ -482,6 +502,12 @@ class AppViewModelConversationSyncTest {
 
         fun renameExternally(conversation: Conversation, name: String) {
             records[conversation.id.value] = conversation.copy(displayName = name)
+            projects.getValue(conversation.projectId).value =
+                records.values.filter { it.projectId == conversation.projectId }
+        }
+
+        fun removeExternally(conversation: Conversation) {
+            records.remove(conversation.id.value)
             projects.getValue(conversation.projectId).value =
                 records.values.filter { it.projectId == conversation.projectId }
         }

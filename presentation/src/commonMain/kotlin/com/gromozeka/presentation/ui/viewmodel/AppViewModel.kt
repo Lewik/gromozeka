@@ -76,9 +76,12 @@ open class AppViewModel(
                     merge(*projectIds.map { projectId ->
                         conversationService.observeByProject(projectId)
                             .retryProjectObservation("conversations", projectId)
+                            .map { conversations -> projectId to conversations }
                     }.toTypedArray())
                 }
-                .collect(::mergeConversationSnapshots)
+                .collect { (projectId, conversations) ->
+                    replaceProjectConversationSnapshots(projectId, conversations)
+                }
         }
         scope.launch {
             conversationUnreadStateService.observe()
@@ -466,6 +469,16 @@ open class AppViewModel(
         if (updates.isEmpty()) return
 
         _conversations.update { current -> current + updates }
+    }
+
+    private fun replaceProjectConversationSnapshots(
+        projectId: Project.Id,
+        conversations: Iterable<Conversation>,
+    ) {
+        val replacement = conversations.associateBy(Conversation::id)
+        _conversations.update { current ->
+            current.filterValues { conversation -> conversation.projectId != projectId } + replacement
+        }
     }
 
     fun focusMessage(
