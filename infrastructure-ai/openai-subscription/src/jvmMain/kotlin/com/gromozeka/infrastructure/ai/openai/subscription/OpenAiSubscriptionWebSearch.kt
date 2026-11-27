@@ -139,25 +139,45 @@ class OpenAiSubscriptionWebSearch(private val client: OpenAiSubscriptionResponse
         }
         val firstInputIndex = previousUserIndex ?: rootIndex
         val userSideIndices = (firstInputIndex..lastInputIndex).filter { messages[it].isUserSideInput() }
-        val prioritizedUserSideIndices = buildList {
-            if (rootIndex in userSideIndices) add(rootIndex)
-            addAll(userSideIndices.asReversed().filter {
-                it != rootIndex && messages[it].role == Conversation.Message.Role.USER
-            })
-            addAll(userSideIndices.asReversed().filter {
-                it != rootIndex && messages[it].role == Conversation.Message.Role.RUNTIME
-            })
+        val sourceText = userSideIndices.associateWith { index ->
+            messages[index].content.mapNotNull { it.userInputTextOrNull() }.joinToString("\n")
+        }.filterValues(String::isNotBlank)
+        val latestUserIndex = userSideIndices.lastOrNull { index ->
+            index >= rootIndex && messages[index].role == Conversation.Message.Role.USER && index in sourceText
         }
+        val requiredIndices = listOfNotNull(
+            rootIndex.takeIf(sourceText::containsKey),
+            latestUserIndex,
+        ).distinct()
         var userSideCharactersLeft = MAX_USER_SIDE_INPUT_CHARACTERS
-        val userSideText = buildMap {
-            for (index in prioritizedUserSideIndices) {
-                if (userSideCharactersLeft == 0) break
-                val text = messages[index].content.mapNotNull { it.userInputTextOrNull() }.joinToString("\n")
-                if (text.isBlank()) continue
-                val bounded = text.truncateForWebSearch(userSideCharactersLeft)
-                put(index, bounded)
-                userSideCharactersLeft -= bounded.length
+        val userSideText = mutableMapOf<Int, String>()
+        if (requiredIndices.isNotEmpty()) {
+            // Preserve both the original turn root and the latest human steering. A short input gives
+            // its unused share back to the other required input before optional context is considered.
+            val initialShare = MAX_USER_SIDE_INPUT_CHARACTERS / requiredIndices.size
+            val budgets = requiredIndices.associateWithTo(mutableMapOf()) { index ->
+                minOf(sourceText.getValue(index).length, initialShare)
             }
+            userSideCharactersLeft -= budgets.values.sum()
+            requiredIndices.forEach { index ->
+                val extra = minOf(sourceText.getValue(index).length - budgets.getValue(index), userSideCharactersLeft)
+                budgets[index] = budgets.getValue(index) + extra
+                userSideCharactersLeft -= extra
+            }
+            requiredIndices.forEach { index ->
+                userSideText[index] = sourceText.getValue(index).truncateForWebSearch(budgets.getValue(index))
+            }
+        }
+        val optionalIndices = userSideIndices.asReversed().filter {
+            it !in requiredIndices && messages[it].role == Conversation.Message.Role.USER && it in sourceText
+        } + userSideIndices.asReversed().filter {
+            it !in requiredIndices && messages[it].role == Conversation.Message.Role.RUNTIME && it in sourceText
+        }
+        for (index in optionalIndices) {
+            if (userSideCharactersLeft == 0) break
+            val bounded = sourceText.getValue(index).truncateForWebSearch(userSideCharactersLeft)
+            userSideText[index] = bounded
+            userSideCharactersLeft -= bounded.length
         }
         var assistantCharactersLeft = 4000
         return messages.subList(firstInputIndex, lastInputIndex + 1).mapIndexedNotNull { offset, message ->

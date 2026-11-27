@@ -223,6 +223,44 @@ class OpenAiSubscriptionWebSearchTest {
     }
 
     @Test
+    fun `search endpoint receives latest steering after an oversized turn root`() = runBlocking {
+        var captured: JsonObject? = null
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        server.createContext("/alpha/search") { exchange ->
+            captured = Json.parseToJsonElement(exchange.requestBody.reader().readText()).jsonObject
+            val body = """{"output":"done","encrypted_output":"unused","results":[]}""".toByteArray()
+            exchange.sendResponseHeaders(200, body.size.toLong())
+            exchange.responseBody.use { it.write(body) }
+        }
+        server.start()
+        try {
+            val root = userMessage("ROOT_MARKER:${"x".repeat(20_000)}")
+            val steer = userMessage("STEER_MARKER: search for the Kotlin release instead")
+            val history = listOf(root, steer) + persisted(mapResponse(listOf(webCall)))
+            val search = OpenAiSubscriptionWebSearch(client("http://127.0.0.1:${server.address.port}"))
+
+            assertNotNull(search.executePending(
+                request(history),
+                session,
+                "conversation",
+                testModelConfiguration(connectionId, model),
+                true,
+            ))
+
+            val texts = assertNotNull(captured)["input"]!!.jsonArray.map { item ->
+                item.jsonObject.getValue("content").jsonArray.single().jsonObject
+                    .getValue("text").jsonPrimitive.content
+            }
+            assertEquals(2, texts.size)
+            assertEquals(MAX_EXPECTED_USER_INPUT_CHARACTERS, texts.sumOf(String::length))
+            assertContains(texts[0], "ROOT_MARKER")
+            assertContains(texts[1], "STEER_MARKER")
+        } finally {
+            server.stop(0)
+        }
+    }
+
+    @Test
     fun `runtime rooted turn does not execute an interrupted web call from an earlier turn`() = runBlocking {
         val search = OpenAiSubscriptionWebSearch(client("http://127.0.0.1:1"))
         val earlier = userMessage("Search the old topic")
@@ -247,6 +285,7 @@ class OpenAiSubscriptionWebSearchTest {
     companion object {
         const val connectionId = "web-test-connection"
         const val model = "gpt-6-astra"
+        const val MAX_EXPECTED_USER_INPUT_CHARACTERS = 16_000
         val profile = OpenAiSubscriptionModelProfile(model, true, false, listOf("low"), false, null, false)
         val session = OpenAiSubscriptionSession("test-token", "unused", null, "test-account", Long.MAX_VALUE)
         val webCall = Json.parseToJsonElement("""{"type":"function_call","namespace":"web","name":"run","call_id":"web-call","arguments":"{\"search_query\":[{\"q\":\"Example\"}]}"}""").jsonObject
