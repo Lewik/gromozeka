@@ -105,7 +105,7 @@ jobs:
             --env POSTGRES_DB=gromozeka \
             --env POSTGRES_USER=gromozeka \
             --env POSTGRES_PASSWORD=gromozeka \
-            mirror.gcr.io/pgvector/pgvector:0.8.6-pg18@sha256:691673308c99d2161ba298736f3147f1f22d79de2fb7ec93ae9b4afcab870b62
+            mirror.gcr.io/pgvector/pgvector:0.8.7-pg18@sha256:38681dc6eaf55308e2a4c6de392d131652dcfac70e1263e35cd9b5ea3fe39782
           for attempt in $(seq 1 30); do
             if docker exec runtime-postgres pg_isready -U gromozeka -d gromozeka; then
               exit 0
@@ -378,7 +378,7 @@ jobs:
           python3 scripts/generate-font-resources.py --check
       - name: Verify Compose E2E
         env:
-          GROMOZEKA_E2E_POSTGRES_IMAGE: mirror.gcr.io/pgvector/pgvector:0.8.6-pg18@sha256:691673308c99d2161ba298736f3147f1f22d79de2fb7ec93ae9b4afcab870b62
+          GROMOZEKA_E2E_POSTGRES_IMAGE: mirror.gcr.io/pgvector/pgvector:0.8.7-pg18@sha256:38681dc6eaf55308e2a4c6de392d131652dcfac70e1263e35cd9b5ea3fe39782
           GROMOZEKA_E2E_JAVA_IMAGE: mirror.gcr.io/library/eclipse-temurin:21-jdk-jammy
           GROMOZEKA_E2E_UBUNTU_MIRROR: https://archive.ubuntu.com/ubuntu
         run: bash e2e-tests/run.sh

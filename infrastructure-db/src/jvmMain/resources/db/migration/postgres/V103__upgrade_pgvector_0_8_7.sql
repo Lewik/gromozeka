@@ -1,0 +1,1 @@
+ALTER EXTENSION vector UPDATE TO '0.8.7';
