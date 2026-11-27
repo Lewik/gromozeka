@@ -3,6 +3,7 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.withoutProviderReplay
 import com.gromozeka.domain.model.UserProfile.SuggestedRepliesSettings
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
@@ -214,7 +215,7 @@ class SuggestedRepliesGenerationService(
                 -> item
             }
         }
-        if (projected == message.content) message else message.copy(content = projected)
+        if (projected == message.content) message else message.copy(content = projected).withoutProviderReplay()
     }
 
     private fun Conversation.Message.placeholder(
