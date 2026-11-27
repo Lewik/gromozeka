@@ -370,7 +370,7 @@ class ConversationApplicationService(
             threadRepo.save(newThread)
 
             // Allocate every destination ID before copying bodies so checkpoint references can
-            // be remapped without ever materializing the unbounded archive in one collection.
+            // be remapped. Fork retains O(N) identity state, but only one page of decoded bodies.
             val messageIdMap = mutableMapOf<Conversation.Message.Id, Conversation.Message.Id>()
             var afterPosition = -1
             while (sourceBoundaryPosition != null && afterPosition < sourceBoundaryPosition) {
