@@ -27,14 +27,30 @@ END $$;
 
 UPDATE conversation_runtime_records r
 SET scheduling = jsonb_set(
-    r.scheduling,
-    '{incidents}',
+    jsonb_set(
+        r.scheduling,
+        '{incidents}',
+        (
+            SELECT COALESCE(jsonb_agg(incident.entry ORDER BY incident.position), '[]'::jsonb)
+            FROM jsonb_array_elements(r.scheduling -> 'incidents') WITH ORDINALITY incident(entry, position)
+            WHERE NOT (
+                COALESCE(incident.entry #>> '{task,payload,type}', '') = 'history_mutation'
+                AND jsonb_typeof(incident.entry #> '{task,payload,expectedThreadId}') IS DISTINCT FROM 'string'
+            )
+        )
+    ),
+    '{completedIdempotencyKeys}',
     (
-        SELECT COALESCE(jsonb_agg(incident.entry ORDER BY incident.position), '[]'::jsonb)
-        FROM jsonb_array_elements(r.scheduling -> 'incidents') WITH ORDINALITY incident(entry, position)
-        WHERE NOT (
-            COALESCE(incident.entry #>> '{task,payload,type}', '') = 'history_mutation'
-            AND jsonb_typeof(incident.entry #> '{task,payload,expectedThreadId}') IS DISTINCT FROM 'string'
+        SELECT COALESCE(jsonb_agg(completed.value ORDER BY completed.position), '[]'::jsonb)
+        FROM jsonb_array_elements_text(
+            COALESCE(r.scheduling -> 'completedIdempotencyKeys', '[]'::jsonb)
+        ) WITH ORDINALITY completed(value, position)
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements(r.scheduling -> 'incidents') incident
+            WHERE COALESCE(incident #>> '{task,payload,type}', '') = 'history_mutation'
+              AND jsonb_typeof(incident #> '{task,payload,expectedThreadId}') IS DISTINCT FROM 'string'
+              AND incident #>> '{task,idempotencyKey}' = completed.value
         )
     )
 )

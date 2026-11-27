@@ -29,7 +29,7 @@ class HistoryMutationThreadIdentityMigrationTest {
     private val json = Json { encodeDefaults = true; ignoreUnknownKeys = false }
 
     @Test
-    fun `migration removes only terminal history mutations without a thread identity`() {
+    fun `migration removes terminal history mutations and lets their idempotent retry run`() {
         withSchema { source ->
             val legacyTask = legacy(historyMutationTask("legacy"))
             val currentIncident = incident(historyMutationTask("current"), "current incident")
@@ -38,6 +38,7 @@ class HistoryMutationThreadIdentityMigrationTest {
                 ConversationRuntimeSchedulingState(
                     conversationId = Conversation.Id("conversation"),
                     incidents = listOf(currentIncident),
+                    completedIdempotencyKeys = setOf("legacy", "current", "unrelated"),
                 ),
             ).jsonObject
             val stored = JsonObject(
@@ -63,6 +64,14 @@ class HistoryMutationThreadIdentityMigrationTest {
                         assertTrue(rows.next())
                         val migrated = json.decodeFromString<ConversationRuntimeSchedulingState>(rows.getString(1))
                         assertEquals(listOf(currentIncident), migrated.incidents)
+                        assertEquals(setOf("current", "unrelated"), migrated.completedIdempotencyKeys)
+                        val retry = migrated.submit(
+                            historyMutationTask("legacy"),
+                            Instant.fromEpochMilliseconds(3),
+                            acceptPreviouslySubmitted = true,
+                        )
+                        assertTrue(retry.result)
+                        assertEquals(listOf("legacy"), retry.state.pendingTasks.map { it.id.value })
                     }
                 }
             }
