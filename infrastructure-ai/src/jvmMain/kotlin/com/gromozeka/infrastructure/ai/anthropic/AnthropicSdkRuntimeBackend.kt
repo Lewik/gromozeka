@@ -312,7 +312,7 @@ internal class AnthropicSdkMessageMapper(
             }
         }
 
-        val messages = request.projectedMessages().mapNotNull { toMessageParam(it, modelName) }
+        val messages = request.projectedMessages(connectionKind).mapNotNull { toMessageParam(it, modelName) }
         require(messages.isNotEmpty()) { "Anthropic request must contain at least one user or assistant message" }
         builder.messages(messages)
 
@@ -386,6 +386,7 @@ internal class AnthropicSdkMessageMapper(
     private fun toMessageParam(message: Conversation.Message, modelName: String): MessageParam? {
         return when (message.role) {
             Conversation.Message.Role.USER -> toUserMessageParam(message)
+            Conversation.Message.Role.RUNTIME -> toUserMessageParam(message)
             Conversation.Message.Role.ASSISTANT -> toAssistantMessageParam(message, modelName)
             Conversation.Message.Role.SYSTEM -> null
         }

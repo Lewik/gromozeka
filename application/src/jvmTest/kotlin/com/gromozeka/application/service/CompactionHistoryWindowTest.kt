@@ -4,8 +4,11 @@ import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.domain.model.MessageCompactionTextRenderer
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
+import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
+import org.mockito.Mockito
 import kotlin.test.*
 import kotlin.time.Instant
 
@@ -24,8 +27,6 @@ class CompactionHistoryWindowTest {
         val history = listOf(old, crossing, last)
         assertEquals(listOf(old), prefix(history, pairs))
         assertEquals(85_000L, history.drop(1).sumOf(MessageCompactionTextRenderer::characterCount))
-        assertTrue(window(history).isFullSelection(history.mapTo(mutableSetOf()) { it.id }))
-        assertFalse(window(history).isFullSelection(setOf(old.id, last.id)))
     }
 
     @Test fun `exact boundary retains exactly the last complete message`() {
@@ -64,7 +65,6 @@ class CompactionHistoryWindowTest {
         val recent = message("recent", "Recent work")
         val history = listOf(old, checkpoint, recent)
         assertEquals(listOf(old, checkpoint), prefix(history, pairs))
-        assertTrue(window(history).isFullSelection(setOf(checkpoint.id, recent.id)))
         assertEquals(listOf(checkpoint, recent), ConversationContext(history).messages())
     }
 
@@ -85,5 +85,26 @@ class CompactionHistoryWindowTest {
         for (text in listOf("small", "x".repeat(400_000))) {
             assertTrue(prefix(listOf(message("only", text)), pairs).isEmpty())
         }
+    }
+
+    @Test fun `runtime messages are ordinary readable compaction input`(): Unit = runBlocking {
+        val dialogue = message("dialogue", "portable dialogue")
+        val runtime = message("runtime", "runtime JSON").copy(
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(ContentItem.RuntimeJson(kotlinx.serialization.json.JsonPrimitive("runtime JSON"))),
+        )
+        val recent = message("recent", "x".repeat(80_000))
+        val history = listOf(dialogue, runtime, recent)
+        val selection = window(history).prefix(pairs)
+        val repository = Mockito.mock(ThreadMessageRepository::class.java)
+        val thread = Conversation.Thread.Id("thread")
+        Mockito.`when`(repository.compactionBodies(thread, selection.map { it.id })).thenReturn(
+            history.filter { message -> selection.any { it.id == message.id } },
+        )
+
+        val readable = window(history).messages(repository, thread, selection, provider = null)
+
+        assertEquals(listOf(dialogue, runtime), readable)
     }
 }

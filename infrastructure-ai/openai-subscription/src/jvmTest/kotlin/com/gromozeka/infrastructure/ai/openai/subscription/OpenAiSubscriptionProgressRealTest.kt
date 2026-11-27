@@ -1,6 +1,9 @@
 package com.gromozeka.infrastructure.ai.openai.subscription
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.CompactionMessageHeader
+import com.gromozeka.domain.model.recordRetainedOpenAiReplay
+import com.gromozeka.domain.model.ai.AI_REPLAY_THREAD_METADATA_KEY
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiReasoningConfig
 import com.gromozeka.domain.model.ai.AiReasoningEffort
@@ -22,6 +25,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Clock
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -33,6 +37,206 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 
 class OpenAiSubscriptionProgressRealTest {
+    @Test
+    fun detachedCompactionPreservesForegroundReasoningAcrossCommittedCheckpoint() = runBlocking {
+        if (System.getenv("GROMOZEKA_OPENAI_SUBSCRIPTION_REAL") != "true") return@runBlocking
+        val session = authenticatedSession()
+        val requestedModel = requireNotNull(System.getenv("GROMOZEKA_OPENAI_SUBSCRIPTION_MODEL"))
+        val profile = OpenAiSubscriptionModelsClient(baseUrl, clientVersion, 60_000, 30_000)
+            .getProfile(session, requestedModel)
+        assertTrue(profile.useResponsesLite)
+
+        val requestMapper = OpenAiSubscriptionRequestMapper()
+        val responseMapper = OpenAiSubscriptionResponseMapper()
+        fun client() = OpenAiSubscriptionResponsesClient(
+            responseMapper, requestMapper, baseUrl, clientVersion,
+            websocketIdleMs = 30_000, websocketResponseTimeoutMs = 180_000,
+            websocketTransportTimeoutMs = 30_000, httpResponseTimeoutMs = 180_000,
+            admission = TestAiAdmission(),
+        )
+        val sharedClient = client()
+        val compactor = OpenAiSubscriptionCompaction(sharedClient, requestMapper, responseMapper)
+        val conversationId = Conversation.Id(UUID.randomUUID().toString())
+        val sourceThread = Conversation.Thread.Id(UUID.randomUUID().toString())
+        val targetThread = Conversation.Thread.Id(UUID.randomUUID().toString())
+        val prefixMarker = "DETACHED_PREFIX_${UUID.randomUUID()}"
+        val tailMarker = "DETACHED_TAIL_${UUID.randomUUID()}"
+        val configuration = testModelConfiguration(connectionId, profile.slug, "live-compaction-${profile.slug}")
+        val options = AiRuntimeOptions(
+            reasoning = AiReasoningConfig(effort = AiReasoningEffort.MAX),
+            toolContext = mapOf(
+                "conversationId" to conversationId.value,
+                "promptCacheKey" to conversationId.value,
+                "threadId" to sourceThread.value,
+            ),
+        )
+        val systemPrompts = listOf(
+            "This is a synthetic protocol test. Preserve exact markers from tool results and user messages. " +
+                "Never call a tool when the user says not to.",
+        )
+        fun request(messages: List<Conversation.Message>, requestOptions: AiRuntimeOptions = options) = AiRuntimeRequest(
+            systemPrompts = systemPrompts,
+            messages = messages,
+            tools = listOf(readFileTool),
+            options = requestOptions,
+        )
+        fun persisted(response: AiRuntimeResponse, thread: Conversation.Thread.Id): List<Conversation.Message> =
+            response.messages.map { assistant ->
+                message(conversationId, Conversation.Message.Role.ASSISTANT, assistant.content).copy(
+                    providerMetadata = JsonObject(
+                        (response.providerMetadata + assistant.metadata + (AI_REPLAY_THREAD_METADATA_KEY to thread.value))
+                            .mapValues { (_, value) ->
+                                value as? JsonElement ?: when (value) {
+                                    is Number -> JsonPrimitive(value)
+                                    is Boolean -> JsonPrimitive(value)
+                                    else -> JsonPrimitive(value.toString())
+                                }
+                            },
+                    ),
+                )
+            }
+
+        val callId = Conversation.Message.ContentItem.ToolCall.Id("detached-read-file-call")
+        val prefix = listOf(
+            message(conversationId, Conversation.Message.Role.USER, listOf(
+                Conversation.Message.ContentItem.UserMessage(
+                    "Read the supplied file result and preserve its exact project marker. Do not call more tools.",
+                ),
+            )),
+            message(conversationId, Conversation.Message.Role.ASSISTANT, listOf(
+                Conversation.Message.ContentItem.ToolCall(
+                    id = callId,
+                    call = Conversation.Message.ContentItem.ToolCall.Data(
+                        "read_file",
+                        Json.parseToJsonElement("""{"path":"README.md"}"""),
+                    ),
+                ),
+            )),
+            message(conversationId, Conversation.Message.Role.USER, listOf(
+                Conversation.Message.ContentItem.ToolResult(
+                    toolUseId = callId,
+                    toolName = "read_file",
+                    result = listOf(Conversation.Message.ContentItem.ToolResult.Data.Text(
+                        (1..1000).joinToString("\n") { "Build record $it: synthetic compilation completed successfully." } +
+                            "\nThe exact project marker is $prefixMarker.",
+                    )),
+                ),
+            )),
+        )
+        val compactionId = UUID.randomUUID().toString()
+        val compactionRequest = request(
+            prefix,
+            options.copy(
+                usagePurpose = "CONTEXT_COMPACTION",
+                toolContext = options.toolContext + ("compactionTransportId" to compactionId),
+            ),
+        )
+        val promptCacheKey = conversationId.value.toOpenAiSubscriptionKey()
+        val compactionBody = requestMapper.toRequest(
+            compactionRequest, profile, promptCacheKey, connectionId = connectionId,
+        )
+        val compactionTransportKey = compactionRequest.subscriptionTransportNamespace("unused").toOpenAiSubscriptionKey()
+        val preparedCheckpoint = async {
+            compactor.execute(
+                compactionRequest, compactionBody, profile, session,
+                compactionTransportKey, connectionId, configuration,
+            )
+        }
+
+        val tailUser = message(conversationId, Conversation.Message.Role.USER, listOf(
+            Conversation.Message.ContentItem.UserMessage(
+                "The exact tail marker is $tailMarker. Calculate 137 * 149, then report the exact project marker, " +
+                    "the exact tail marker, and the product. Do not call tools.",
+            ),
+        ))
+        val foregroundRequest = request(prefix + tailUser)
+        val foregroundBody = requestMapper.toRequest(
+            foregroundRequest, profile, promptCacheKey, connectionId = connectionId,
+        )
+        val foregroundParsed = sharedClient.create(
+            configuration, session,
+            foregroundRequest.subscriptionTransportNamespace("unused").toOpenAiSubscriptionKey(),
+            foregroundBody, profile, options.assistantResponseFormat,
+        )
+        assertEquals("completed", assertNotNull(foregroundParsed.completed).status)
+        val foregroundReasoning = foregroundParsed.outputItems.filter {
+            it["type"] == JsonPrimitive("reasoning") &&
+                !it["encrypted_content"]?.jsonPrimitive?.contentOrNull.isNullOrBlank()
+        }
+        assertTrue(
+            foregroundReasoning.isNotEmpty(),
+            "Foreground response supplied no replayable reasoning: " + foregroundParsed.outputItems.map {
+                "${it["type"]?.jsonPrimitive?.contentOrNull}:${it.keys.sorted()}"
+            },
+        )
+        val foregroundResponse = responseMapper.toRuntimeResponse(
+            foregroundParsed.outputItems, foregroundParsed.completed, conversationId.value,
+            connectionId, configuration.id.value, profile.slug, options.assistantResponseFormat,
+        )
+        assertEquals(AiStepOutcome.COMPLETE, foregroundResponse.outcome)
+        assertTrue(foregroundResponse.toolCalls.isEmpty())
+        val tail = listOf(tailUser) + persisted(
+            compactor.recordContextUsage(
+                foregroundBody, foregroundParsed, foregroundResponse,
+                options.assistantResponseFormat, profile,
+            ),
+            sourceThread,
+        )
+
+        val prepared = persisted(preparedCheckpoint.await(), sourceThread).single()
+        val checkpointItem = prepared.content.single() as Conversation.Message.ContentItem.ContextCompactionResult
+        val committedCheckpoint = prepared.copy(content = listOf(checkpointItem.copy(
+            historyTransition = Conversation.Message.ContentItem.ContextCompactionResult.HistoryTransition(
+                sourceThread, targetThread,
+            ),
+        ))).recordRetainedOpenAiReplay(previous = null, tail.map(CompactionMessageHeader::from))
+
+        val finalUser = message(conversationId, Conversation.Message.Role.USER, listOf(
+            Conversation.Message.ContentItem.UserMessage(
+                "Repeat the exact project marker, the exact tail marker, and the product from the previous turn. " +
+                    "Do not call tools.",
+            ),
+        ))
+        val replayRequest = request(
+            listOf(committedCheckpoint) + tail + finalUser,
+            options.copy(toolContext = options.toolContext + ("threadId" to targetThread.value)),
+        )
+        val replayBody = requestMapper.toRequest(
+            replayRequest, profile, promptCacheKey, connectionId = connectionId,
+        )
+        foregroundReasoning.forEach { reasoning ->
+            assertTrue(reasoning in replayBody.input, "Committed COW replay omitted foreground reasoning")
+        }
+        val replayParsed = client().create(
+            configuration, session,
+            replayRequest.subscriptionTransportNamespace("unused").toOpenAiSubscriptionKey(),
+            replayBody, profile, options.assistantResponseFormat,
+        )
+        val replayCompleted = assertNotNull(replayParsed.completed)
+        assertEquals("completed", replayCompleted.status)
+        assertNull(
+            replayCompleted.inputTransformations.removedReasoningLogSummary(),
+            "Provider removed retained foreground reasoning",
+        )
+        val replayResponse = responseMapper.toRuntimeResponse(
+            replayParsed.outputItems, replayParsed.completed, conversationId.value,
+            connectionId, configuration.id.value, profile.slug, options.assistantResponseFormat,
+        )
+        assertEquals(AiStepOutcome.COMPLETE, replayResponse.outcome)
+        assertTrue(replayResponse.toolCalls.isEmpty())
+        val finalText = replayResponse.messages.flatMap { it.content }
+            .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
+            .joinToString("\n") { it.structured.fullText }
+        assertTrue(prefixMarker in finalText, "Committed checkpoint lost the prefix marker")
+        assertTrue(tailMarker in finalText, "Committed checkpoint lost the foreground tail marker")
+        assertTrue("20413" in finalText, "Committed replay lost the foreground result")
+        println(
+            "Live detached compaction replay: model=${profile.slug} " +
+                "foregroundReasoning=${foregroundReasoning.size} " +
+                "inputTransformations=${replayParsed.completed?.inputTransformations.orEmpty().size}",
+        )
+    }
+
     @Test
     fun compactionRetainsToolKnowledgeAcrossPersistedHistoryAndFreshConnections() = runBlocking {
         if (System.getenv("GROMOZEKA_OPENAI_SUBSCRIPTION_REAL") != "true") return@runBlocking

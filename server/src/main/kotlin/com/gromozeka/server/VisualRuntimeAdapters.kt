@@ -143,7 +143,7 @@ class ConversationVisualInteractionDelivery(
         )
         require(actor.canUseAi) { "AI access is not allowed for this user" }
         val agentId = visual.agentDefinitionId ?: error("No agent owns this Visual. Create it from the intended agent or attach a command handler.")
-        return ingress.enqueueAgentInvocation(actor, visual.conversationId, message, agentId, QueuedMessagePlacement.AFTER_TOOL_RESULT)
+        return ingress.submitMessage(actor, visual.conversationId, message, agentId, MessageDelivery.STEER)
     }
 }
 

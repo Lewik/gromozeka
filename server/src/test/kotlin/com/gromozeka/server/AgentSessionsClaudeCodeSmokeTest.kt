@@ -42,7 +42,7 @@ class AgentSessionsClaudeCodeSmokeTest {
                 assertEquals(outboxBefore, fixture.repository.deliveries)
                 assertEquals(0, modelCalls[fixture.b.conversationId] ?: 0)
                 assertTrue(fixture.service.wakeups.tryReceive().isFailure)
-                Mockito.verifyNoInteractions(fixture.history, fixture.sync)
+                Mockito.verifyNoInteractions(fixture.sync)
                 assertTrue(Mockito.mockingDetails(fixture.conversations).invocations.all {
                     it.method.name.substringBefore('-') in setOf("findById", "findByProject")
                 })
@@ -137,13 +137,12 @@ class AgentSessionsClaudeCodeSmokeTest {
         private val access = Mockito.mock(ProjectAccessService::class.java)
         private val agents = Mockito.mock(AgentDomainService::class.java)
         val coordinator = InMemoryConversationRuntimeCoordinator()
-        val history = Mockito.mock(ConversationDomainService::class.java)
         val sync = Mockito.mock(ConversationRuntimeStateSyncService::class.java)
         val repository = SessionsSmokeRepository()
         private val agentAccess = ConversationAgentAccessService(conversations, identities, access, agents)
         private val tabLayouts = Mockito.mock(UserConversationTabLayoutService::class.java)
         private val messageHistory = Mockito.mock(ConversationHistoryRepository::class.java)
-        val service = AgentCollaborationService(repository, conversations, agentAccess, agents, coordinator, sync, tabLayouts, messageHistory, history)
+        val service = AgentCollaborationService(repository, conversations, agentAccess, agents, coordinator, sync, tabLayouts, messageHistory)
         val nativeTool = AgentCollaborationToolContributor(service).callbacks.single { it.definition.name == "grz_agent_sessions" }
         private val contracts = SessionsSmokeContracts()
         private val workers = Mockito.mock(ConversationRuntimeWorkerRegistry::class.java)

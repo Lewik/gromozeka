@@ -8,11 +8,14 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.isFullContextCompaction
 import com.gromozeka.domain.service.AgentDomainService
+import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolContextField
 import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.AiToolDescriptor
 import com.gromozeka.domain.tool.AiToolLoadingPolicy
 import com.gromozeka.domain.tool.PreloadedServerToolMetadata
 import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
@@ -47,8 +50,6 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
@@ -56,8 +57,8 @@ import kotlin.math.ceil
 import kotlin.math.ln
 
 const val SEARCH_TOOLS_TOOL_NAME = "search_tools"
-const val SEARCH_TOOLS_DEFAULT_LIMIT = 8
-const val SEARCH_TOOLS_MAX_LIMIT = 20
+const val SEARCH_TOOLS_DEFAULT_LIMIT = 5
+const val SEARCH_TOOLS_MAX_LIMIT = 5
 const val SEARCH_TOOLS_QUERY_GUIDANCE =
     "Search one capability per call using one or two distinctive concepts, or an exact tool name. " +
         "Search unrelated capabilities separately."
@@ -222,7 +223,9 @@ class AiToolRuntimeCatalogService {
         messages: List<Conversation.Message>,
         memoryEnabled: Boolean,
     ): AiToolRuntimeSelection {
-        val toolsByName = catalog.tools.associateBy { it.definition.name }
+        val toolsByName = catalog.tools
+            .filter { it.isAvailableForConversation(memoryEnabled) }
+            .associateBy { it.definition.name }
         val requestedToolNames = loadedToolNames(
             agent = agent,
             catalog = catalog,
@@ -256,7 +259,7 @@ class AiToolRuntimeCatalogService {
         addAll(discoveredToolNames(messages, catalog))
         removeAll { name ->
             catalog.entries[name]?.let { entry ->
-                !agent.toolAccess.allows(
+                !entry.descriptor.isAvailableForConversation(memoryEnabled) || !agent.toolAccess.allows(
                     com.gromozeka.domain.tool.QualifiedToolName(entry.descriptor.definition.source, entry.logicalName),
                     entry.contractFingerprint,
                 )
@@ -323,8 +326,7 @@ class AiToolRuntimeCatalogService {
             ?.jsonArray
             .orEmpty()
             .mapNotNull { tool ->
-                tool.jsonObject["name"]
-                    ?.jsonPrimitive
+                (tool as? JsonPrimitive)
                     ?.contentOrNull
                     ?.takeIf(String::isNotBlank)
             }
@@ -374,10 +376,9 @@ class SearchToolsToolCallback(
     private val agentDomainService: AgentDomainService,
     private val conversationDomainService: ConversationDomainService,
     private val distributedToolCatalog: DistributedAiToolCatalog,
-    private val agentSkillRuntimeCatalogService: AgentSkillRuntimeCatalogService,
-    private val runtimeCatalogService: AiToolRuntimeCatalogService,
     private val searchService: AiToolSearchService,
     private val settingsProvider: SettingsProvider,
+    private val aiConfigurationProvider: AiConfigurationProvider,
 ) : AiToolCallback {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -391,7 +392,7 @@ class SearchToolsToolCallback(
         name = SEARCH_TOOLS_TOOL_NAME,
         description = """
             Search tools that are not currently loaded. $SEARCH_TOOLS_QUERY_GUIDANCE
-            Matching tools and their complete input schemas become callable in the next model step.
+            Up to five matching tools become callable in the next model step.
         """.trimIndent(),
         inputSchema = """
             {
@@ -439,39 +440,25 @@ class SearchToolsToolCallback(
         val conversation = conversationDomainService.findById(conversationId)
             ?: error("Conversation not found: ${conversationId.value}")
         require(conversation.projectId == project.id) { "Conversation belongs to another project" }
-        val preparedCatalog = agentSkillRuntimeCatalogService.prepare(
-            agent = agent,
-            projectId = project.id,
-            toolCatalog = distributedToolCatalog.snapshot(project, agent.toolAccess, conversation),
-        ).toolCatalog
-        val loadedToolNames = runtimeCatalogService.loadedToolNames(
-            agent = agent,
-            catalog = preparedCatalog,
-            messages = conversationDomainService.loadCurrentMessages(conversationId),
-            memoryEnabled = settingsProvider.userProfile.memorySettings.let { it.autoRemember || it.autoRecall },
-        )
+        val catalog = distributedToolCatalog.snapshot(project, agent.toolAccess, conversation)
+        val memoryEnabled = conversationMemoryAvailability(
+            conversation,
+            settingsProvider.userProfile.memorySettings,
+            aiConfigurationProvider,
+        ).enabled
         val matches = searchService.search(
-            tools = preparedCatalog.tools.filterNot { it.definition.name in loadedToolNames },
+            tools = catalog.tools.filter {
+                it.isAvailableForConversation(memoryEnabled) &&
+                    it.definition.name !in context?.modelVisibleToolNames.orEmpty()
+            },
             query = input.query,
             limit = input.limit,
         )
 
         buildJsonObject {
-            put("query", input.query)
-            put("catalog_revision", preparedCatalog.environmentRevision)
-            put("loaded_for_current_context", true)
-            put("count", matches.size)
-            if (matches.isEmpty()) {
-                put("hint", SEARCH_TOOLS_QUERY_GUIDANCE)
-            }
             putJsonArray("tools") {
                 matches.forEach { match ->
-                    add(buildJsonObject {
-                        put("name", match.tool.definition.name)
-                        put("description", match.tool.definition.description)
-                        put("source", match.tool.definition.source)
-                        put("input_schema", json.parseToJsonElement(match.tool.definition.inputSchema))
-                    })
+                    add(JsonPrimitive(match.tool.definition.name))
                 }
             }
         }.toString()
@@ -491,6 +478,15 @@ class SearchToolsToolCallback(
         return Conversation.Id(value)
     }
 }
+
+internal fun AiToolCallback.isAvailableForConversation(memoryEnabled: Boolean): Boolean =
+    metadata.isAvailableForConversation(memoryEnabled)
+
+private fun AiToolDescriptor.isAvailableForConversation(memoryEnabled: Boolean): Boolean =
+    metadata.isAvailableForConversation(memoryEnabled)
+
+private fun com.gromozeka.domain.tool.AiToolMetadata.isAvailableForConversation(memoryEnabled: Boolean): Boolean =
+    memoryEnabled || AiToolContextField.MEMORY_NAMESPACE !in contextRequirements.fields
 
 internal data class Bm25Document<T>(
     val id: T,

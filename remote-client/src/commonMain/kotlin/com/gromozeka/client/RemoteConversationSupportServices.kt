@@ -109,12 +109,14 @@ internal class RemoteConversationHistoryService(
     override suspend fun compactMessages(
         conversationId: Conversation.Id,
         messageIds: List<Conversation.Message.Id>,
+        fullSelection: Boolean,
         strategy: SquashType,
     ): Conversation = client.requestTyped<CompactMessagesRequest, ConversationResponse>(
         CompactMessagesRequest(
             taskId = newHistoryTaskId(),
             conversationId = conversationId,
             messageIds = messageIds,
+            fullSelection = fullSelection,
             strategy = strategy,
         )
     ).conversation ?: error("Server returned null conversation after compaction")

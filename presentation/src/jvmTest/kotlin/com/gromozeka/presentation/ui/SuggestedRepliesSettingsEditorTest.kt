@@ -57,6 +57,12 @@ class SuggestedRepliesSettingsEditorTest {
         setContent { MaterialTheme { SuggestedRepliesSettingsEditor(settings.value) { settings.value = it } } }
         onNodeWithText("Inline with the answer").performClick()
         onNodeWithText("Separate AI runtime").performClick()
+        onNodeWithText("Full current thread").performClick()
+        onNodeWithText("Recent messages (10 × 4000 characters)").performClick()
+        runOnIdle {
+            assertEquals(initial.copy(mode = SuggestedRepliesSettings.Mode.SEPARATE_RUNTIME,
+                contextMode = SuggestedRepliesSettings.ContextMode.RECENT_MESSAGES), settings.value)
+        }
         onNodeWithText("Recent messages (10 × 4000 characters)").performClick()
         onNodeWithText("Full current thread").performClick()
         runOnIdle {

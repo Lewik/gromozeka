@@ -53,27 +53,3 @@ data class StoredNamedSecret(
     val metadata: NamedSecret,
     val value: String,
 )
-
-@Serializable
-data class RevealedSecretRuntimeContext(
-    val values: Map<String, String>,
-) {
-    init {
-        require(values.isNotEmpty()) { "Revealed secret runtime context must not be empty" }
-        require(values.keys.all(NamedSecret.NAME_PATTERN::matches)) {
-            "Revealed secret runtime context contains an invalid name"
-        }
-    }
-
-    fun toXml(): String = buildString {
-        appendLine("<revealed_secrets transient=\"true\">")
-        values.entries.sortedBy { it.key }.forEach { (name, value) ->
-            append("  <secret name=\"")
-            append(name.escapeXml())
-            append("\">")
-            append(value.escapeXml())
-            appendLine("</secret>")
-        }
-        append("</revealed_secrets>")
-    }
-}

@@ -121,6 +121,42 @@ class AiRequestResponseGatewayCodecTest {
     }
 
     @Test
+    fun runtimeMessageSurvivesWorkerRequestEncoding() = runBlocking {
+        val fixture = TestHandler()
+        val observation = Conversation.Message(
+            id = Conversation.Message.Id("runtime-observation"),
+            conversationId = Conversation.Id("conversation"),
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(
+                kotlinx.serialization.json.JsonObject(mapOf(
+                    "kind" to kotlinx.serialization.json.JsonPrimitive("runtime_state"),
+                )),
+            )),
+            createdAt = Instant.fromEpochMilliseconds(0),
+        )
+        val request = fixture.runtimeRequest.copy(messages = listOf(observation))
+        val handler = object : AiRequestResponseExecutionHandler by fixture {
+            override suspend fun call(
+                runtime: ResolvedAiRuntime,
+                workspaceRootPath: String?,
+                request: AiRuntimeRequest,
+            ): AiRuntimeResponse {
+                assertEquals(listOf(observation), request.messages)
+                return fixture.runtimeResponse
+            }
+        }
+
+        val encoded = AiRequestResponseGatewayCodec.encodeCallRequest(fixture.runtime, null, request)
+        val wire = encoded.decodeToString()
+        kotlin.test.assertTrue(wire.contains("\"role\":\"RUNTIME\""))
+        kotlin.test.assertTrue(wire.contains("runtime_state"))
+        val response = AiRequestResponseGatewayCodec.execute(encoded, handler)
+
+        assertEquals(fixture.runtimeResponse, AiRequestResponseGatewayCodec.decodeCallResponse(response))
+    }
+
+    @Test
     fun `model discovery is connection scoped and rejects wrong executor or disabled connection`() = runBlocking<Unit> {
         val fixture = TestHandler()
         val worker = com.gromozeka.domain.service.ConversationRuntimeWorkerId("models-worker")

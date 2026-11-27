@@ -43,7 +43,9 @@ class SparseConversationHistoryTest {
             for (provider in listOf(null, "OPENAI_SUBSCRIPTION", "CLAUDE_CODE")) {
                 val ids = select(history, provider)
                 val sparse = history.filter { it.id in ids }
-                assertEquals(reference.messagesForProvider(provider), ConversationContext(sparse).messagesForProvider(provider),
+                assertEquals(
+                    ConversationContext(history).messagesForProvider(target(provider)),
+                    ConversationContext(sparse).messagesForProvider(target(provider)),
                     "provider=$provider seed=$seed")
                 assertEquals(reference.messages(), ConversationContext(sparse).messages(), "tool discovery seed=$seed")
             }
@@ -62,7 +64,7 @@ class SparseConversationHistoryTest {
         val history = archive + checkpoint + tail
         val ids = select(history, null)
         assertEquals(setOf(archive[79].id, archive[80].id, archive[99].id, checkpoint.id, tail.id), ids)
-        assertEquals(listOf(checkpoint, tail), ConversationContext(history.filter { it.id in ids }).messagesForProvider(null))
+        assertEquals(listOf(checkpoint, tail), ConversationContext(history.filter { it.id in ids }).messagesForProvider(target(null)))
     }
 
     @Test
@@ -82,20 +84,20 @@ class SparseConversationHistoryTest {
         for (summary in listOf(checkpoint, corrected)) {
             val history = listOf(user, call, result, summary, text("tail"))
             val sparse = history.filter { it.id in select(history, null) }
-            assertEquals(ConversationContextReference(history.map(Message::originalCollaborationMessage)).messagesForProvider(null),
-                ConversationContext(sparse.map(Message::originalCollaborationMessage)).messagesForProvider(null))
+            assertEquals(ConversationContext(history.map(Message::originalCollaborationMessage)).messagesForProvider(target(null)),
+                ConversationContext(sparse.map(Message::originalCollaborationMessage)).messagesForProvider(target(null)))
             assertEquals(ConversationContextReference(history).messages(), ConversationContext(sparse).messages())
         }
     }
 
     @Test
-    fun missingForeignSourcesAndInvalidCoverageFailBeforeHydration() {
+    fun incompatibleOpaqueSourcesAreNotHydratedAndInvalidCoverageStillFails() {
         val opaque = text("checkpoint").copy(role = Message.Role.ASSISTANT, content = listOf(Compaction(
             Compaction.Payload.OpaqueProviderState(JsonObject(emptyMap())), Compaction.Origin.PROVIDER_AUTO,
             coverage = Compaction.Coverage.SELECTED_MESSAGES, sourceMessageIds = listOf(Message.Id("foreign")),
             providerScope = Compaction.ProviderScope("OPENAI_SUBSCRIPTION"),
         )))
-        assertFailsWith<IllegalStateException> { select(listOf(opaque), null) }
+        assertEquals(setOf(opaque.id), select(listOf(opaque), null))
         assertEquals(setOf(opaque.id), select(listOf(opaque), "OPENAI_SUBSCRIPTION"))
         val forward = opaque.copy(content = listOf((opaque.content.single() as Compaction).copy(
             payload = Compaction.Payload.ReadableSummary("summary"), sourceMessageIds = listOf(Message.Id("future")))))
@@ -133,6 +135,8 @@ class SparseConversationHistoryTest {
         val checkpoints = history.filter { MessageContextMetadata.from(it).hasCompaction }
         return selectModelHistoryMessageIds(headers, checkpoints, provider)
     }
+
+    private fun target(provider: String?): Compaction.ProviderScope? = provider?.let { Compaction.ProviderScope(it) }
 
     private fun text(id: String) = Message(Message.Id(id), Conversation.Id("conversation"), role = Message.Role.USER,
         content = listOf(ContentItem.UserMessage(id)), createdAt = Instant.parse("2026-11-08T00:00:00.123456789Z"))

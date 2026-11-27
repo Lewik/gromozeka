@@ -64,50 +64,29 @@ class ConversationCompactionIndex(private val history: List<CompactionNode>) {
         return covered
     }
 
-    fun incompatibleCompactions(node: CompactionNode, provider: String?): List<CompactionCoverage> =
-        node.compactions.filter {
-            it.opaque &&
-                (provider == null || it.provider != provider)
-        }
-
-    fun recoverySourceIds(id: Message.Id, incompatible: List<CompactionCoverage>): List<Message.Id> {
-        val sourceIds = incompatible.flatMap { result ->
-            if (result.coversAllPrevious && positions[id]?.let { it > 0 } == true) {
-                history.take(positions.getValue(id)).map(CompactionNode::id)
-            } else result.sourceMessageIds
-        }.distinct()
-        require(sourceIds.isNotEmpty()) {
-            "Cannot recover opaque compaction ${id.value}: original messages are unavailable"
-        }
-        sourceIds.forEach { sourceId ->
-            check(sourceId in byId) { "Missing compaction source message: ${sourceId.value}" }
-        }
-        return sourceIds
-    }
-
-    class RecoveryWindow(val nodes: List<CompactionNode>, val invalidatedReplay: Set<Message.Id>)
-
-    fun recoveryWindow(id: Message.Id, foreign: List<CompactionCoverage>): RecoveryWindow {
-        val sources = recoverySourceIds(id, foreign).map(byId::getValue)
-        val invalidated = sources.flatMap { it.compactions }.flatMapTo(mutableSetOf()) { it.invalidatedReplayMessageIds }
-        return RecoveryWindow(project(sources), invalidated)
-    }
-
-    /** Keep checkpoints for transitive coverage and replay invalidation, plus recovery sources. */
-    fun requiredHistoryIds(provider: String?): Set<Message.Id> {
+    /** Keep projected messages and checkpoints for coverage/replay metadata inside one bounded window. */
+    fun requiredHistoryIds(): Set<Message.Id> {
         val required = project().mapTo(mutableSetOf()) { it.id }
         history.filter { it.compactions.isNotEmpty() }.mapTo(required) { it.id }
-        fun recover(input: List<CompactionNode>, visiting: Set<Message.Id>) {
-            project(input).forEach { node ->
-                val incompatible = incompatibleCompactions(node, provider)
-                if (incompatible.isEmpty()) return@forEach
-                require(node.id !in visiting) { "Cyclic opaque compaction sources at ${node.id.value}" }
-                val sources = recoverySourceIds(node.id, incompatible)
-                required += sources
-                recover(sources.map(byId::getValue), visiting + node.id)
-            }
-        }
-        recover(history, emptySet())
         return required
+    }
+
+    /** Selective checkpoints derived from a changed message must not survive on a copied branch. */
+    fun dependentSummaryIds(changedIds: Set<Message.Id>): Set<Message.Id> {
+        val affected = changedIds.toMutableSet()
+        val invalidated = mutableSetOf<Message.Id>()
+        do {
+            var changed = false
+            history.forEach { node ->
+                if (node.id !in affected && !node.isFull &&
+                    node.compactions.any { compaction -> compaction.sourceMessageIds.any { it in affected } }
+                ) {
+                    affected += node.id
+                    invalidated += node.id
+                    changed = true
+                }
+            }
+        } while (changed)
+        return invalidated
     }
 }

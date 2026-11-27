@@ -20,7 +20,7 @@ class AsyncCleanBackupUpgradeTest {
     private data class ArchiveArtifact(val bytes: Long, val sha256: String)
     private data class MessageSnapshot(val count: Long, val digest: String, val artifacts: Set<String>)
 
-    @Test fun `restored pre async backup upgrades compact terminology without changing history semantics or losing managed artifacts`() {
+    @Test fun `restored pre async backup upgrades compact records without changing history semantics or losing managed artifacts`() {
         assumeTrue("Requires an independently restored private backup", System.getenv("GROMOZEKA_ASYNC_BACKUP_TEST") == "true")
         val schema = requireNotNull(System.getenv("GROMOZEKA_ASYNC_BACKUP_SCHEMA"))
         require(schema.matches(Regex("[A-Za-z_][A-Za-z0-9_]*")))
@@ -40,9 +40,9 @@ class AsyncCleanBackupUpgradeTest {
         }
         val before = messages(source, validateTypedMetadata = false)
         val migration = flyway.migrate()
-        assertEquals(listOf("89", "90", "91", "92"), migration.migrations.map { it.version })
+        assertEquals(listOf("89", "90", "91", "92", "93", "94", "95", "96", "97", "98", "99", "100"), migration.migrations.map { it.version })
         flyway.validate()
-        assertEquals("92", assertNotNull(flyway.info().current()).version.toString())
+        assertEquals("100", assertNotNull(flyway.info().current()).version.toString())
         val after = messages(source, validateTypedMetadata = true)
         assertEquals(before, after, "Upgrade may normalize typed metadata and compact terminology, but must preserve history semantics and opaque replay payloads")
         assertTrue(after.count > 0, "The restored backup must contain actual history")
@@ -71,7 +71,7 @@ class AsyncCleanBackupUpgradeTest {
                 }
             }
         }
-        println("ASYNC_BACKUP_UPGRADE_VERIFIED messages=${after.count} referencedManagedArtifacts=$verified flyway=88->92")
+        println("ASYNC_BACKUP_UPGRADE_VERIFIED messages=${after.count} referencedManagedArtifacts=$verified flyway=88->100")
     }
 
     @Test fun `empty database receives the same final schema without the old async upgrade step`() {
@@ -82,7 +82,7 @@ class AsyncCleanBackupUpgradeTest {
             val flyway = Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema)
                 .locations("classpath:db/migration/postgres").load()
             flyway.migrate(); flyway.validate()
-            assertEquals("92", assertNotNull(flyway.info().current()).version.toString())
+            assertEquals("100", assertNotNull(flyway.info().current()).version.toString())
             source.connection.use { connection -> connection.createStatement().use { statement ->
                 statement.executeQuery("SELECT count(*) FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace WHERE n.nspname=current_schema() AND t.relname='async_tool_operations' AND conname IN ('async_tool_claim_generation_nonnegative','async_tool_claim_generation_owner')").use { rows ->
                     assertTrue(rows.next()); assertEquals(2, rows.getInt(1))
@@ -116,8 +116,14 @@ class AsyncCleanBackupUpgradeTest {
                             fail("Backup message ${rows.getString("id")} cannot be decoded (${failure::class.simpleName}); private payload is not logged")
                         }
                         if (validateTypedMetadata && message.syntheticKind != null) message.backgroundActivitySource
-                        val metadata = JsonObject(message.providerMetadata.filterKeys { it !in setOf("syntheticKind", "backgroundActivitySource") })
-                        val canonical = Json.encodeToString(Conversation.Message.serializer(), message.copy(providerMetadata = metadata))
+                        if (validateTypedMetadata) message.content.filterIsInstance<ContentItem.ContextCompactionResult>()
+                            .filter { it.coversAllPrevious }.forEach { checkpoint ->
+                                assertTrue(checkpoint.sourceMessageIds.isEmpty())
+                                assertNotNull(checkpoint.sourceBoundaryMessageId)
+                            }
+                        val normalized = normalizeFullCompactions(message)
+                        val metadata = JsonObject(normalized.providerMetadata.filterKeys { it !in setOf("syntheticKind", "backgroundActivitySource") })
+                        val canonical = Json.encodeToString(Conversation.Message.serializer(), normalized.copy(providerMetadata = metadata))
                         digest.update(canonical.encodeToByteArray()); digest.update(0.toByte())
                         message.content.forEach { item -> when (item) {
                             is ContentItem.ArtifactItem -> artifacts += item.artifact.id.value
@@ -140,4 +146,15 @@ class AsyncCleanBackupUpgradeTest {
             "\"id\":\"gromozeka.message-compaction.summarize\"",
             "\"id\":\"gromozeka.message-compaction.compact\"",
         )
+
+    private fun normalizeFullCompactions(message: Conversation.Message): Conversation.Message = message.copy(
+        content = message.content.map { item ->
+            if (item !is ContentItem.ContextCompactionResult || !item.coversAllPrevious) item
+            else item.copy(
+                sourceBoundaryMessageId = null,
+                sourceMessageIds = emptyList(),
+                continuationState = ContentItem.ContextCompactionResult.ContinuationState(),
+            )
+        },
+    )
 }

@@ -3336,7 +3336,7 @@ internal fun UserMessageDeliveryPreferenceSetting(service: com.gromozeka.domain.
             label = translation.text("client.delivery.title"),
             description = translation.text("client.delivery.description"),
             value = mode,
-            options = com.gromozeka.domain.model.UserMessageDeliveryMode.entries,
+            options = com.gromozeka.domain.model.MessageDelivery.entries,
             optionLabel = { it.displayLabel(translation) },
             optionEnabled = { !saving },
             modifier = Modifier.testTag("message-delivery-preference"),

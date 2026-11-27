@@ -8,6 +8,38 @@ import kotlin.time.Instant
 
 class ConversationMessageProjectionTest {
     @Test
+    fun runtimeMessagesUseTheOrdinaryHistoryProjection() {
+        val original = message(emptyList()).copy(
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(JsonPrimitive("runtime-json"))),
+        )
+
+        val view = ConversationMessageProjection.project(PositionedConversationMessage(1, original))
+        val event = ConversationMessageProjection.projectEvent(original)
+
+        assertEquals(original, view.message)
+        assertFalse(view.hasMoreContent)
+        assertContains(Json.encodeToString(view), "runtime-json")
+        assertEquals(original, event)
+    }
+
+    @Test
+    fun oversizedRuntimeJsonKeepsItsContentTypeInTheBoundedPreview() {
+        val original = message(emptyList()).copy(
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(JsonPrimitive("x".repeat(300_000)))),
+        )
+
+        val view = ConversationMessageProjection.project(PositionedConversationMessage(1, original))
+
+        assertTrue(view.hasMoreContent)
+        assertEquals(JsonNull, assertIs<Conversation.Message.ContentItem.RuntimeJson>(view.message.content.single()).json)
+        assertTrue(Json.encodeToString(view).encodeToByteArray().size < 32 * 1024)
+    }
+
+    @Test
     fun providerReplayStateStaysOnTheServer() {
         val original = message(listOf(
             Conversation.Message.ContentItem.Thinking("Readable reasoning", "signature-secret"),

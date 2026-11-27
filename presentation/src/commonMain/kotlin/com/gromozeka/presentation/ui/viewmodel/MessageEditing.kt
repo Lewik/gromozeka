@@ -16,6 +16,7 @@ internal fun Conversation.Message.editableText(): String? =
             ?.fullText
 
         Conversation.Message.Role.SYSTEM -> null
+        Conversation.Message.Role.RUNTIME -> null
     }
 
 internal fun Conversation.Message.withEditedText(newText: String): List<Conversation.Message.ContentItem> {

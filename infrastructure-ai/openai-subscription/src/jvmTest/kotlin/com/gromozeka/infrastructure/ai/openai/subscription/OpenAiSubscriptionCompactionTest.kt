@@ -7,10 +7,16 @@ import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.domain.model.recordRetainedOpenAiReplay
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiReasoningConfig
+import com.gromozeka.domain.model.ai.AiReasoningEffort
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiStepOutcome
+import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.ServerToolMetadata
+import com.gromozeka.domain.tool.ToolExecutionContext
 import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
 import java.util.concurrent.CopyOnWriteArrayList
@@ -69,6 +75,9 @@ class OpenAiSubscriptionCompactionTest {
             assertEquals(9_000, response.usage?.totalInputTokens)
             assertNull(response.contextUsage, "A byte estimate is not measured context usage")
             val checkpoint = persisted(response).single()
+            val compacted = checkpoint.content.single() as Checkpoint
+            assertTrue(compacted.sourceMessageIds.isEmpty())
+            assertEquals(request.messages.last().id, compacted.sourceBoundaryMessageId)
             val restored = Json.decodeFromString(Conversation.Message.serializer(),
                 Json.encodeToString(Conversation.Message.serializer(), checkpoint))
             val resumed = request.copy(messages = request.messages + restored)
@@ -80,6 +89,26 @@ class OpenAiSubscriptionCompactionTest {
             assertEquals(JsonPrimitive("opaque-checkpoint"), replay.input.last()["encrypted_content"])
             assertEquals(replay, freshMapper.toRequest(resumed, profile, "conversation", connectionId = "connection"))
 
+        }
+    }
+
+    @Test
+    fun compactOnlyUsesTheActualResponsesLiteToolsAndReasoningOverride() = runBlocking {
+        Fixture().use { fixture ->
+            val modelProfile = profile.copy(supportedReasoningEfforts = listOf("low", "xhigh"))
+            val request = request().copy(
+                tools = listOf(inspectTool),
+                options = AiRuntimeOptions(reasoning = AiReasoningConfig(effort = AiReasoningEffort.XHIGH)),
+            )
+            val mapped = fixture.mapper.toRequest(request, modelProfile, "conversation", connectionId = "connection")
+            fixture.compact(request, mapped, modelProfile)
+
+            val sent = fixture.requests.single()
+            val additionalTools = sent.getValue("input").jsonArray.first().jsonObject
+            val namespace = additionalTools.getValue("tools").jsonArray.single().jsonObject
+            assertEquals(JsonPrimitive("functions"), namespace["name"])
+            assertEquals(JsonPrimitive("inspect_state"), namespace.getValue("tools").jsonArray.single().jsonObject["name"])
+            assertEquals(JsonPrimitive("xhigh"), sent.getValue("reasoning").jsonObject["effort"])
         }
     }
 
@@ -328,5 +357,12 @@ class OpenAiSubscriptionCompactionTest {
 
     companion object {
         private val profile = OpenAiSubscriptionModelProfile("gpt-6-astra", true, true, listOf("low"), true, "low", false)
+        private val inspectTool = object : AiToolCallback {
+            override val definition = AiToolDefinition(
+                name = "inspect_state", description = "Inspect current state", inputSchema = """{"type":"object"}""",
+            )
+            override val metadata = ServerToolMetadata
+            override fun call(toolInput: String, context: ToolExecutionContext?) = error("Not executed")
+        }
     }
 }

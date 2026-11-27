@@ -1,7 +1,9 @@
 package com.gromozeka.server.telegram
 
 import com.gromozeka.domain.model.*
+import com.gromozeka.application.service.ContextSnapshotUnavailableException
 import com.gromozeka.domain.model.ai.AiModelSpec
+import com.gromozeka.domain.model.ai.AiRequestTokenEstimate
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.repository.TelegramChannelRepository
 import com.gromozeka.domain.service.*
@@ -21,7 +23,7 @@ class TelegramRequestEnricher(
         turnId: ConversationRuntimeTurnId, model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest {
         // A synthetic snapshot turn cannot authorize Telegram's live-invocation history filter.
         if (conversations.findById(conversationId)?.externalChannel?.provider == "telegram") {
-            throw UnsupportedOperationException("Telegram context does not support read-only snapshots")
+            throw ContextSnapshotUnavailableException("Telegram context does not support read-only snapshots")
         }
         return request
     }
@@ -56,13 +58,25 @@ class TelegramRequestEnricher(
         val current = request.messages.filter { it.id in ownMessageIds }
         check(current.firstOrNull()?.id == root.id) { "Current Telegram request must precede its continuations" }
         val outputReserve = request.options.maxOutputTokens ?: model.maxOutputTokens ?: 4096
-        val mandatory = estimate(Json.encodeToString(current)) + request.systemPrompts.sumOf(::estimate) + estimate(policy) +
-            request.tools.sumOf { estimate(Json.encodeToString(it.definition)) } + outputReserve.toLong() + window / 20 + 2048
+        val fixedRequest = request.copy(
+            systemPrompts = request.systemPrompts + policy,
+            messages = request.messages.filter { message ->
+                message.id in ownMessageIds || message.role == Conversation.Message.Role.RUNTIME
+            },
+        )
+        val mandatory = AiRequestTokenEstimate.input(fixedRequest).toLong() +
+            outputReserve + window / 20 + 2048
         check(mandatory < window) { "Telegram invocation exceeds the model context budget" }
         var remaining = minOf(window.toLong() * invocation.route.contextPercent / 100, window - mandatory)
         val selected = mutableListOf<Conversation.Message>()
-        for (message in request.messages.filter { it.id !in ownMessageIds }.asReversed()) {
-            val cost = estimate(transcript(message).toString()) + 128
+        for (message in request.messages.filter {
+            it.id !in ownMessageIds && it.role != Conversation.Message.Role.RUNTIME
+        }.asReversed()) {
+            val attachments = message.content.filterIsInstance<Conversation.Message.ContentItem.ArtifactItem>()
+            val attachmentCost = if (attachments.isEmpty()) 0 else AiRequestTokenEstimate.message(
+                message.copy(content = attachments, instructions = emptyList()),
+            )
+            val cost = AiRequestTokenEstimate.text(transcript(message).toString()).toLong() + attachmentCost + 32
             if (cost > remaining) break
             selected += message
             remaining -= cost
@@ -75,7 +89,16 @@ class TelegramRequestEnricher(
         val attachments = selected.asReversed().flatMap { it.content.filterIsInstance<Conversation.Message.ContentItem.ArtifactItem>() }
         val authorized = root.copy(content = listOf(Conversation.Message.ContentItem.UserMessage(context.toString())) + attachments +
             Conversation.Message.ContentItem.UserMessage("CURRENT AUTHORIZED REQUEST (message ${root.id.value}, Telegram user ${invocation.binding.initiatorTelegramUserId}):") + root.content)
-        return request.copy(systemPrompts = request.systemPrompts + policy, messages = listOf(authorized) + current.drop(1))
+        return request.copy(
+            systemPrompts = request.systemPrompts + policy,
+            messages = request.messages.mapNotNull { message ->
+                when {
+                    message.id == root.id -> authorized
+                    message.id in ownMessageIds || message.role == Conversation.Message.Role.RUNTIME -> message
+                    else -> null
+                }
+            },
+        )
     }
 
     private fun transcript(message: Conversation.Message): JsonObject = buildJsonObject {
@@ -83,9 +106,7 @@ class TelegramRequestEnricher(
         put("role", message.role.name)
         message.author?.let { put("author", Json.encodeToJsonElement(it)) }
         put("content", Json.encodeToJsonElement(message.content.filterNot {
-            it is Conversation.Message.ContentItem.Thinking && it.kind == Conversation.Message.ContentItem.Thinking.Kind.REDACTED
-        }.map { if (it is Conversation.Message.ContentItem.Thinking) it.copy(signature = null) else it }))
+            it is Conversation.Message.ContentItem.Thinking
+        }))
     }
-
-    private fun estimate(text: String): Long = text.encodeToByteArray().size.toLong()
 }

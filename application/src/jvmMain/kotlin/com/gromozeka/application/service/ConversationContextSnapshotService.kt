@@ -48,8 +48,13 @@ class ConversationContextSnapshotService(
         val resolved = configuration.resolveAiRuntime(agent.runtimeSelection)
         requireToolFreeContextQueryBackend(resolved.connection.kind)
         val profile = settings.userProfile
+        val nativeProvider = resolved.connection.kind.nativeCompactionProvider()
         // A single ordered repository read pins the history prefix. Later appends/compacts are not admitted.
-        val original = history.getMessagesByThread(target.threadId)
+        val selectedHistory = history.getContextMessagesByThread(
+            target.threadId,
+            nativeProvider,
+        )
+        val original = selectedHistory.messages
         val project = conversations.getProject(conversation.id)
         val context = RuntimeEnvironmentContext.ProjectBound(
             project = project,
@@ -74,12 +79,13 @@ class ConversationContextSnapshotService(
                 TOOL_CONTEXT_AGENT_DEFINITION_ID to agent.id.value,
                 TOOL_CONTEXT_USER_ID to actor.value,
                 "aiProvider" to resolved.connection.kind.provider.name,
+                "aiConnectionId" to resolved.connection.id.value,
+                "aiModelConfigurationId" to resolved.modelConfiguration.id.value,
                 "modelName" to resolved.modelConfiguration.providerModelId,
             ),
         )
         val projectionRequest = AiRuntimeRequest(emptyList(), original, options = options)
-        val nativeProvider = resolved.connection.kind.nativeCompactionProvider()
-        val projected = projectionRequest.projectedMessages(nativeProvider)
+        val projected = projectionRequest.projectedMessages(resolved.connection.kind)
         val prefix = completeToolGroupPrefix(projected)
         // Empty projection is not proof of empty usable history: a checkpoint in the discarded
         // tail may already have hidden a complete canonical prefix. Fail closed in that case.
@@ -97,20 +103,27 @@ class ConversationContextSnapshotService(
             }
         } ?: -1
         val runtimeMessages = sticky.materialize(
-            temporal.enrich(original.take(rawBoundary + 1), profile.agentSettings.includeMessageTemporalContext),
+            temporal.enrich(
+                original.take(rawBoundary + 1),
+                profile.agentSettings.includeMessageTemporalContext,
+                selectedHistory.continuationState.previousHumanMessageAt,
+            ),
             profile.messageInstructionGroups,
         )
-        val materializedPrefix = projectionRequest.copy(messages = runtimeMessages).projectedMessages(nativeProvider)
+        val materializedPrefix = projectionRequest.copy(messages = runtimeMessages).projectedMessages(resolved.connection.kind)
         if (materializedPrefix.map { it.id } != prefix.map { it.id }) throw ContextSnapshotUnavailableException(
             "Incomplete history checkpoint prevents a stable projected context prefix")
         val baseCatalog = toolCatalog.readSnapshot(project, agent.toolAccess, conversation)
         val skillContext = skills.prepare(agent, project.id, baseCatalog)
         val catalog = skillContext.toolCatalog
-        val definitions = catalog.tools.map { it.definition }
-        val memoryEnabled = conversation.externalChannel == null && (
-            (profile.memorySettings.autoRemember && configuration.availableRuntimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE) != null) ||
-                (profile.memorySettings.autoRecall && configuration.availableRuntimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_READ) != null)
-            )
+        val memoryEnabled = conversationMemoryAvailability(
+            conversation,
+            profile.memorySettings,
+            configuration,
+        ).enabled
+        val definitions = catalog.tools
+            .filter { it.isAvailableForConversation(memoryEnabled) }
+            .map { it.definition }
         val selectedTools = toolSelection.selectTools(agent, catalog, prefix, memoryEnabled)
         val peerContext = collaboration.takeIf { conversation.externalChannel == null }
         val systemPrompts = buildList {
@@ -153,8 +166,9 @@ class ConversationContextSnapshotService(
             runtimeSelection = agent.runtimeSelection,
             resolvedRuntime = resolved,
             request = request,
+            lastIncludedMessageId = prefix.lastOrNull()?.id,
             capturedAt = capturedAt,
-            sourceMessageCount = original.size,
+            sourceMessageCount = selectedHistory.sourceMessageCount,
             omittedTrailingMessageCount = projected.size - prefix.size,
         )
     }

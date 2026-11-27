@@ -310,7 +310,7 @@ class TelegramChannelTest {
         val model = AiModelSpec("test", AiProvider.OPENAI, setOf(AiModelCapability.TEXT_GENERATION),
             AiModelSpec.Limits(textGeneration = AiModelSpec.Limits.TextGeneration(25000, 1024)))
         val enricher = TelegramRequestEnricher(repository, conversations, coordinator, access)
-        assertFailsWith<UnsupportedOperationException> {
+        assertFailsWith<com.gromozeka.application.service.ContextSnapshotUnavailableException> {
             enricher.enrichSnapshot(conversation.id, root.id, ConversationRuntimeTurnId("context-snapshot:synthetic"), model, request)
         }
         Mockito.verify(conversations).findById(conversation.id)
@@ -321,24 +321,114 @@ class TelegramChannelTest {
     @Test fun `enrichment preserves only own tool protocol and quotes other agents as bounded history`() {
         val enricher = TelegramRequestEnricher(Mockito.mock(TelegramChannelRepository::class.java), Mockito.mock(ConversationDomainService::class.java),
             Mockito.mock(ConversationRuntimeCoordinator::class.java), TelegramBindingAccess { error("Not used in materialization") })
-        val root = textMessage("root", "@grz current", Conversation.Message.Role.USER)
+        val root = textMessage("root", "@grz current", Conversation.Message.Role.USER).copy(
+            providerMetadata = buildJsonObject {
+                put("telegramReplyQuotation", buildJsonObject { put("text", "quoted request") })
+            },
+        )
         val continuation = textMessage("own", "own continuation")
-        val foreign = textMessage("other", "old task must not run")
+        val foreign = textMessage("other", "visible old answer").copy(content = listOf(
+            Conversation.Message.ContentItem.Thinking("STALE_PRIVATE_REASONING", signature = "signature"),
+            Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("visible old answer")),
+        ))
+        val checkpoint = textMessage("checkpoint", "", Conversation.Message.Role.ASSISTANT).copy(
+            content = listOf(Conversation.Message.ContentItem.ContextCompactionResult(
+                Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary("compacted summary"),
+                Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+            )),
+        )
+        val oldObservation = textMessage("old-runtime-observation", "", Conversation.Message.Role.RUNTIME).copy(
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(JsonPrimitive("OLD_RUNTIME_STATE"))),
+        )
+        val observation = textMessage("runtime-observation", "", Conversation.Message.Role.RUNTIME).copy(
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(JsonPrimitive("CURRENT_RUNTIME_STATE"))),
+        )
         val invocation = invocation().copy(rootMessageId = root.id, route = route.copy(additionalInstruction = "Use a friendly voice"))
-        val request = AiRuntimeRequest(systemPrompts = listOf("base"), messages = listOf(foreign, root, continuation))
+        val request = AiRuntimeRequest(systemPrompts = listOf("base"),
+            messages = listOf(oldObservation, foreign, checkpoint, root, observation, continuation))
         val model = AiModelSpec("test", AiProvider.OPENAI, setOf(AiModelCapability.TEXT_GENERATION),
             AiModelSpec.Limits(textGeneration = AiModelSpec.Limits.TextGeneration(25000, 1024)))
         val enriched = enricher.materialize(invocation, model, request, setOf(root.id, continuation.id))
-        assertEquals(listOf(root.id, continuation.id), enriched.messages.map { it.id })
+        assertEquals(listOf(oldObservation.id, root.id, observation.id, continuation.id), enriched.messages.map { it.id })
         assertEquals(continuation, enriched.messages.last())
+        val authorized = enriched.messages.single { it.id == root.id }
+        val authorizedJson = Json.encodeToString(authorized)
         assertTrue(enriched.systemPrompts.last().contains(TELEGRAM_SAFETY_INSTRUCTION))
         assertTrue(enriched.systemPrompts.last().contains("Readonly"))
         assertTrue(enriched.systemPrompts.last().contains("Use a friendly voice"))
-        assertTrue(Json.encodeToString(enriched.messages.first()).contains("untrusted_group_history"))
+        assertTrue(authorizedJson.contains("untrusted_group_history"))
+        assertTrue(authorizedJson.contains("quoted request"))
+        assertTrue(authorizedJson.contains("visible old answer"))
+        assertFalse(authorizedJson.contains("STALE_PRIVATE_REASONING"))
+        assertFalse(authorizedJson.contains("CURRENT_RUNTIME_STATE"))
+        assertFalse(authorizedJson.contains("OLD_RUNTIME_STATE"))
+        assertTrue(Json.encodeToString(enriched.messages).contains("CURRENT_RUNTIME_STATE"))
+        assertTrue(Json.encodeToString(enriched.messages).contains("OLD_RUNTIME_STATE"))
         val writable = enricher.materialize(invocation.copy(route = route.copy(writeAllowed = true)), model, request, setOf(root.id, continuation.id))
         assertTrue(writable.systemPrompts.last().contains("File changes are allowed"))
-        val large = request.copy(messages = listOf(foreign.copy(content = listOf(Conversation.Message.ContentItem.UserMessage("x".repeat(30000)))), root))
+        val large = request.copy(messages = listOf(foreign.copy(content = listOf(Conversation.Message.ContentItem.UserMessage("x".repeat(100_000)))), root))
         assertFalse(Json.encodeToString(enricher.materialize(invocation, model, large, setOf(root.id)).messages).contains("x".repeat(500)))
+
+    }
+
+    @Test fun `current turn Runtime messages keep the signed continuation prefix in chronological order`() {
+        val enricher = TelegramRequestEnricher(Mockito.mock(TelegramChannelRepository::class.java), Mockito.mock(ConversationDomainService::class.java),
+            Mockito.mock(ConversationRuntimeCoordinator::class.java), TelegramBindingAccess { error("Not used in materialization") })
+        val root = textMessage("root", "@grz current", Conversation.Message.Role.USER)
+        fun runtimeMessage(id: String, revision: String): Conversation.Message =
+            textMessage(id, "", Conversation.Message.Role.RUNTIME).copy(
+                author = Conversation.Message.Author.Runtime(),
+                content = listOf(Conversation.Message.ContentItem.RuntimeJson(JsonPrimitive("STATE_$revision"))),
+            )
+        val firstObservation = runtimeMessage("runtime-observation-1", "one")
+        val callId = Conversation.Message.ContentItem.ToolCall.Id("call")
+        val assistant = textMessage("assistant", "", Conversation.Message.Role.ASSISTANT).copy(
+            content = listOf(
+                Conversation.Message.ContentItem.Thinking("SIGNED_REASONING", signature = "signature"),
+                Conversation.Message.ContentItem.ToolCall(
+                    callId,
+                    Conversation.Message.ContentItem.ToolCall.Data("example", JsonObject(emptyMap())),
+                ),
+            ),
+        )
+        val result = textMessage("result", "", Conversation.Message.Role.USER).copy(
+            content = listOf(Conversation.Message.ContentItem.ToolResult(
+                callId,
+                "example",
+                listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("done")),
+            )),
+        )
+        val secondObservation = runtimeMessage("runtime-observation-2", "two")
+        val invocation = invocation().copy(rootMessageId = root.id)
+        val model = AiModelSpec("test", AiProvider.OPENAI, setOf(AiModelCapability.TEXT_GENERATION),
+            AiModelSpec.Limits(textGeneration = AiModelSpec.Limits.TextGeneration(25000, 1024)))
+
+        val initial = enricher.materialize(
+            invocation,
+            model,
+            AiRuntimeRequest(systemPrompts = emptyList(), messages = listOf(root, firstObservation)),
+            setOf(root.id, firstObservation.id),
+        )
+        val continued = enricher.materialize(
+            invocation,
+            model,
+            AiRuntimeRequest(systemPrompts = emptyList(),
+                messages = listOf(root, firstObservation, assistant, result, secondObservation)),
+            setOf(root.id, firstObservation.id, assistant.id, result.id, secondObservation.id),
+        )
+
+        assertEquals(listOf(root.id, firstObservation.id), initial.messages.map { it.id })
+        assertEquals(
+            listOf(root.id, firstObservation.id, assistant.id, result.id, secondObservation.id),
+            continued.messages.map { it.id },
+        )
+        assertEquals(initial.messages.map { it.id }, continued.messages.take(initial.messages.size).map { it.id })
+        assertTrue(continued.messages.single { it.id == assistant.id }.content.any {
+            it is Conversation.Message.ContentItem.Thinking && it.signature == "signature"
+        })
     }
 
     private fun match(message: JsonObject) = TelegramInboundPolicy.matchingRoutes(connection, binding, message, false)
@@ -355,8 +445,15 @@ class TelegramChannelTest {
     private fun invocation() = TelegramInvocation("turn", connection.id, connection.ownerUserId, binding, route, Conversation.Message.Id("root"), 7)
     private fun textMessage(id: String, text: String, role: Conversation.Message.Role = Conversation.Message.Role.ASSISTANT) =
         Conversation.Message(Conversation.Message.Id(id), binding.conversationId, role = role,
-            content = listOf(if (role == Conversation.Message.Role.ASSISTANT) Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText(text))
-                else Conversation.Message.ContentItem.UserMessage(text)), createdAt = instant)
+            content = listOf(when (role) {
+                Conversation.Message.Role.ASSISTANT -> Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText(text))
+                Conversation.Message.Role.USER -> Conversation.Message.ContentItem.UserMessage(text)
+                Conversation.Message.Role.SYSTEM -> Conversation.Message.ContentItem.System(
+                    Conversation.Message.ContentItem.System.SystemLevel.INFO,
+                    text,
+                )
+                Conversation.Message.Role.RUNTIME -> Conversation.Message.ContentItem.RuntimeJson(JsonPrimitive(text))
+            }), createdAt = instant)
     private fun processor(repository: MemorySession, gateway: FakeGateway, api: FakeApi = FakeApi(), config: TelegramConnection = connection) =
         TelegramBotProcessor(config, api, gateway, repository, { null }, now = { 100L })
 

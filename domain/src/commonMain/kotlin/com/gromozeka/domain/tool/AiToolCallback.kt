@@ -113,11 +113,7 @@ data class AiToolMetadata(
     /** Additional identity gate declared by the tool; resource authorization remains in its operation. */
     val accessPolicy: AiToolAccessPolicy? = null,
     val contextRequirements: AiToolContextRequirements = AiToolContextRequirements(),
-    /** An invocation-bound effect that cannot be detached, such as next-model-request secret delivery. */
-    val inlineOnlyReason: String? = null,
-) {
-    init { require(inlineOnlyReason == null || inlineOnlyReason.isNotBlank()) }
-}
+)
 
 @Serializable
 enum class AiToolLoadingPolicy {

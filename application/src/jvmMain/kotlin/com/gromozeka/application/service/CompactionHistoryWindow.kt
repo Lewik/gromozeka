@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.CompactionNode
 import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message
+import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult
 import com.gromozeka.domain.model.ConversationCompactionIndex
 import com.gromozeka.domain.model.ConversationContext
 import com.gromozeka.domain.model.withoutProviderReplay
@@ -11,11 +12,13 @@ import com.gromozeka.domain.repository.ThreadMessageRepository
 
 /** Coverage and pair boundaries use immutable headers; only projected input needs bodies. */
 internal class CompactionHistoryWindow(val headers: List<CompactionMessageHeader>) {
-    private val index = ConversationCompactionIndex(headers.map { it.node })
     private val positions = headers.mapIndexed { i, header -> header.id to i }.toMap()
-    private val visible by lazy { index.project().map { headers[positions.getValue(it.id)] } }
+    private val index = ConversationCompactionIndex(headers.map { it.node })
+    private val visible by lazy {
+        index.project().map { headers[positions.getValue(it.id)] }
+    }
 
-    fun isFullSelection(selected: Set<Message.Id>): Boolean = visible.all { it.id in selected }
+    fun fullSelection(): List<CompactionMessageHeader> = headers
 
     fun prefix(pairs: ToolCallPairingService): List<CompactionMessageHeader> {
         val invalidated = headers.flatMap { it.coverage }.flatMapTo(mutableSetOf()) { it.invalidatedReplayMessageIds }
@@ -41,7 +44,11 @@ internal class CompactionHistoryWindow(val headers: List<CompactionMessageHeader
             val paired = pairs.includePairedHeaders(visible, headers.subList(boundary, headers.size).map { it.id })
             boundary = minOf(boundary, paired.minOf { positions.getValue(it) })
         } while (boundary != previous)
-        return if (visible.any { positions.getValue(it.id) < boundary }) headers.take(boundary) else emptyList()
+        return if (visible.any { positions.getValue(it.id) < boundary }) {
+            headers.take(boundary)
+        } else {
+            emptyList()
+        }
     }
 
     suspend fun messages(
@@ -50,25 +57,17 @@ internal class CompactionHistoryWindow(val headers: List<CompactionMessageHeader
     ): List<Message> {
         val nodes = index.project(selection.map { it.node })
         val visibleIds = nodes.mapTo(linkedSetOf()) { it.id }
-        // Foreign opaque checkpoints may need their original canonical sources for recursive recovery.
-        val required = visibleIds.toMutableSet()
-        val expanded = mutableSetOf<Message.Id>()
-        fun includeRecovery(candidates: List<CompactionNode>) {
-            for (node in candidates) {
-                val foreign = index.incompatibleCompactions(node, provider)
-                if (foreign.isEmpty() || !expanded.add(node.id)) continue
-                val recover = index.recoveryWindow(node.id, foreign).nodes
-                recover.mapTo(required) { it.id }
-                includeRecovery(recover)
-            }
-        }
-        includeRecovery(nodes)
         val invalidated = selection.flatMap { it.coverage }.flatMapTo(mutableSetOf()) { it.invalidatedReplayMessageIds }
-        val ids = headers.mapNotNull { it.id.takeIf(required::contains) }
+        val ids = headers.mapNotNull { it.id.takeIf(visibleIds::contains) }
         val bodies = repository.compactionBodies(thread, ids).map {
             if ((it.author as? Message.Author.User) != headers[positions.getValue(it.id)].author) throw CompactionScopeChangedException()
-            if (it.id in visibleIds && it.id in invalidated) it.withoutProviderReplay() else it
+            if (it.id in visibleIds && it.id in invalidated) {
+                it.withoutProviderReplay()
+            } else it
         }
-        return ConversationContext(bodies, index).messagesForProvider(provider, visibleIds)
+        return ConversationContext(bodies, index).messagesForProvider(
+            provider?.let { ContextCompactionResult.ProviderScope(it) },
+            visibleIds,
+        )
     }
 }

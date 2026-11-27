@@ -19,10 +19,11 @@ must be positive and lower than the blocking threshold. Its default is `null`
 
 ## Full versus selected compaction
 
-A full Harness-initiated compaction keeps roughly 80,000 characters of recent
-text without summarizing that suffix. This applies to automatic blocking
-compaction, proactive preparation, and manual selection of the entire effective
-window. A partial explicit selection does not acquire an extra retained suffix;
+A full COMPACT keeps roughly 80,000 characters of recent text without
+summarizing that suffix. This applies to automatic blocking compaction,
+proactive preparation, and manual COMPACT of the entire effective window.
+Full manual DISTILL and CONCATENATE instead consume the entire effective window.
+A partial explicit selection does not acquire an extra retained suffix;
 its tool call/result closure is still included and unselected messages remain.
 Selecting part of the history is not changed into a full operation merely because
 adding paired tool messages happens to cover all messages.
@@ -38,11 +39,12 @@ inside a retained whole-message suffix stays intact. Archived sources remain
 available for history recovery.
 
 If all effective raw history belongs to the suffix, there is no older prefix to
-compact. Background preparation is skipped. A full manual/blocking operation
-fails explicitly before inference instead of cutting a message, silently dropping
-the suffix or entering an endless compaction loop. The user can select older
-messages explicitly or adjust the blocking threshold. CONCATENATE still requires
-at least two source messages and never calls a model.
+compact. Background preparation is skipped. A full COMPACT, whether manual or
+blocking, fails explicitly before inference instead of cutting a message, silently
+dropping the suffix or entering an endless compaction loop. The user can select
+older messages explicitly or adjust the blocking threshold. Full DISTILL and
+CONCATENATE are not suffix-retaining operations; CONCATENATE still requires at
+least two source messages and never calls a model.
 
 ## Preparation and application
 
@@ -60,6 +62,17 @@ ID at capture. Appends leave that boundary intact. Edits and deletions create a
 new branch. Resolved user identities and pins can change on the same branch, so
 they are checked separately. The native request and text fallback use the same
 pin snapshot that preparation validates.
+
+Edit, delete and manual Compact tasks form a dynamic history-mutation batch in
+the serialized Runtime queue. Any active or queued mutation cancels a RUNNING or
+READY preparation, suppresses a new one, and removes its queued application task.
+After the last mutation attempt, Runtime measures the current branch once and may
+start a fresh preparation. Ordinary appends do not invalidate a captured prefix.
+Each queued mutation records the thread current when the user requested it; if an
+earlier copy-on-write mutation replaced that thread, the later request fails
+explicitly instead of being reinterpreted against different history. A message
+queued after a manual Compact is ordinary append work and therefore lands on the
+new thread when its Runtime task executes.
 
 Selection and commit read per-message headers (coverage, tool pairs, character
 counts and replay eligibility). Bodies are loaded for the selected input,
@@ -85,9 +98,7 @@ Application removes its queued maintenance work atomically with the checkpoint
 and APPLIED receipt. New messages appended after capture are preserved. Input
 edits, thread changes, Agent/configuration/pin changes and access revocation
 prevent stale application. No synthetic user continuation is written or emitted.
-One-use revealed secrets remain request-only input even if their original user
-anchor is covered; archived user text is not restored to deliver them. Credentials
-are not stored in preparation receipts; scope fingerprints are hashes, and public
+Credentials are not stored in preparation receipts; scope fingerprints are hashes, and public
 Runtime snapshots expose status, not prepared content.
 
 At the blocking threshold, a running preparation is awaited rather than duplicated.
@@ -108,6 +119,12 @@ preparations even when the foreground is idle. The owned inference coroutine is
 cancelled too. Late completion cannot replace CANCELLED with READY, and cancellation
 does not trigger an ordinary fallback. Stopping does not undo a history commit
 that already won the transaction race.
+
+History-mutation cancellation uses the same atomic receipt transition. The
+sequential task preflight is the normal cancellation point; the READY publication
+and application paths repeat the queue check as a cheap race guard. If application
+already won that race, the mutation's captured-thread check rejects the stale user
+operation without changing history.
 
 Applying a prepared result locks Runtime before Conversation. The READY check,
 COW history change and APPLIED receipt are one SQL transaction. Stop winning first
@@ -147,7 +164,7 @@ Provider-emitted checkpoints are not arbitrarily rewritten to manufacture a
 retained tail. Native checkpoints must identify an actual prefix of the captured
 provider input, and signed/opaque state keeps its established replay contract.
 
-Server and Workers must be updated together to Gateway protocol **30**. This work
+Server and Workers must be updated together to Gateway protocol **37**. This work
 adds no deployment or automatic update operation.
 
 ## Diagnostics and verification

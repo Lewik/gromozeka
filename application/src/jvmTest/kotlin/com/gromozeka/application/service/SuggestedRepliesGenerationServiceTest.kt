@@ -26,7 +26,11 @@ class SuggestedRepliesGenerationServiceTest {
         val f = Fixture()
         val message = message("answer", "Ответ", assistant = true)
         val custom = "Предложи короткие варианты на языке пользователя.\nНе добавляй пояснений."
-        f.generate(listOf(message), SuggestedRepliesSettings(inlinePrompt = "INLINE_ONLY", separatePrompt = custom))
+        f.generate(listOf(message), SuggestedRepliesSettings(
+            inlinePrompt = "INLINE_ONLY",
+            separatePrompt = custom,
+            contextMode = SuggestedRepliesSettings.ContextMode.RECENT_MESSAGES,
+        ))
         val request = f.requests.single()
         assertEquals(listOf("""
             You generate optional next-message suggestions for a chat user.
@@ -51,7 +55,7 @@ class SuggestedRepliesGenerationServiceTest {
         val history = (1..12).map { message("$it", "MESSAGE_$it", assistant = it % 2 == 0) } +
             message("blank", " \n\t") +
             message("long", "Z".repeat(4_000) + "CLIPPED_TAIL", assistant = true)
-        f.generate(history, SuggestedRepliesSettings())
+        f.generate(history, SuggestedRepliesSettings(contextMode = SuggestedRepliesSettings.ContextMode.RECENT_MESSAGES))
         val context = f.requests.single().text().substringAfter("<conversation>\n").substringBefore("\n</conversation>")
         assertEquals(10, context.lineSequence().count { it.startsWith("USER:") || it.startsWith("ASSISTANT:") })
         assertFalse("MESSAGE_1\n" in context)
@@ -62,22 +66,97 @@ class SuggestedRepliesGenerationServiceTest {
     }
 
     @Test
-    fun `full thread keeps all readable messages and does not clip long message text`() = runBlocking {
+    fun `full thread preserves the normal append only model context and adds one instruction`() = runBlocking {
         val f = Fixture()
         val history = (1..12).map { message("$it", "MESSAGE_$it", assistant = it % 2 == 0) } +
             message("long", "Z".repeat(5_000) + "READABLE_TAIL", assistant = true)
         f.generate(history, SuggestedRepliesSettings(contextMode = SuggestedRepliesSettings.ContextMode.FULL_THREAD))
-        val text = f.requests.single().text()
-        for (i in 1..12) assertContains(text, "MESSAGE_$i")
-        assertContains(text, "Z".repeat(5_000) + "READABLE_TAIL")
-        assertEquals(1, f.requests.size)
+        val request = f.requests.single()
+        assertEquals(history.map { it.id }, request.messages.dropLast(1).map { it.id })
+        assertContains(
+            (request.messages.last().content.single() as Conversation.Message.ContentItem.UserMessage).text,
+            SuggestedRepliesSettings.DEFAULT_PROMPT,
+        )
+        assertContains(
+            (request.messages[request.messages.lastIndex - 1].content.single() as Conversation.Message.ContentItem.AssistantMessage)
+                .structured.fullText,
+            "READABLE_TAIL",
+        )
+    }
+
+    @Test
+    fun `full thread keeps text previews and projects media to bounded placeholders`() = runBlocking {
+        val toolArtifact = Artifact.Reference(
+            Artifact.Id("tool-artifact"), "capture.png", "image/png", 100,
+            Artifact.Purpose.TOOL_OUTPUT, Artifact.Kind.IMAGE,
+        )
+        val attachment = Artifact.Reference(
+            Artifact.Id("attachment"), "attachment.pdf", "application/pdf", 200,
+            Artifact.Purpose.USER_ATTACHMENT, Artifact.Kind.DOCUMENT,
+        )
+        val callId = Conversation.Message.ContentItem.ToolCall.Id("call")
+        val toolResult = message("tool-result", "unused").copy(content = listOf(
+            Conversation.Message.ContentItem.ToolResult(
+                callId,
+                "read_file",
+                listOf(
+                    Conversation.Message.ContentItem.ToolResult.Data.Text("stored text preview"),
+                    Conversation.Message.ContentItem.ToolResult.Data.ArtifactData(toolArtifact),
+                    Conversation.Message.ContentItem.ToolResult.Data.Base64Data(
+                        "aW1hZ2U=", Conversation.Message.MediaType.parse("image/png"), "inline.png",
+                    ),
+                    Conversation.Message.ContentItem.ToolResult.Data.UrlData(
+                        "https://example.test/image.png", Conversation.Message.MediaType.parse("image/png"),
+                    ),
+                    Conversation.Message.ContentItem.ToolResult.Data.UrlData(
+                        "https://example.test/result", Conversation.Message.MediaType.parse("text/html"),
+                    ),
+                ),
+            ),
+        ))
+        val attachedMessage = message("attachment", "unused").copy(content = listOf(
+            Conversation.Message.ContentItem.UserMessage("Please inspect the attachment"),
+            Conversation.Message.ContentItem.ArtifactItem(attachment),
+            Conversation.Message.ContentItem.ImageItem(
+                Conversation.Message.ImageSource.Base64ImageSource("aW1hZ2U=", "image/png"),
+            ),
+            Conversation.Message.ContentItem.DocumentItem(
+                Conversation.Message.DocumentSource.Base64DocumentSource(
+                    "cGRm", "application/pdf", "attachment.pdf",
+                ),
+            ),
+        ))
+        val canonical = listOf(toolResult, attachedMessage)
+        val f = Fixture()
+
+        f.generate(canonical, SuggestedRepliesSettings(contextMode = SuggestedRepliesSettings.ContextMode.FULL_THREAD))
+
+        val projected = f.requests.single().messages.dropLast(1)
+        val projectedToolResult = projected.first().content.single() as Conversation.Message.ContentItem.ToolResult
+        assertEquals("stored text preview", (projectedToolResult.result[0] as Conversation.Message.ContentItem.ToolResult.Data.Text).content)
+        assertContains((projectedToolResult.result[1] as Conversation.Message.ContentItem.ToolResult.Data.Text).content, "capture.png")
+        assertContains((projectedToolResult.result[2] as Conversation.Message.ContentItem.ToolResult.Data.Text).content, "inline.png")
+        assertContains((projectedToolResult.result[3] as Conversation.Message.ContentItem.ToolResult.Data.Text).content, "Tool image omitted")
+        assertIs<Conversation.Message.ContentItem.ToolResult.Data.UrlData>(projectedToolResult.result[4])
+        assertEquals("Please inspect the attachment", (projected[1].content[0] as Conversation.Message.ContentItem.UserMessage).text)
+        assertContains((projected[1].content[1] as Conversation.Message.ContentItem.UserMessage).text, "attachment.pdf")
+        assertContains((projected[1].content[2] as Conversation.Message.ContentItem.UserMessage).text, "Image omitted")
+        assertContains((projected[1].content[3] as Conversation.Message.ContentItem.UserMessage).text, "attachment.pdf")
+        assertTrue(projected.flatMap { it.content }.none {
+            it is Conversation.Message.ContentItem.ImageItem ||
+                it is Conversation.Message.ContentItem.DocumentItem ||
+                it is Conversation.Message.ContentItem.ArtifactItem
+        })
     }
 
     @Test
     fun `112 character recommendation does not become a hard output crop`() = runBlocking {
         val f = Fixture(replies = listOf("Я".repeat(130), "Ещё вариант"))
         val message = message("answer", "Ответ", assistant = true)
-        assertEquals(listOf("Я".repeat(130), "Ещё вариант"), f.generate(listOf(message), SuggestedRepliesSettings()))
+        assertEquals(listOf("Я".repeat(130), "Ещё вариант"), f.generate(
+            listOf(message),
+            SuggestedRepliesSettings(contextMode = SuggestedRepliesSettings.ContextMode.RECENT_MESSAGES),
+        ))
         assertContains(f.requests.single().text(), "recommended not to exceed 112 characters in total")
     }
 
@@ -90,7 +169,9 @@ class SuggestedRepliesGenerationServiceTest {
 
     private fun AiRuntimeRequest.text() = (messages.single().content.single() as Conversation.Message.ContentItem.UserMessage).text
 
-    private inner class Fixture(private val replies: List<String> = listOf("Дальше")) {
+    private inner class Fixture(
+        private val replies: List<String> = listOf("Дальше"),
+    ) {
         val requests = mutableListOf<AiRuntimeRequest>()
         private val runtime = object : AiRuntime {
             override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
@@ -106,7 +187,12 @@ class SuggestedRepliesGenerationServiceTest {
             Mockito.mock(AiConfigurationProvider::class.java),
         )
         suspend fun generate(messages: List<Conversation.Message>, settings: SuggestedRepliesSettings): List<String> = service.generate(
-            conversation, messages, messages.last(), agent, AiRuntimeSelection(AiModelConfiguration.Id("suggestions-model")),
+            conversation,
+            when (settings.contextMode) {
+                SuggestedRepliesSettings.ContextMode.RECENT_MESSAGES -> service.recentContext(messages)
+                SuggestedRepliesSettings.ContextMode.FULL_THREAD -> SuggestedRepliesGenerationService.Context.Full(messages)
+            },
+            messages.last(), agent, AiRuntimeSelection(AiModelConfiguration.Id("suggestions-model")),
             User.Id("user"), "suggestions", settings,
         )
     }

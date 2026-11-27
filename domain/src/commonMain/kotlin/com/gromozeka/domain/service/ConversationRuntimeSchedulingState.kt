@@ -4,7 +4,7 @@ import com.gromozeka.domain.model.syntheticKind
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.UserMessageDeliveryMode
+import com.gromozeka.domain.model.MessageDelivery
 import com.gromozeka.domain.model.WorkspaceMount
 import kotlin.time.Instant
 import kotlinx.serialization.Serializable
@@ -81,34 +81,80 @@ data class ConversationRuntimeSchedulingState(
         if (proactiveCompaction?.cancellable == true || proactiveCompaction?.id == preparation.id) return unchanged(false)
         if (executionState?.controlState != ConversationExecutionState.ControlState.RUNNING ||
             !confirmActiveTaskOwner(preparation.sourceTaskId, preparation.executor)) return unchanged(false)
+        if (hasHistoryMutationWork(excludingActiveTaskId = preparation.sourceTaskId)) {
+            return changed(
+                withUpdatedProactiveCompaction(preparation.cancelForHistoryMutation(preparation.createdAt)),
+                false,
+            )
+        }
         return changed(copy(proactiveCompaction = preparation), true)
     }
 
     fun updateProactiveCompaction(expected: ProactiveCompaction, updated: ProactiveCompaction): ConversationRuntimeStateTransition<Boolean> {
         require(expected.conversationId == conversationId && updated.conversationId == conversationId && expected.id == updated.id)
         require(updated.copy(status = expected.status, checkpoint = expected.checkpoint, updatedAt = expected.updatedAt,
-            failureCode = expected.failureCode, outcomeUnknown = expected.outcomeUnknown) == expected) {
+            failureCode = expected.failureCode, outcomeUnknown = expected.outcomeUnknown,
+            reprepareAfterHistoryMutation = expected.reprepareAfterHistoryMutation) == expected) {
             "Compaction completion cannot change the captured input or owner"
         }
         if (proactiveCompaction != expected) return unchanged(false)
-        if (!expected.pending && !(expected.status == ProactiveCompaction.Status.FAILED && updated.status in setOf(ProactiveCompaction.Status.DISCARDED, ProactiveCompaction.Status.CANCELLED))) {
+        if (updated.status == ProactiveCompaction.Status.READY &&
+            hasHistoryMutationWork(excludingActiveTaskId = expected.sourceTaskId)) {
+            val cancelled = expected.cancelForHistoryMutation(updated.updatedAt)
+            return changed(withUpdatedProactiveCompaction(cancelled), false)
+        }
+        if (!expected.pending &&
+            !(expected.status == ProactiveCompaction.Status.FAILED &&
+                updated.status in setOf(ProactiveCompaction.Status.DISCARDED, ProactiveCompaction.Status.CANCELLED))) {
             return unchanged(expected == updated)
         }
         require(updated.status != ProactiveCompaction.Status.RUNNING || updated == expected)
+        return changed(withUpdatedProactiveCompaction(updated), true)
+    }
+
+    fun cancelProactiveCompactionForHistoryMutation(now: Instant): ConversationRuntimeStateTransition<ProactiveCompaction?> {
+        if (!hasHistoryMutationWork()) return unchanged(null)
+        val expected = proactiveCompaction?.takeIf { it.cancellable } ?: return unchanged(null)
+        val cancelled = expected.cancelForHistoryMutation(now)
+        return changed(withUpdatedProactiveCompaction(cancelled), cancelled)
+    }
+
+    fun finishHistoryMutationReprepare(
+        expected: ProactiveCompaction,
+        activeMutationTaskId: ConversationRuntimeTask.Id,
+        now: Instant,
+    ): ConversationRuntimeStateTransition<Boolean> {
+        require(expected.conversationId == conversationId && expected.status == ProactiveCompaction.Status.CANCELLED &&
+            expected.reprepareAfterHistoryMutation) { "Invalid history-mutation reprepare receipt" }
+        if (proactiveCompaction != expected) return unchanged(false)
+        if (activeTask?.id != activeMutationTaskId || activeTask.payload !is ConversationRuntimeTask.Payload.HistoryMutation) {
+            return unchanged(false)
+        }
+        if (hasHistoryMutationWork(excludingActiveTaskId = activeMutationTaskId)) return unchanged(false)
+        return changed(withUpdatedProactiveCompaction(expected.finishHistoryMutationReprepare(now)), true)
+    }
+
+    fun hasHistoryMutationWork(excludingActiveTaskId: ConversationRuntimeTask.Id? = null): Boolean =
+        activeTask?.takeUnless { it.id == excludingActiveTaskId }?.payload is ConversationRuntimeTask.Payload.HistoryMutation ||
+            pendingTasks.any { it.payload is ConversationRuntimeTask.Payload.HistoryMutation }
+
+    private fun withUpdatedProactiveCompaction(updated: ProactiveCompaction): ConversationRuntimeSchedulingState {
         val application = updated.applicationTask()
         val pending = pendingTasks.filterNot { it.id == application.id }
-        return changed(copy(
+        return copy(
             proactiveCompaction = updated,
-            executionState = if (updated.status == ProactiveCompaction.Status.READY) executionState ?: idleRunningState(updated.updatedAt) else executionState,
+            executionState = if (updated.status == ProactiveCompaction.Status.READY) {
+                executionState ?: idleRunningState(updated.updatedAt)
+            } else executionState,
             pendingTasks = if (updated.status == ProactiveCompaction.Status.READY) listOf(application) + pending else pending,
-        ), true)
+        )
     }
 
     fun submit(
         task: ConversationRuntimeTask,
         now: Instant,
         acceptPreviouslySubmitted: Boolean = false,
-        userDeliveryMode: UserMessageDeliveryMode? = null,
+        messageDelivery: MessageDelivery? = null,
         backgroundActivityAgentId: AgentDefinition.Id? = null,
     ): ConversationRuntimeStateTransition<Boolean> {
         require(task.conversationId == conversationId) {
@@ -126,11 +172,11 @@ data class ConversationRuntimeSchedulingState(
         ) {
             return unchanged(false)
         }
-        // Resolve human preference once, atomically with admission. Runtime-owned inputs keep
+        // Resolve requested delivery once, atomically with admission. Runtime-owned inputs keep
         // their explicit placement, and later preference changes never revisit queued tasks.
-        require(userDeliveryMode == null || backgroundActivityAgentId == null)
+        require(messageDelivery == null || backgroundActivityAgentId == null)
         val submissions = when {
-            userDeliveryMode != null -> prepareUserInput(task, userDeliveryMode)
+            messageDelivery != null -> prepareMessage(task, messageDelivery)
             backgroundActivityAgentId != null -> {
                 val background = task.payload as? ConversationRuntimeTask.Payload.BackgroundActivityCompletion
                     ?: error("Background admission requires a completion input")
@@ -147,7 +193,7 @@ data class ConversationRuntimeSchedulingState(
         }
         val submitted = submissions.first()
         if (submitted.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT && activeTask == null &&
-            !((userDeliveryMode != null || backgroundActivityAgentId != null) && continuationTask != null)) {
+            !((messageDelivery != null || backgroundActivityAgentId != null) && continuationTask != null)) {
             return unchanged(false)
         }
 
@@ -171,23 +217,12 @@ data class ConversationRuntimeSchedulingState(
         )
     }
 
-    private fun activeAgentId(): AgentDefinition.Id? = when (val payload = (activeTask ?: continuationTask)?.payload) {
-        is ConversationRuntimeTask.Payload.PostMessage -> payload.autoRespondAgentIds.minByOrNull { it.value }
-        is ConversationRuntimeTask.Payload.AgentInvocation -> payload.agentDefinitionId
-        is ConversationRuntimeTask.Payload.AgentResponse -> payload.agentDefinitionId
-        is ConversationRuntimeTask.Payload.LlmCall -> payload.agentDefinitionId
-        is ConversationRuntimeTask.Payload.ToolExecution -> payload.agentDefinitionId
-        is ConversationRuntimeTask.Payload.ToolResultProcessing -> payload.agentDefinitionId
-        is ConversationRuntimeTask.Payload.MemoryRecall -> payload.agentDefinitionId
-        is ConversationRuntimeTask.Payload.MemoryRunCompletion -> payload.agentDefinitionId
-        is ConversationRuntimeTask.Payload.ResponseReview -> payload.agentDefinitionId
-        is ConversationRuntimeTask.Payload.BackgroundActivityCompletion -> payload.agentDefinitionId
-        else -> null
-    }
+    private fun activeAgentId(): AgentDefinition.Id? =
+        (activeTask ?: continuationTask)?.primaryAgentDefinitionIdOrNull()
 
-    private fun prepareUserInput(task: ConversationRuntimeTask, mode: UserMessageDeliveryMode): List<ConversationRuntimeTask> {
-        require(task.actorUserId != null && task.externalChannel == null && task.userMessageOrNull()?.role == Conversation.Message.Role.USER) {
-            "User delivery preferences apply only to authenticated local human input"
+    private fun prepareMessage(task: ConversationRuntimeTask, delivery: MessageDelivery): List<ConversationRuntimeTask> {
+        require(task.externalChannel == null && task.userMessageOrNull() != null) {
+            "Message delivery applies only to local conversation input"
         }
         val activeAgent = activeAgentId()
         val targetsActiveAgent = activeAgent != null && when (val payload = task.payload) {
@@ -195,7 +230,7 @@ data class ConversationRuntimeSchedulingState(
             is ConversationRuntimeTask.Payload.PostMessage -> activeAgent in payload.autoRespondAgentIds
             else -> false
         }
-        if (mode != UserMessageDeliveryMode.STEER || !targetsActiveAgent) {
+        if (delivery != MessageDelivery.STEER || !targetsActiveAgent) {
             return listOf(task.copy(placement = QueuedMessagePlacement.END_OF_TURN))
         }
         val post = task.payload as? ConversationRuntimeTask.Payload.PostMessage
@@ -218,7 +253,10 @@ data class ConversationRuntimeSchedulingState(
         return listOf(steering) + otherResponses
     }
 
-    fun updatePendingMessageSubmission(task: ConversationRuntimeTask): ConversationRuntimeStateTransition<Boolean> {
+    fun updatePendingMessageSubmission(
+        task: ConversationRuntimeTask,
+        delivery: MessageDelivery,
+    ): ConversationRuntimeStateTransition<Boolean> {
         require(task.conversationId == conversationId) {
             "Conversation runtime task belongs to another conversation"
         }
@@ -226,24 +264,44 @@ data class ConversationRuntimeSchedulingState(
             "Only a pending root message submission can be updated"
         }
         if (executionState?.controlState == ConversationExecutionState.ControlState.STOPPING ||
-            executionState?.controlState == ConversationExecutionState.ControlState.INTERRUPTING ||
-            (task.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT && activeTask == null)
+            executionState?.controlState == ConversationExecutionState.ControlState.INTERRUPTING
         ) {
             return unchanged(false)
         }
         val index = pendingTasks.indexOfFirst { it.userMessageIdOrNull() == task.userMessageIdOrNull() }
         if (index < 0) return unchanged(false)
 
+        val submissions = prepareMessage(task, delivery)
+        val submitted = submissions.first()
+        if (delivery == MessageDelivery.STEER &&
+            submitted.placement != QueuedMessagePlacement.AFTER_TOOL_RESULT
+        ) {
+            return unchanged(false)
+        }
+        if (submitted.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT &&
+            activeTask == null && continuationTask == null
+        ) {
+            return unchanged(false)
+        }
+
         val existing = pendingTasks[index]
-        require(existing.id == task.id &&
-            existing.idempotencyKey == task.idempotencyKey &&
-            existing.turnId == task.turnId
+        require(existing.id == submitted.id &&
+            existing.idempotencyKey == submitted.idempotencyKey &&
+            existing.turnId == submitted.turnId
         ) {
             "Updating a queued message submission cannot change its runtime identity"
         }
-        val updatedTask = task.withTurnTerminationInstructions(existing.turnTerminationInstructions())
+        val replacement = listOf(
+            submitted.withTurnTerminationInstructions(existing.turnTerminationInstructions())
+        ) + submissions.drop(1)
+        val before = pendingTasks.take(index).filterNot { pending ->
+            (pending.payload as? ConversationRuntimeTask.Payload.AgentResponse)?.rootUserMessageId == task.userMessageIdOrNull()
+        }
+        val after = pendingTasks.drop(index + 1).filterNot { pending ->
+            (pending.payload as? ConversationRuntimeTask.Payload.AgentResponse)?.rootUserMessageId == task.userMessageIdOrNull()
+        }
         return changed(
-            copy(pendingTasks = pendingTasks.toMutableList().apply { this[index] = updatedTask }),
+            copy(pendingTasks = before + replacement + after),
             true,
         )
     }

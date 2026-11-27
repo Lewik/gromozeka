@@ -95,7 +95,6 @@ class ConversationPinnedPromptTest {
             currentThread = Conversation.Thread.Id("thread"), createdAt = now, updatedAt = now)
         val conversations = Mockito.mock(ConversationDomainService::class.java)
         Mockito.`when`(conversations.findById(owner)).thenReturn(conversation)
-        Mockito.`when`(conversations.loadCurrentMessages(owner)).thenReturn(emptyList())
         Mockito.`when`(conversations.getProject(owner)).thenReturn(project)
         val defaults = Mockito.mock(DefaultAgentProvider::class.java)
         Mockito.`when`(defaults.getDefault()).thenReturn(agent)
@@ -105,12 +104,16 @@ class ConversationPinnedPromptTest {
         Mockito.`when`(assembly.assembleSystemPrompt(agent, RuntimeEnvironmentContext.Standalone(RuntimeEnvironmentExecutor.Server))).thenReturn(listOf("standalone base"))
         val tools = Mockito.mock(AiToolProvider::class.java)
         Mockito.`when`(tools.getTools()).thenReturn(emptyList())
+        val threadMessages = Mockito.mock(com.gromozeka.domain.repository.ThreadMessageRepository::class.java)
+        Mockito.`when`(threadMessages.getContextMessagesByThread(conversation.currentThread, null)).thenReturn(
+            com.gromozeka.domain.repository.ThreadContextMessages(emptyList(), 0),
+        )
         val resolver = com.gromozeka.application.service.memory.MemoryOperationContextResolver(conversations,
             Mockito.mock(AgentDomainService::class.java), assembly, defaults, Mockito.mock(WorkspaceDomainService::class.java),
             Mockito.mock(ProjectDomainService::class.java), ConversationRuntimeExecutorDescriptor(
                 ConversationRuntimeExecutorIdentity.Server(ConversationRuntimeServerSessionId("server")), setOf(ConversationRuntimeCapability.MEMORY_PIPELINE)),
             tools, Mockito.mock(com.gromozeka.domain.repository.MessageRepository::class.java),
-            Mockito.mock(com.gromozeka.domain.repository.ThreadMessageRepository::class.java))
+            threadMessages)
         val resolved = resolver.resolveConversation(owner)
         assertEquals(owner, (resolved.runtimeContext as RuntimeEnvironmentContext.ProjectBound).conversation?.id)
         assertEquals(listOf("unchanged base"), resolved.systemPrompts)
@@ -130,13 +133,17 @@ class ConversationPinnedPromptTest {
             override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = error("unused")
         }
         val provider = Mockito.mock(AiRuntimeProvider::class.java) { runtime }
-        val service = SuggestedRepliesGenerationService(provider, ConversationPinnedPrompt(pins), Mockito.mock(AiConfigurationProvider::class.java))
+        val service = SuggestedRepliesGenerationService(
+            provider,
+            ConversationPinnedPrompt(pins),
+            Mockito.mock(AiConfigurationProvider::class.java),
+        )
         val agent = AgentDefinition.Id("agent")
         val conversation = Conversation(owner, project.id, setOf(Conversation.Participant.User(User.Id("user")), Conversation.Participant.Agent(agent)),
             currentThread = Conversation.Thread.Id("thread"), createdAt = now, updatedAt = now)
         val message = Conversation.Message(Conversation.Message.Id("message"), owner, role = Conversation.Message.Role.ASSISTANT,
             content = listOf(Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("Answer"))), createdAt = now)
-        assertEquals(listOf("Next"), service.generate(conversation, listOf(message), message, agent,
+        assertEquals(listOf("Next"), service.generate(conversation, SuggestedRepliesGenerationService.Context.Full(listOf(message)), message, agent,
             AiRuntimeSelection(AiModelConfiguration.Id("model")), User.Id("user"), "suggestions",
             com.gromozeka.domain.model.UserProfile.SuggestedRepliesSettings()))
         assertEquals(listOf(owner), pins.reads)

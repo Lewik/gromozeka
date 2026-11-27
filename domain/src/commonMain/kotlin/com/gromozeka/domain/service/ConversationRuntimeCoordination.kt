@@ -14,6 +14,7 @@ import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
+import kotlinx.serialization.json.JsonNull
 import kotlin.jvm.JvmInline
 
 /**
@@ -89,6 +90,7 @@ data class ConversationRuntimeTask(
         @SerialName("history_mutation")
         data class HistoryMutation(
             val mutation: ConversationHistoryMutation,
+            val expectedThreadId: Conversation.Thread.Id,
         ) : Payload
 
         @Serializable
@@ -124,6 +126,7 @@ data class ConversationRuntimeTask(
             val returnDirect: Boolean,
             val executionTargetsByCallId: Map<String, ConversationRuntimeTaskTarget>,
             val executionToolNamesByCallId: Map<String, String> = emptyMap(),
+            val modelVisibleToolNames: List<String> = emptyList(),
         ) : Payload {
             init {
                 require(iteration >= 1) { "Conversation tool execution iteration must be positive" }
@@ -139,6 +142,12 @@ data class ConversationRuntimeTask(
                     toolCalls.any { it.id.value == callId }
                 }) {
                     "Conversation tool execution name mapping references an unknown tool call"
+                }
+                require(modelVisibleToolNames.all(String::isNotBlank)) {
+                    "Conversation tool execution model-visible tool names must not be blank"
+                }
+                require(modelVisibleToolNames.distinct().size == modelVisibleToolNames.size) {
+                    "Conversation tool execution model-visible tool names must be unique"
                 }
             }
         }
@@ -211,6 +220,23 @@ data class ConversationRuntimeTask(
     }
 
     fun userMessageIdOrNull(): Conversation.Message.Id? = userMessageOrNull()?.id
+
+    fun primaryAgentDefinitionIdOrNull(): AgentDefinition.Id? = when (val payload = payload) {
+        is Payload.PostMessage -> payload.autoRespondAgentIds.minByOrNull { it.value }
+        is Payload.AgentInvocation -> payload.agentDefinitionId
+        is Payload.AgentResponse -> payload.agentDefinitionId
+        is Payload.LlmCall -> payload.agentDefinitionId
+        is Payload.ToolExecution -> payload.agentDefinitionId
+        is Payload.ToolResultProcessing -> payload.agentDefinitionId
+        is Payload.MemoryRecall -> payload.agentDefinitionId
+        is Payload.MemoryRunCompletion -> payload.agentDefinitionId
+        is Payload.ResponseReview -> payload.agentDefinitionId
+        is Payload.BackgroundActivityCompletion -> payload.agentDefinitionId
+        is Payload.HistoryMutation,
+        is Payload.ApplyPreparedCompaction,
+        is Payload.ExecutionIncident,
+        -> null
+    }
 
     fun isRootInput(): Boolean = payload.isRootInput()
 
@@ -350,6 +376,7 @@ sealed interface ConversationHistoryMutation {
     @SerialName("compact")
     data class Compact(
         val messageIds: List<Conversation.Message.Id>,
+        val fullSelection: Boolean,
         val strategy: SquashType,
     ) : ConversationHistoryMutation
 }
@@ -896,6 +923,38 @@ sealed interface ConversationRuntimeEvent {
     ) : ConversationRuntimeEvent
 }
 
+/** Durable replay needs Runtime message identity, not a second copy of the canonical payload. */
+fun ConversationRuntimeEvent.forDurableJournal(): ConversationRuntimeEvent = when (this) {
+    is ConversationRuntimeEvent.MessageEmitted -> when (message.role) {
+        Conversation.Message.Role.USER,
+        Conversation.Message.Role.ASSISTANT,
+        Conversation.Message.Role.SYSTEM,
+        -> this
+        Conversation.Message.Role.RUNTIME -> copy(
+            message = Conversation.Message(
+                id = message.id,
+                conversationId = message.conversationId,
+                role = Conversation.Message.Role.RUNTIME,
+                author = (message.author as? Conversation.Message.Author.Runtime)?.let { author ->
+                    author.copy(displayName = author.displayName.take(256))
+                },
+                content = listOf(ContentItem.RuntimeJson(JsonNull)),
+                createdAt = message.createdAt,
+                error = message.error?.let { error ->
+                    error.copy(message = error.message.take(1_024), type = error.type?.take(128))
+                },
+            ),
+            hasMoreContent = true,
+        )
+    }
+    is ConversationRuntimeEvent.SnapshotUpdated,
+    is ConversationRuntimeEvent.ReplayCompleted,
+    is ConversationRuntimeEvent.HistoryChanged,
+    is ConversationRuntimeEvent.ExecutionCompleted,
+    is ConversationRuntimeEvent.ExecutionFailed,
+    -> this
+}
+
 interface ConversationRuntimeEventSubscription {
     val events: Flow<ConversationRuntimeEvent>
 
@@ -919,6 +978,11 @@ data class ConversationRuntimeEventLogEntry(
 interface ConversationRuntimeCoordinator {
     suspend fun beginProactiveCompaction(preparation: ProactiveCompaction): Boolean
     suspend fun updateProactiveCompaction(expected: ProactiveCompaction, updated: ProactiveCompaction): Boolean
+    suspend fun cancelProactiveCompactionForHistoryMutation(conversationId: Conversation.Id): ProactiveCompaction?
+    suspend fun finishHistoryMutationReprepare(
+        expected: ProactiveCompaction,
+        activeMutationTaskId: ConversationRuntimeTask.Id,
+    ): Boolean
     suspend fun proactiveCompaction(conversationId: Conversation.Id): ProactiveCompaction?
     suspend fun runningProactiveCompactions(): List<ProactiveCompaction>
 
@@ -965,13 +1029,16 @@ interface ConversationRuntimeCoordinator {
 
     suspend fun submit(task: ConversationRuntimeTask, acceptPreviouslySubmitted: Boolean = false): Boolean
 
-    /** Captures a human preference atomically with admission; never changes already queued input. */
-    suspend fun submitUserInput(task: ConversationRuntimeTask, mode: com.gromozeka.domain.model.UserMessageDeliveryMode): Boolean
+    /** Resolves requested message delivery atomically with admission. */
+    suspend fun submitMessage(task: ConversationRuntimeTask, delivery: com.gromozeka.domain.model.MessageDelivery): Boolean
 
     /** Resolve safe-point placement atomically against the current agent and authenticated actor. */
     suspend fun submitBackgroundActivity(task: ConversationRuntimeTask, agentDefinitionId: AgentDefinition.Id): Boolean
 
-    suspend fun updatePendingMessageSubmission(task: ConversationRuntimeTask): Boolean
+    suspend fun updatePendingMessageSubmission(
+        task: ConversationRuntimeTask,
+        delivery: com.gromozeka.domain.model.MessageDelivery,
+    ): Boolean
 
     /**
      * Atomically assigns a pending task to one executor session.

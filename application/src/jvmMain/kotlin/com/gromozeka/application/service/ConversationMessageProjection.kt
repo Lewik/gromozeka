@@ -9,6 +9,8 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 object ConversationMessageProjection {
+    fun projectEvent(message: Conversation.Message): Conversation.Message = message
+
     fun project(entry: PositionedConversationMessage, textBudget: Int = 16_384): ConversationHistoryMessage {
         var remaining = textBudget
         var deferred = entry.message.content.size > MAX_CONTENT_BLOCKS
@@ -26,6 +28,13 @@ object ConversationMessageProjection {
                     is Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary -> payload.copy(text = preview(payload.text))
                 })
                 is Conversation.Message.ContentItem.UserMessage -> item.copy(text = preview(item.text))
+                is Conversation.Message.ContentItem.RuntimeJson -> if (item.json.toString().length > remaining) {
+                    deferred = true
+                    item.copy(json = JsonNull)
+                } else {
+                    remaining -= item.json.toString().length
+                    item
+                }
                 is Conversation.Message.ContentItem.AssistantMessage -> item.copy(structured = item.structured.copy(fullText = preview(item.structured.fullText), ttsText = null))
                 is Conversation.Message.ContentItem.System -> item.copy(content = preview(item.content))
                 is Conversation.Message.ContentItem.ToolResult -> item.copy(result = item.result.map { data -> when (data) {
@@ -48,7 +57,10 @@ object ConversationMessageProjection {
                     deferred = true
                     Conversation.Message.ContentItem.System(Conversation.Message.ContentItem.System.SystemLevel.INFO, "Document")
                 } else item
-                else -> item
+                is Conversation.Message.ContentItem.VisualInteraction,
+                is Conversation.Message.ContentItem.ArtifactItem,
+                is Conversation.Message.ContentItem.UnknownJson,
+                -> item
             }
         }
         // Keep only the tiny presentation flag, never the original provider response/replay data.
@@ -58,6 +70,9 @@ object ConversationMessageProjection {
         }
         var projected = entry.message.copy(
             content = content,
+            instructions = entry.message.instructions.filterNot {
+                it is Conversation.Message.Instruction.RuntimeObservation
+            },
             providerMetadata = JsonObject(entry.message.providerMetadata.filterKeys { it == "compactionBoundary" } + presentationMetadata),
         )
         if (Json.encodeToString(projected).encodeToByteArray().size > MAX_MESSAGE_BYTES) {
@@ -75,6 +90,7 @@ object ConversationMessageProjection {
                 error = projected.error?.let { it.copy(message = it.message.take(1_024), type = it.type?.take(128)) },
                 content = projected.content.map { block ->
                     if (Json.encodeToString<Conversation.Message.ContentItem>(block).encodeToByteArray().size <= MAX_MESSAGE_BYTES / 2) block
+                    else if (block is Conversation.Message.ContentItem.RuntimeJson) block.copy(json = JsonNull)
                     else Conversation.Message.ContentItem.System(Conversation.Message.ContentItem.System.SystemLevel.INFO, "Content available on demand")
                 },
             )

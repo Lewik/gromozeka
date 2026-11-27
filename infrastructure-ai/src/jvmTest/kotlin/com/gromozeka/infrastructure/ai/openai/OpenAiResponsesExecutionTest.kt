@@ -138,30 +138,6 @@ class OpenAiResponsesExecutionTest {
     }
 
     @Test
-    fun `one-use secret context is stateless and never becomes an implicit parent`() = runBlocking {
-        ResponsesServer { exchange, _, index -> reply(exchange, response("parent-$index"), true) }.use { server ->
-            val state = OpenAiResponsesContinuations()
-            val connection = connection(server.origin, true)
-            val root = user("root")
-            val first = runtime(connection, state).call(request(listOf(root)))
-            val revealed = user("secret").copy(instructions = listOf(Conversation.Message.Instruction.RevealedSecretRuntimeContext(
-                RevealedSecretRuntimeContext(mapOf("fixture-secret" to "synthetic-one-use-value")))))
-            val history = listOf(root) + persisted(first, "first")
-            val second = runtime(connection, state).call(request(history + revealed))
-            val secretBody = server.requests.last().body
-            assertFalse(secretBody.getValue("store").jsonPrimitive.boolean)
-            assertNull(secretBody["previous_response_id"])
-            assertContains(secretBody.toString(), "synthetic-one-use-value")
-            val thirdHistory = history + revealed.copy(instructions = emptyList()) + persisted(second, "second") + user("next")
-            runtime(connection, state).call(request(thirdHistory))
-            val after = server.requests.last().body
-            assertTrue(after.getValue("store").jsonPrimitive.boolean)
-            assertNull(after["previous_response_id"])
-            assertFalse(after.toString().contains("synthetic-one-use-value"))
-        }
-    }
-
-    @Test
     fun `only explicit complete missing-parent rejection retries once with full context`() = runBlocking {
         for (stream in listOf(false, true)) ResponsesServer { exchange, _, index ->
             if (index == 1) reply(exchange, MISSING_PARENT, status = 404)

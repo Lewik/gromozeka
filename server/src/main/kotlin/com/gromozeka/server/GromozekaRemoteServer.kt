@@ -205,10 +205,7 @@ class GromozekaRemoteServer(
                             is ReportClientActivityCommand ->
                                 clientPresentationRegistry.activate(connectionId, payload.kind)
                             is ClientRequest -> {
-                                if (payload is PostMessageRequest ||
-                                    payload is InvokeAgentRequest ||
-                                    payload is EnqueueAgentInvocationRequest
-                                ) {
+                                if (payload is SubmitMessageRequest) {
                                     clientPresentationRegistry.activate(
                                         connectionId,
                                         ClientActivityKind.USER_INTERACTION,
@@ -786,7 +783,6 @@ class GromozekaRemoteServer(
                     )
                 )
                 is ForkConversationRequest -> ConversationResponse(conversationDomainService.fork(request.conversationId))
-                is LoadCurrentMessagesRequest -> MessagesResponse(conversationDomainService.loadCurrentMessages(request.conversationId))
                 is RegenerateSuggestedRepliesRequest -> SuggestedRepliesResponse(
                     sourceMessageId = request.sourceMessageId,
                     replies = conversationDomainService.regenerateSuggestedReplies(
@@ -825,6 +821,7 @@ class GromozekaRemoteServer(
                         taskId = request.taskId,
                         conversationId = request.conversationId,
                         messageIds = request.messageIds,
+                        fullSelection = request.fullSelection,
                         strategy = request.strategy,
                     )
                     ConversationResponse(conversationDomainService.findById(request.conversationId))
@@ -848,28 +845,13 @@ class GromozekaRemoteServer(
                     runMemoryAction(request.conversationId, request.action)
                     MemoryActionAcceptedResponse()
                 }
-                is PostMessageRequest -> OperationResultResponse(
-                    conversationRuntimeIngressService.postMessage(
+                is SubmitMessageRequest -> OperationResultResponse(
+                    conversationRuntimeIngressService.submitMessage(
                         user,
                         request.conversationId,
-                        request.userMessage,
-                    )
-                )
-                is InvokeAgentRequest -> OperationResultResponse(
-                    conversationRuntimeIngressService.invokeAgent(
-                        user,
-                        request.conversationId,
-                        request.userMessage,
+                        request.message,
                         request.agentDefinitionId,
-                    )
-                )
-                is EnqueueAgentInvocationRequest -> OperationResultResponse(
-                    conversationRuntimeIngressService.enqueueAgentInvocation(
-                        user,
-                        request.conversationId,
-                        request.userMessage,
-                        request.agentDefinitionId,
-                        request.placement
+                        request.delivery,
                     )
                 )
                 is CancelQueuedMessageRequest -> OperationResultResponse(
@@ -1019,7 +1001,7 @@ class GromozekaRemoteServer(
                                     message = view.second.message,
                                     historyThreadId = view.first,
                                     historyPosition = view.second.position,
-                                    hasMoreContent = view.second.hasMoreContent,
+                                    hasMoreContent = event.hasMoreContent || view.second.hasMoreContent,
                                     cursorSequence = event.cursorSequence,
                                 ),
                                 encoding,
@@ -1257,7 +1239,7 @@ class GromozekaRemoteServer(
                 StateSyncSnapshotResponse(
                     query = query,
                     cursor = it.cursor.toRemote(),
-                    state = ConversationRuntimeStatePayload(it.value),
+                    state = ConversationRuntimeStatePayload(it.value.projectForRemoteClient()),
                 )
             }
             SlotsStateQuery -> slotService.snapshot(user.id).let {

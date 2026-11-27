@@ -1,6 +1,9 @@
 package com.gromozeka.infrastructure.db.persistence
 
+import com.gromozeka.domain.model.AgentResponseDecision
+import com.gromozeka.domain.model.COLLABORATION_NEXT
 import com.gromozeka.domain.model.CompactionMessageHeader
+import com.gromozeka.domain.model.ToolSequenceFacts
 import com.gromozeka.infrastructure.db.persistence.tables.Artifacts
 import com.gromozeka.infrastructure.db.persistence.tables.Messages
 import com.gromozeka.domain.model.safeToolOutputText
@@ -8,6 +11,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.repository.MessageRepository
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
@@ -32,27 +36,28 @@ class ExposedMessageRepository(
 
     internal fun insertBatch(messages: List<Conversation.Message>) {
         messages.chunked(BATCH_SIZE).forEach { batch ->
-            val artifactIdsByMessage = batch.associate { message ->
-                message.id to message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
-                    .flatMap { it.result }
-                    .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>()
-                    .map { it.artifact.id.value }.distinct()
-            }
-            val artifactText = artifactIdsByMessage.values.flatten().distinct().chunked(BATCH_SIZE)
+            val artifactText = batch.flatMap { it.referencedArtifactIds() }.distinct().chunked(BATCH_SIZE)
                 .flatMap { ids -> Artifacts.select(Artifacts.id, Artifacts.searchText)
                     .where { Artifacts.id inList ids }
                     .map { it[Artifacts.id] to it[Artifacts.searchText] } }.toMap()
             Messages.batchInsert(batch, shouldReturnGeneratedValues = false) { message ->
-                val toolText = artifactIdsByMessage.getValue(message.id).mapNotNull(artifactText::get).joinToString("\n")
+                val toolSequence = ToolSequenceFacts.from(message)
                 this[Messages.id] = message.id.value
                 this[Messages.conversationId] = message.conversationId.value
                 this[Messages.originalIdsJson] = json.encodeToString(message.originalIds.map { it.value })
                 this[Messages.replyToId] = message.replyTo?.value
                 this[Messages.role] = message.role.name
                 this[Messages.createdAt] = message.createdAt
-                this[Messages.searchText] = listOf(message.searchText(), toolText).filter(String::isNotBlank).joinToString("\n")
+                this[Messages.searchText] = message.searchText(artifactText)
                 this[Messages.messageText] = message.searchText(includeToolResults = false)
                 this[Messages.compactionHeader] = Json.encodeToString(CompactionMessageHeader.from(message))
+                this[Messages.toolCallIds] = toolSequence.callIds
+                this[Messages.toolResultIds] = toolSequence.resultIds
+                this[Messages.providerManagedTool] = toolSequence.providerManaged
+                this[Messages.toolResultsOnly] = toolSequence.toolResultsOnly
+                this[Messages.fullCompactionAnchor] = toolSequence.fullCompactionAnchor
+                this[Messages.responseReviewContinuation] = message.isResponseReviewContinuation()
+                this[Messages.contextMetadataJson] = message.contextMetadataJson(json)
                 this[Messages.messageJson] = json.encodeToString(message)
             }
         }
@@ -77,13 +82,6 @@ class ExposedMessageRepository(
         }
     }
 
-    override suspend fun findByConversation(conversationId: Conversation.Id): List<Conversation.Message> = dbQuery {
-        Messages.select(Messages.messageJson)
-            .where { Messages.conversationId eq conversationId.value }
-            .orderBy(Messages.createdAt, SortOrder.ASC)
-            .map { json.decodeFromString<Conversation.Message>(it[Messages.messageJson]) }
-    }
-
     override suspend fun findVersions(originalId: Conversation.Message.Id): List<Conversation.Message> = dbQuery {
         Messages.select(Messages.messageJson)
             .where { Messages.originalIdsJson like "%\"${originalId.value}\"%"}
@@ -93,6 +91,9 @@ class ExposedMessageRepository(
     private companion object { const val BATCH_SIZE = 256 }
 
 }
+
+internal fun Conversation.Message.isResponseReviewContinuation(): Boolean =
+    providerMetadata[COLLABORATION_NEXT] == JsonPrimitive(AgentResponseDecision.Next.CONTINUE.name)
 
 internal fun Conversation.Message.searchText(includeToolResults: Boolean = true): String = content.mapNotNull { item ->
     when (item) {
@@ -105,3 +106,15 @@ internal fun Conversation.Message.searchText(includeToolResults: Boolean = true)
         else -> null
     }
 }.joinToString("\n").safeToolOutputText().trim()
+
+internal fun Conversation.Message.referencedArtifactIds(): List<String> = content
+    .filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
+    .flatMap { it.result }
+    .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>()
+    .map { it.artifact.id.value }
+    .distinct()
+
+internal fun Conversation.Message.searchText(artifactTextById: Map<String, String?>): String {
+    val artifactText = referencedArtifactIds().mapNotNull(artifactTextById::get).joinToString("\n")
+    return listOf(searchText(), artifactText).filter(String::isNotBlank).joinToString("\n")
+}

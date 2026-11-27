@@ -112,14 +112,30 @@ class DistributedAiToolCatalog(
         .map { AiToolDescriptor(it.definition, it.metadata).asModelContractDescriptor() })
 
     /** Resolve one current Server contract without rebuilding the Worker/workspace catalog. */
-    suspend fun serverTool(name: QualifiedToolName, toolAccess: ToolAccessPolicy): AiToolCallback? {
+    suspend fun serverTool(name: QualifiedToolName, toolAccess: ToolAccessPolicy): AiToolCallback? =
+        serverTool(name, toolAccess, registerContract = true)
+
+    /** Read an already registered Server contract without allocating a model name. */
+    suspend fun readServerTool(name: QualifiedToolName, toolAccess: ToolAccessPolicy): AiToolCallback? =
+        serverTool(name, toolAccess, registerContract = false)
+
+    private suspend fun serverTool(
+        name: QualifiedToolName,
+        toolAccess: ToolAccessPolicy,
+        registerContract: Boolean,
+    ): AiToolCallback? {
         val callback = aiToolProvider.getTools().singleOrNull {
             it.available && it.metadata.executionScope == AiToolExecutionScope.SERVER &&
                 it.definition.source == name.source && it.definition.name == name.name
         } ?: return null
-        val contract = aiToolContractRepository.resolveAll(
-            listOf(AiToolDescriptor(callback.definition, callback.metadata).asModelContractDescriptor())
-        ).single()
+        val descriptor = AiToolDescriptor(callback.definition, callback.metadata).asModelContractDescriptor()
+        val contract = if (registerContract) {
+            aiToolContractRepository.resolveAll(listOf(descriptor)).single()
+        } else {
+            aiToolContractRepository.findAll().singleOrNull { it.fingerprint == descriptor.contractFingerprint() }
+                ?: throw ContextSnapshotUnavailableException("A required tool contract is not registered yet")
+        }
+        check(contract.descriptor == descriptor) { "Registered tool contract does not match its descriptor" }
         if (!toolAccess.allows(contract)) return null
         return modelCallback(DistributedAiTool(
             descriptor = contract.descriptor, workers = emptyList(), logicalName = contract.logicalName,

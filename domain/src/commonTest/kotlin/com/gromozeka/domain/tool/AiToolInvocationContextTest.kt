@@ -170,14 +170,6 @@ class AiToolInvocationContextTest {
         assertFailsWith<IllegalArgumentException> { parse(server, """{"_grz":{"async":true,"user_id":"forged"}}""") }
     }
 
-    @Test fun invocationBoundEffectsHaveAnExplicitRestrictionNotAnInlineFallback() {
-        val inline = server.copy(inlineOnlyReason = "next model request only")
-        val error = assertFailsWith<IllegalArgumentException> { parse(inline, """{"_grz":{"async":true}}""") }
-        assertTrue(error.message.orEmpty().contains("next model request only"))
-        assertFalse(parse(inline, """{"_grz":{"async":false}}""").async)
-        assertNotEquals(descriptor(server).contractFingerprint(), descriptor(inline).contractFingerprint())
-    }
-
     @Test fun businessSchemasCannotClaimReservedEnvelope() {
         for (name in listOf("_grz", "execution_target")) {
             val value = descriptor(server).copy(definition = descriptor(server).definition.copy(inputSchema = """{"type":"object","properties":{"$name":{"type":"object"}}}"""))

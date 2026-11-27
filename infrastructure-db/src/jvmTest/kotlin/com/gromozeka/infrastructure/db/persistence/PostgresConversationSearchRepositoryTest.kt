@@ -60,7 +60,7 @@ class PostgresConversationSearchRepositoryTest {
             val messages = ExposedMessageRepository(Json)
             messages.save(message)
             ExposedThreadMessageRepository(Json).add(conversation.currentThread, message.id, 0)
-            assertEquals(listOf(message.id), ExposedThreadMessageRepository(Json).getMessagesByThread(conversation.currentThread).map { it.id })
+            assertEquals(listOf(message.id), ExposedThreadMessageRepository(Json).readArchiveForTest(conversation.currentThread).map { it.id })
             val search = PostgresConversationSearchRepository(source)
             val found = search.search(ConversationSearchRequest("searchable-after-preview", includeMetadataMatches = false), setOf(project.id), owner.id)
             assertEquals(listOf(message.id), found.hits.mapNotNull { it.messageId })

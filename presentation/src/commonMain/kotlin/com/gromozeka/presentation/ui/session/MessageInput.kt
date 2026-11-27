@@ -105,7 +105,7 @@ internal fun MessageInput(
     onVoiceAutoSendChange: (Boolean) -> Unit = {},
     leadingContent: @Composable () -> Unit = {},
     beforeActionsContent: @Composable () -> Unit = {},
-    messageDeliveryMode: com.gromozeka.domain.model.UserMessageDeliveryMode = com.gromozeka.domain.model.UserMessageDeliveryMode.STEER,
+    messageDeliveryMode: com.gromozeka.domain.model.MessageDelivery = com.gromozeka.domain.model.MessageDelivery.STEER,
     modifier: Modifier = Modifier,
 ) {
     val localization = LocalTranslation.current

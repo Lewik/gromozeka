@@ -681,7 +681,11 @@ class MemoryMessageRoutingApplicationService(
         targetMessage: Conversation.Message,
         threadContextMessages: List<Conversation.Message>? = null,
     ): MemoryThreadContext {
-        val threadMessages = (threadContextMessages ?: threadMessageRepository.getMessagesByThread(threadId))
+        val threadMessages = (threadContextMessages ?: threadMessageRepository.getContextMessagesThrough(
+            threadId = threadId,
+            throughMessageId = targetMessage.id,
+            nativeProvider = null,
+        ).messages)
             .filterNot { it.isSyntheticMemoryRuntimeMessage() }
             .filter { it.isMemoryStageContextMessage() }
         val targetIndex = threadMessages.indexOfFirst { it.id == targetMessage.id }
@@ -707,10 +711,15 @@ class MemoryMessageRoutingApplicationService(
         syntheticKind == SyntheticMessageKind.MEMORY
 
     private fun Conversation.Message.isMemoryRouteableTarget(): Boolean =
-        role != Conversation.Message.Role.SYSTEM && error == null
+        when (role) {
+            Conversation.Message.Role.USER,
+            Conversation.Message.Role.ASSISTANT,
+            -> error == null
 
-    private fun Conversation.Message.isMemoryStageContextMessage(): Boolean =
-        role != Conversation.Message.Role.SYSTEM && error == null
+            Conversation.Message.Role.SYSTEM,
+            Conversation.Message.Role.RUNTIME,
+            -> false
+        }
 
     private fun memoryIdFactory(
         prefix: String,
@@ -722,6 +731,17 @@ class MemoryMessageRoutingApplicationService(
         return SequentialMemoryIdFactory("$prefix-${source.id.value.sha256().take(12)}")
     }
 }
+
+internal fun Conversation.Message.isMemoryStageContextMessage(): Boolean =
+    when (role) {
+        Conversation.Message.Role.USER,
+        Conversation.Message.Role.ASSISTANT,
+        -> error == null
+
+        Conversation.Message.Role.SYSTEM,
+        Conversation.Message.Role.RUNTIME,
+        -> false
+    }
 
 private fun MemoryWriteRetrievalPlan.describeForLog(): String =
     "need=$needRetrieval types=${memoryTypes.joinToString { it.name }} " +

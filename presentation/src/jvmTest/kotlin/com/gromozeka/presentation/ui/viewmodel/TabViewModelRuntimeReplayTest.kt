@@ -2,6 +2,7 @@ package com.gromozeka.presentation.ui.viewmodel
 
 import com.gromozeka.client.ArtifactTransferService
 import com.gromozeka.domain.model.AppMode
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationHistoryPage
 import com.gromozeka.domain.model.ConversationHistoryPageRequest
@@ -16,9 +17,13 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import com.gromozeka.domain.model.MessageInputContext
+import com.gromozeka.domain.model.MessageDelivery
+import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.ActiveGenerationSnapshot
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
@@ -26,6 +31,7 @@ import com.gromozeka.domain.service.ConversationHistoryService
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
+import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.presentation.services.NoOpAttachmentAcquisitionController
@@ -39,6 +45,7 @@ import kotlin.test.assertEquals
 import kotlin.time.Instant
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,6 +54,279 @@ import kotlinx.coroutines.test.runTest
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TabViewModelRuntimeReplayTest {
+    @Test
+    fun `queued runtime message cannot be destructively edited into the user composer`() = runTest {
+        val conversationId = Conversation.Id("conversation-1")
+        val runtimeEvents = MutableSharedFlow<ConversationRuntimeEvent>(extraBufferCapacity = 2)
+        val runtimeMessage = Conversation.Message(
+            id = Conversation.Message.Id("runtime-message"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(
+                kotlinx.serialization.json.JsonObject(mapOf(
+                    "kind" to kotlinx.serialization.json.JsonPrimitive("panel_state"),
+                )),
+            )),
+            createdAt = Instant.fromEpochMilliseconds(1),
+        )
+        val pending = ConversationRuntimeTask(
+            id = ConversationRuntimeTask.Id("runtime-task"),
+            conversationId = conversationId,
+            payload = ConversationRuntimeTask.Payload.PostMessage(runtimeMessage),
+            placement = com.gromozeka.domain.service.QueuedMessagePlacement.END_OF_TURN,
+            idempotencyKey = "runtime-task",
+            requirements = com.gromozeka.domain.service.ConversationRuntimeTaskRequirements(
+                setOf(com.gromozeka.domain.service.ConversationRuntimeCapability.CONVERSATION_TURN),
+                com.gromozeka.domain.service.ConversationRuntimeTaskTarget.Server,
+            ),
+            createdAt = Instant.fromEpochMilliseconds(1),
+        )
+        val model = viewModel(
+            backgroundScope,
+            runtimeEvents,
+            messageDeliveryMode = MutableStateFlow(MessageDelivery.QUEUE),
+        ) {
+            ConversationHistoryPage(Conversation.Thread.Id("thread-1"), emptyList())
+        }
+        runCurrent()
+        runtimeEvents.emit(ConversationRuntimeEvent.SnapshotUpdated(
+            conversationId,
+            ConversationRuntimeSnapshot(1, conversationId, null, pendingTasks = listOf(pending)),
+        ))
+        runCurrent()
+
+        assertEquals(listOf(runtimeMessage.id.value), model.pendingMessages.value.map { it.id })
+        assertFalse(model.pendingMessages.value.single().editable)
+        model.editPendingMessage(runtimeMessage.id.value)
+        runCurrent()
+
+        assertEquals(listOf(runtimeMessage.id.value), model.pendingMessages.value.map { it.id })
+        assertEquals("", model.uiState.value.userInput)
+    }
+
+    @Test
+    fun `queued messages outside the composer contract cannot be destructively edited`() = runTest {
+        val conversationId = Conversation.Id("conversation-1")
+        val runtimeEvents = MutableSharedFlow<ConversationRuntimeEvent>(extraBufferCapacity = 2)
+        val author = Conversation.Message.Author.User(User.Id("user-1"), "User")
+        val systemMessage = Conversation.Message(
+            id = Conversation.Message.Id("system-message"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.SYSTEM,
+            author = author,
+            content = listOf(Conversation.Message.ContentItem.System(
+                Conversation.Message.ContentItem.System.SystemLevel.INFO,
+                "Harness notification",
+            )),
+            createdAt = Instant.fromEpochMilliseconds(1),
+        )
+        val unsupportedUserMessage = Conversation.Message(
+            id = Conversation.Message.Id("unsupported-user-message"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.USER,
+            author = author,
+            content = listOf(Conversation.Message.ContentItem.UserMessage("Agent handoff")),
+            instructions = listOf(Conversation.Message.Instruction.ResponseExpected("source-tab")),
+            createdAt = Instant.fromEpochMilliseconds(1),
+        )
+        val messages = listOf(systemMessage, unsupportedUserMessage)
+        val model = viewModel(
+            backgroundScope,
+            runtimeEvents,
+            messageDeliveryMode = MutableStateFlow(MessageDelivery.QUEUE),
+        ) {
+            ConversationHistoryPage(Conversation.Thread.Id("thread-1"), emptyList())
+        }
+        runCurrent()
+        runtimeEvents.emit(ConversationRuntimeEvent.SnapshotUpdated(
+            conversationId,
+            ConversationRuntimeSnapshot(
+                revision = 1,
+                conversationId = conversationId,
+                state = null,
+                pendingTasks = messages.map(::pendingTask),
+            ),
+        ))
+        runCurrent()
+
+        assertTrue(model.pendingMessages.value.none { it.editable })
+        messages.forEach { model.editPendingMessage(it.id.value) }
+        runCurrent()
+
+        assertEquals(messages.map { it.id.value }, model.pendingMessages.value.map { it.id })
+        assertEquals("", model.uiState.value.userInput)
+    }
+
+    @Test
+    fun `queued composer remains editable after the current user is renamed`() = runTest {
+        val conversationId = Conversation.Id("conversation-1")
+        val runtimeEvents = MutableSharedFlow<ConversationRuntimeEvent>(extraBufferCapacity = 1)
+        val readonly = MessageInstructionGroup.defaults().single()
+            .controls.single { it.data.id == "mode_readonly" }.data
+        val userMessage = Conversation.Message(
+            id = Conversation.Message.Id("renamed-user-message"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.USER,
+            author = Conversation.Message.Author.User(
+                userId = User.Id("user-1"),
+                displayName = "Renamed User",
+                identityKey = "updated-identity",
+            ),
+            content = listOf(Conversation.Message.ContentItem.UserMessage("Still editable")),
+            instructions = listOf(readonly),
+            createdAt = Instant.fromEpochMilliseconds(1),
+        )
+        val model = viewModel(
+            backgroundScope,
+            runtimeEvents,
+            messageDeliveryMode = MutableStateFlow(MessageDelivery.QUEUE),
+        ) {
+            ConversationHistoryPage(Conversation.Thread.Id("thread-1"), emptyList())
+        }
+        runCurrent()
+
+        runtimeEvents.emit(ConversationRuntimeEvent.SnapshotUpdated(
+            conversationId,
+            ConversationRuntimeSnapshot(1, conversationId, null, pendingTasks = listOf(pendingTask(userMessage))),
+        ))
+        runCurrent()
+
+        assertTrue(model.pendingMessages.value.single().editable)
+    }
+
+    @Test
+    fun `queued composer editability follows delivery without a new runtime snapshot`() = runTest {
+        val conversationId = Conversation.Id("conversation-1")
+        val runtimeEvents = MutableSharedFlow<ConversationRuntimeEvent>(extraBufferCapacity = 2)
+        val inputContext = MessageInputContext(
+            modality = MessageInputContext.Modality.TEXT,
+            source = MessageInputContext.Source.CHAT_INPUT,
+            clientPlatform = MessageInputContext.ClientPlatform.DESKTOP,
+        )
+        val readonly = com.gromozeka.domain.model.MessageInstructionGroup.defaults().single()
+            .controls.single { it.data.id == "mode_readonly" }.data
+        val userMessage = Conversation.Message(
+            id = Conversation.Message.Id("ordinary-user-message"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.USER,
+            author = Conversation.Message.Author.User(User.Id("user-1"), "User"),
+            content = listOf(Conversation.Message.ContentItem.UserMessage("Editable message")),
+            instructions = listOf(
+                Conversation.Message.Instruction.MessageInputRuntimeContext(inputContext),
+                readonly,
+            ),
+            createdAt = Instant.fromEpochMilliseconds(1),
+        )
+        val deliveryMode = MutableStateFlow(MessageDelivery.STEER)
+        val model = viewModel(
+            backgroundScope,
+            runtimeEvents,
+            messageDeliveryMode = deliveryMode,
+        ) {
+            ConversationHistoryPage(Conversation.Thread.Id("thread-1"), emptyList())
+        }
+        runCurrent()
+        runtimeEvents.emit(ConversationRuntimeEvent.SnapshotUpdated(
+            conversationId,
+            ConversationRuntimeSnapshot(1, conversationId, null, pendingTasks = listOf(pendingTask(userMessage))),
+        ))
+        runCurrent()
+
+        assertFalse(model.pendingMessages.value.single().editable)
+        deliveryMode.value = MessageDelivery.QUEUE
+        runCurrent()
+
+        assertTrue(model.pendingMessages.value.single().editable)
+        model.editPendingMessage(userMessage.id.value)
+        runCurrent()
+
+        assertTrue(model.pendingMessages.value.isEmpty())
+        assertEquals("Editable message", model.uiState.value.userInput)
+        assertEquals(inputContext, model.uiState.value.composerMessageInputContext)
+        assertEquals(setOf("mode_readonly"), model.uiState.value.activeMessageInstructionIds)
+    }
+
+    @Test
+    fun `queued composer editability follows agent routing without a new runtime snapshot`() = runTest {
+        val conversationId = Conversation.Id("conversation-1")
+        val projectId = Project.Id("project-1")
+        val threadId = Conversation.Thread.Id("thread-1")
+        val now = Instant.fromEpochMilliseconds(1)
+        val user = Conversation.Message.Author.User(User.Id("user-1"), "User")
+        val agent = AgentDefinition(
+            id = AgentDefinition.Id("agent-1"),
+            name = "Agent",
+            prompts = emptyList(),
+            runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("model-1")),
+            type = AgentDefinition.Type.Global,
+            createdAt = now,
+            updatedAt = now,
+        )
+        val agents = MutableStateFlow(listOf(agent))
+        val conversations = MutableStateFlow(listOf(
+            Conversation(
+                id = conversationId,
+                projectId = projectId,
+                participants = setOf(
+                    Conversation.Participant.User(user.userId),
+                    Conversation.Participant.Agent(agent.id),
+                ),
+                currentThread = threadId,
+                createdAt = now,
+                updatedAt = now,
+            ),
+        ))
+        val message = Conversation.Message(
+            id = Conversation.Message.Id("agent-message"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.USER,
+            author = user,
+            content = listOf(Conversation.Message.ContentItem.UserMessage("@Agent Editable message")),
+            instructions = listOf(
+                com.gromozeka.domain.model.MessageInstructionGroup.defaults().single()
+                    .controls.single { it.data.id == "mode_readonly" }.data,
+            ),
+            createdAt = now,
+        )
+        val task = pendingTask(message).copy(
+            payload = ConversationRuntimeTask.Payload.AgentInvocation(message, agent.id),
+            requirements = com.gromozeka.domain.service.ConversationRuntimeTaskRequirements(
+                com.gromozeka.domain.service.ConversationRuntimeCapability.entries.toSet(),
+                com.gromozeka.domain.service.ConversationRuntimeTaskTarget.Server,
+            ),
+        )
+        val runtimeEvents = MutableSharedFlow<ConversationRuntimeEvent>(extraBufferCapacity = 2)
+        val model = viewModel(
+            backgroundScope,
+            runtimeEvents,
+            messageDeliveryMode = MutableStateFlow(MessageDelivery.QUEUE),
+            agentDefinitions = agents,
+            conversations = conversations,
+        ) {
+            ConversationHistoryPage(threadId, emptyList())
+        }
+        runCurrent()
+        runtimeEvents.emit(ConversationRuntimeEvent.SnapshotUpdated(
+            conversationId,
+            ConversationRuntimeSnapshot(1, conversationId, null, pendingTasks = listOf(task)),
+        ))
+        runCurrent()
+
+        assertTrue(model.pendingMessages.value.single().editable)
+        agents.value = listOf(agent.copy(name = "Renamed"))
+        runCurrent()
+        assertFalse(model.pendingMessages.value.single().editable)
+        model.editPendingMessage(message.id.value)
+        runCurrent()
+        assertEquals(listOf(message.id.value), model.pendingMessages.value.map { it.id })
+        assertEquals("", model.uiState.value.userInput)
+
+        agents.value = listOf(agent)
+        runCurrent()
+        assertTrue(model.pendingMessages.value.single().editable)
+    }
+
     @Test
     fun `elapsed origin ignores scrolling synthetic messages and other users but follows live own messages`() = runTest {
         val events = MutableSharedFlow<ConversationRuntimeEvent>(extraBufferCapacity = 8)
@@ -415,6 +695,108 @@ class TabViewModelRuntimeReplayTest {
     }
 
     @Test
+    fun `runtime observation shells remain visible timeline entries`() = runTest {
+        val thread = Conversation.Thread.Id("thread-1")
+        fun visible(id: String) = Conversation.Message(
+            Conversation.Message.Id(id), Conversation.Id("conversation-1"),
+            role = Conversation.Message.Role.USER,
+            content = listOf(Conversation.Message.ContentItem.UserMessage(id)),
+            createdAt = Instant.parse("2026-09-16T00:00:00Z"),
+        )
+        fun observation(id: String) = visible(id).copy(
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(kotlinx.serialization.json.JsonNull)),
+            instructions = emptyList(),
+        )
+        val first = visible("visible-first")
+        val middle = observation("runtime-middle")
+        val last = visible("visible-last")
+        val rawTail = observation("runtime-tail")
+        val response = ConversationHistoryPage(
+            thread,
+            listOf(first, middle, last, rawTail).mapIndexed { position, message ->
+                ConversationHistoryMessage(position + 100, message)
+            },
+            older = ConversationHistoryCursor(thread, 100),
+            newer = ConversationHistoryCursor(thread, 103),
+        )
+        val model = viewModel(backgroundScope, MutableSharedFlow()) { response }
+        backgroundScope.launch { model.historyContent.collect {} }
+        runCurrent()
+
+        val displayed = model.historyContent.value
+        assertEquals(listOf(first.id, middle.id, last.id, rawTail.id), displayed.messages.map { it.id })
+        assertEquals(first.id, displayed.firstLoadedMessageId)
+        assertEquals(rawTail.id, displayed.lastLoadedMessageId)
+
+        model.toggleMessageSelection(first.id)
+        model.toggleMessageSelectionRange(last.id, isShiftPressed = true)
+        assertEquals(setOf(first.id, middle.id, last.id), model.uiState.value.selectedMessageIds)
+    }
+
+    @Test
+    fun `live runtime observation advances history before the following visible message`() = runTest {
+        val conversationId = Conversation.Id("conversation-1")
+        val thread = Conversation.Thread.Id("thread-1")
+        fun visible(id: String, role: Conversation.Message.Role = Conversation.Message.Role.USER) = Conversation.Message(
+            Conversation.Message.Id(id), conversationId,
+            role = role,
+            content = if (role == Conversation.Message.Role.USER) {
+                listOf(Conversation.Message.ContentItem.UserMessage(id))
+            } else {
+                listOf(Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText(id)))
+            },
+            createdAt = Instant.parse("2026-09-16T00:00:00Z"),
+        )
+        val initial = visible("initial")
+        val observationShell = visible("runtime-observation").copy(
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(kotlinx.serialization.json.JsonNull)),
+            instructions = emptyList(),
+        )
+        val assistant = visible("assistant", Conversation.Message.Role.ASSISTANT)
+        val events = MutableSharedFlow<ConversationRuntimeEvent>(extraBufferCapacity = 4)
+        val model = viewModel(backgroundScope, events) {
+            ConversationHistoryPage(
+                threadId = thread,
+                messages = listOf(ConversationHistoryMessage(10, initial)),
+                eventSequence = 1,
+            )
+        }
+        backgroundScope.launch { model.historyContent.collect {} }
+        runCurrent()
+        events.emit(ConversationRuntimeEvent.ReplayCompleted(conversationId, 1))
+        runCurrent()
+
+        events.emit(ConversationRuntimeEvent.MessageEmitted(
+            conversationId = conversationId,
+            taskId = null,
+            message = observationShell,
+            cursorSequence = 2,
+            historyThreadId = thread,
+            historyPosition = 11,
+        ))
+        runCurrent()
+        assertEquals(1, model.historyActivityRevision.value)
+        events.emit(ConversationRuntimeEvent.MessageEmitted(
+            conversationId = conversationId,
+            taskId = null,
+            message = assistant,
+            cursorSequence = 3,
+            historyThreadId = thread,
+            historyPosition = 12,
+        ))
+        runCurrent()
+
+        assertEquals(2, model.historyActivityRevision.value)
+        assertEquals(listOf(initial.id, observationShell.id, assistant.id), model.allMessages.value.map { it.id })
+        assertEquals(listOf(initial.id, observationShell.id, assistant.id), model.historyContent.value.messages.map { it.id })
+        assertNull(model.newerHistory.value)
+    }
+
+    @Test
     fun `optimistic tail cannot hide a changed newer page boundary`() = runTest {
         val thread = Conversation.Thread.Id("thread-1")
         fun message(position: Int) = Conversation.Message(
@@ -449,11 +831,27 @@ class TabViewModelRuntimeReplayTest {
         assertEquals(101, model.allMessages.value.size)
     }
 
+    private fun pendingTask(message: Conversation.Message): ConversationRuntimeTask = ConversationRuntimeTask(
+        id = ConversationRuntimeTask.Id("task-${message.id.value}"),
+        conversationId = message.conversationId,
+        payload = ConversationRuntimeTask.Payload.PostMessage(message),
+        placement = com.gromozeka.domain.service.QueuedMessagePlacement.END_OF_TURN,
+        idempotencyKey = "task-${message.id.value}",
+        requirements = com.gromozeka.domain.service.ConversationRuntimeTaskRequirements(
+            setOf(com.gromozeka.domain.service.ConversationRuntimeCapability.CONVERSATION_TURN),
+            com.gromozeka.domain.service.ConversationRuntimeTaskTarget.Server,
+        ),
+        createdAt = message.createdAt,
+    )
+
     private fun viewModel(
         scope: CoroutineScope,
         runtimeEvents: MutableSharedFlow<ConversationRuntimeEvent>,
         loadMessage: suspend (Conversation.Message.Id) -> Conversation.Message = { error("Unused") },
         latestUserMessage: suspend () -> Conversation.Message? = { error("Unused") },
+        messageDeliveryMode: StateFlow<MessageDelivery> = MutableStateFlow(MessageDelivery.STEER),
+        agentDefinitions: Flow<List<AgentDefinition>> = emptyFlow(),
+        conversations: Flow<List<Conversation>> = emptyFlow(),
         loadPage: suspend (ConversationHistoryPageRequest) -> ConversationHistoryPage,
     ): TabViewModel {
         val conversationId = Conversation.Id("conversation-1")
@@ -466,7 +864,7 @@ class TabViewModelRuntimeReplayTest {
             currentUserAuthor = Conversation.Message.Author.User(User.Id("user-1"), "User"),
             agentService = stub { methodName ->
                 when {
-                    methodName.startsWith("observeByProject") -> emptyFlow<Nothing>()
+                    methodName.startsWith("observeByProject") -> agentDefinitions
                     else -> unsupported(methodName)
                 }
             },
@@ -474,12 +872,13 @@ class TabViewModelRuntimeReplayTest {
                 when {
                     methodName.startsWith("observeConversation") -> runtimeEvents
                     methodName.startsWith("observeActiveGeneration") -> emptyFlow<ActiveGenerationSnapshot?>()
+                    methodName.startsWith("cancelQueuedMessage") -> true
                     else -> unsupported(methodName)
                 }
             },
             conversationService = stub { methodName ->
                 when {
-                    methodName.startsWith("observeByProject") -> emptyFlow<Nothing>()
+                    methodName.startsWith("observeByProject") -> conversations
                     else -> unsupported(methodName)
                 }
             },
@@ -490,10 +889,11 @@ class TabViewModelRuntimeReplayTest {
                 override suspend fun latestUserMessage(conversationId: Conversation.Id): Conversation.Message? = latestUserMessage()
                 override suspend fun editMessage(conversationId: Conversation.Id, messageId: Conversation.Message.Id, newContent: List<Conversation.Message.ContentItem>): Conversation? = error("Unused")
                 override suspend fun deleteMessages(conversationId: Conversation.Id, messageIds: List<Conversation.Message.Id>): Conversation? = error("Unused")
-                override suspend fun compactMessages(conversationId: Conversation.Id, messageIds: List<Conversation.Message.Id>, strategy: SquashType): Conversation = error("Unused")
+                override suspend fun compactMessages(conversationId: Conversation.Id, messageIds: List<Conversation.Message.Id>,
+                    fullSelection: Boolean, strategy: SquashType): Conversation = error("Unused")
             },
             settingsService = settingsService,
-            scope = scope,
+            parentScope = scope,
             initialTabUiState = UIState.Tab(
                 projectId = projectId,
                 conversationId = conversationId,
@@ -512,6 +912,7 @@ class TabViewModelRuntimeReplayTest {
                 settingsService,
                 NoOpTurnCompletionNotificationSink,
             ),
+            messageDeliveryMode = messageDeliveryMode,
         )
     }
 

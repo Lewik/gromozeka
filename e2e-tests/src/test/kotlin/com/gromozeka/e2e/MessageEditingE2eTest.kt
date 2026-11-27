@@ -39,7 +39,7 @@ class MessageEditingE2eTest {
         onNodeWithTag(UiTestTag.SendButton.value).performClick()
         waitUntil(timeoutMillis = 30_000) {
             runBlocking {
-                client.components.conversationService.loadCurrentMessages(conversation.id).any { message ->
+                client.components.loadRecentHistoryMessages(conversation.id).any { message ->
                     message.content
                         .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
                         .any { it.text == "Original message" }
@@ -47,7 +47,7 @@ class MessageEditingE2eTest {
             }
         }
         val originalMessage = runBlocking {
-            client.components.conversationService.loadCurrentMessages(conversation.id)
+            client.components.loadRecentHistoryMessages(conversation.id)
                 .first { message ->
                     message.content
                         .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
@@ -66,7 +66,7 @@ class MessageEditingE2eTest {
 
         waitUntil(timeoutMillis = 30_000) {
             runBlocking {
-                client.components.conversationService.loadCurrentMessages(conversation.id)
+                client.components.loadRecentHistoryMessages(conversation.id)
                     .any { message ->
                         message.content
                             .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
@@ -77,7 +77,7 @@ class MessageEditingE2eTest {
 
         onNodeWithTag(UiTestTag.EditMessageInput.value).assertDoesNotExist()
         val editedMessage = runBlocking {
-            client.components.conversationService.loadCurrentMessages(conversation.id)
+            client.components.loadRecentHistoryMessages(conversation.id)
                 .first { message ->
                     message.content
                         .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()

@@ -2,19 +2,40 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 
 import kotlinx.serialization.json.JsonElement
 
+import com.gromozeka.application.service.ConversationPinnedPrompt
+import com.gromozeka.application.service.StickyMessageInstructionService
+import com.gromozeka.application.service.SuggestedRepliesGenerationService
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ConversationPin
+import com.gromozeka.domain.model.ConversationPinSource
+import com.gromozeka.domain.model.MessageInstructionGroup
+import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.UserProfile.SuggestedRepliesSettings
 import com.gromozeka.domain.model.putSyntheticMessageMetadata
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AI_REPLAY_THREAD_METADATA_KEY
+import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiReasoningConfig
 import com.gromozeka.domain.model.ai.AiReasoningEffort
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
+import com.gromozeka.domain.model.ai.AiRuntimeResponse
+import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.ai.AiToolChoice
+import com.gromozeka.domain.repository.ConversationPinCreation
+import com.gromozeka.domain.repository.ConversationPinRepository
+import com.gromozeka.domain.service.AiConfigurationProvider
+import com.gromozeka.domain.service.AiRuntime
+import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.ServerToolMetadata
 import kotlin.time.Instant
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -35,6 +56,175 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class OpenAiSubscriptionRequestMapperTest {
+    @Test
+    fun `sticky instruction after a full checkpoint reaches the wire through a stable runtime carrier`() {
+        val instruction = Conversation.Message.Instruction.UserInstruction(
+            id = "access-readonly",
+            title = "Read only",
+            description = "STICKY_INSTRUCTION_REACHED_WIRE",
+        )
+        val group = MessageInstructionGroup(
+            id = "access",
+            title = "Access",
+            controls = listOf(MessageInstructionGroup.Control(instruction, "R")),
+            retentionMode = MessageInstructionGroup.RetentionMode.STICKY_LATEST,
+        )
+        val checkpoint = assistantCompactionMessage("checkpoint", null)
+        val tail = Conversation.Message(
+            id = Conversation.Message.Id("tail"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.USER,
+            content = listOf(Conversation.Message.ContentItem.UserMessage("Continue after compact")),
+            instructions = listOf(instruction),
+            createdAt = createdAt,
+        )
+        val service = StickyMessageInstructionService()
+        val carrier = Conversation.Message(
+            id = Conversation.Message.Id("sticky-continuation"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(buildJsonObject {
+                put("kind", "sticky_instruction_continuation")
+            })),
+            instructions = listOf(instruction),
+            createdAt = createdAt,
+        )
+        val checkpointOnly = service.materialize(listOf(checkpoint, carrier), listOf(group))
+        val messages = service.materialize(listOf(checkpoint, carrier, tail), listOf(group))
+
+        assertEquals(
+            listOf(
+                Conversation.Message.Role.ASSISTANT,
+                Conversation.Message.Role.RUNTIME,
+                Conversation.Message.Role.USER,
+            ),
+            messages.map { it.role },
+        )
+        val checkpointInput = mapper.toRequest(
+            AiRuntimeRequest(emptyList(), checkpointOnly),
+            modelProfile = modelProfile("gpt-5"),
+            conversationKey = "sticky-continuation",
+        ).input
+        val input = mapper.toRequest(
+            AiRuntimeRequest(emptyList(), messages),
+            modelProfile = modelProfile("gpt-5"),
+            conversationKey = "sticky-continuation",
+        ).input
+        val carrierIndex = input.indexOfFirst { "STICKY_INSTRUCTION_REACHED_WIRE" in it.toString() }
+        val tailIndex = input.indexOfFirst { "Continue after compact" in it.toString() }
+
+        assertEquals(checkpointInput, input.take(checkpointInput.size))
+        assertTrue(carrierIndex > 0)
+        assertTrue(tailIndex > carrierIndex)
+        assertEquals(JsonPrimitive("user"), input[carrierIndex]["role"])
+    }
+
+    @Test
+    fun `suggested replies media projection reaches the wire instead of matching provider replay`() = runBlocking {
+        val rawMarker = "RAW_REPLAY_SHOULD_NOT_SURVIVE"
+        val source = Conversation.Message(
+            id = Conversation.Message.Id("assistant-media"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(Conversation.Message.ContentItem.ImageItem(
+                Conversation.Message.ImageSource.Base64ImageSource("AQID", "image/png"),
+            )),
+            providerMetadata = buildJsonObject {
+                put("provider", AiConnection.Kind.OPENAI_SUBSCRIPTION.name)
+                put("connectionId", "connection")
+                put("model", "gpt-5")
+                put(AI_REPLAY_THREAD_METADATA_KEY, "thread")
+                put("openaiSubscriptionProviderItems", buildJsonArray {
+                    add(buildJsonObject {
+                        put("type", "message")
+                        put("role", "assistant")
+                        put("content", rawMarker)
+                    })
+                })
+            },
+            createdAt = createdAt,
+        )
+        lateinit var mapped: OpenAiSubscriptionResponsesRequest
+        val runtime = object : AiRuntime {
+            override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
+                mapped = mapper.toRequest(
+                    request = request,
+                    modelProfile = modelProfile("gpt-5"),
+                    conversationKey = "suggested-replies",
+                    connectionId = "connection",
+                )
+                return AiRuntimeResponse(listOf(AiAssistantMessage(listOf(
+                    Conversation.Message.ContentItem.AssistantMessage(
+                        Conversation.Message.StructuredText("", suggestedReplies = listOf("Continue")),
+                    ),
+                ))))
+            }
+
+            override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = error("Unexpected streaming")
+        }
+        val service = SuggestedRepliesGenerationService(
+            aiRuntimeProvider = object : AiRuntimeProvider {
+                override fun getRuntime(selection: AiRuntimeSelection, workspaceRootPath: String?): AiRuntime = runtime
+            },
+            conversationPins = emptyPinnedPrompt(),
+            aiConfigurationProvider = unusedProxy(),
+        )
+        val agentId = AgentDefinition.Id("agent")
+        val conversation = Conversation(
+            id = conversationId,
+            projectId = Project.Id("project"),
+            participants = setOf(
+                Conversation.Participant.User(User.Id("user")),
+                Conversation.Participant.Agent(agentId),
+            ),
+            currentThread = Conversation.Thread.Id("thread"),
+            createdAt = createdAt,
+            updatedAt = createdAt,
+        )
+
+        service.generate(
+            conversation = conversation,
+            context = SuggestedRepliesGenerationService.Context.Full(listOf(source)),
+            sourceMessage = source,
+            agentDefinitionId = agentId,
+            runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("suggestions-model")),
+            actorUserId = User.Id("user"),
+            usageId = "suggestions",
+            settings = SuggestedRepliesSettings(contextMode = SuggestedRepliesSettings.ContextMode.FULL_THREAD),
+        )
+
+        val wire = mapped.input.toString()
+        assertFalse(rawMarker in wire)
+        assertTrue("Image omitted from suggested replies" in wire)
+    }
+
+    @Test
+    fun `runtime role maps its instructions and content to user input`() {
+        val runtimeMessage = Conversation.Message(
+            id = Conversation.Message.Id("runtime-observation"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(buildJsonObject {
+                put("kind", "runtime_state")
+                put("value", "RUNTIME_JSON")
+            })),
+            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("CURRENT_RUNTIME_STATE")),
+            createdAt = createdAt,
+        )
+
+        val message = mapper.toRequest(
+            request = AiRuntimeRequest(systemPrompts = emptyList(), messages = listOf(runtimeMessage)),
+            modelName = "gpt-5",
+            conversationKey = "runtime-role",
+        ).input.single()
+
+        assertEquals("user", message.getValue("role").jsonPrimitive.content)
+        assertTrue(message.toString().contains("CURRENT_RUNTIME_STATE"))
+        assertTrue(message.toString().contains("RUNTIME_JSON"))
+    }
+
     @Test fun `synthetic async completion uses native function output with model visible provenance`() {
         val source = Conversation.Message.ContentItem.ToolCall.Id("source-call")
         val completion = com.gromozeka.domain.model.syntheticToolCallId("async-tool:operation:completion")
@@ -66,25 +256,6 @@ class OpenAiSubscriptionRequestMapperTest {
         assertEquals(JsonObject(expected - "call_id"), JsonObject(output - "call_id"))
         assertTrue(actual.single { it["role"] == JsonPrimitive("assistant") }.getValue("content").toString().contains(source.value))
         assertTrue(actual.none { it["role"] == JsonPrimitive("user") })
-    }
-
-    @Test
-    fun `covered user anchor delivers only approved one-use context without resurrecting its text`() {
-        val source = Conversation.Message(Conversation.Message.Id("covered-secret-anchor"), conversationId,
-            role = Conversation.Message.Role.USER, content = listOf(Conversation.Message.ContentItem.UserMessage("ARCHIVED ORIGINAL REQUEST")),
-            instructions = listOf(Conversation.Message.Instruction.RevealedSecretRuntimeContext(
-                com.gromozeka.domain.model.RevealedSecretRuntimeContext(mapOf("fixture" to "approved-one-use-value")))), createdAt = createdAt)
-        val summary = source.copy(id = Conversation.Message.Id("handoff"), role = Conversation.Message.Role.ASSISTANT, instructions = emptyList(),
-            content = listOf(Conversation.Message.ContentItem.ContextCompactionResult(
-                Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary("A compact handoff"),
-                Conversation.Message.ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY,
-                sourceMessageIds = listOf(source.id), coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES)))
-        val wire = mapper.toRequest(AiRuntimeRequest(emptyList(), listOf(source, summary)), modelName = "gpt-5", conversationKey = "test").input.toString()
-        assertTrue(wire.contains("approved-one-use-value"))
-        assertFalse(wire.contains("ARCHIVED ORIGINAL REQUEST"))
-        assertFalse(wire.contains("Continue the active task"))
-        val next = mapper.toRequest(AiRuntimeRequest(emptyList(), listOf(source.copy(instructions = emptyList()), summary)), modelName = "gpt-5", conversationKey = "test").input.toString()
-        assertFalse(next.contains("approved-one-use-value"))
     }
 
     @Test
@@ -863,3 +1034,29 @@ private fun modelProfile(
     defaultVerbosity = "low",
     supportsParallelToolCalls = true,
 )
+
+private fun emptyPinnedPrompt(): ConversationPinnedPrompt = ConversationPinnedPrompt(object : ConversationPinRepository {
+    override suspend fun list(conversationId: Conversation.Id): List<ConversationPin> = emptyList()
+    override suspend fun get(conversationId: Conversation.Id, pinId: ConversationPin.Id): ConversationPin? = error("Unexpected get")
+    override suspend fun create(
+        conversationId: Conversation.Id,
+        actor: User.Id,
+        text: String,
+        source: ConversationPinSource?,
+        creationKey: String?,
+    ): ConversationPinCreation = error("Unexpected create")
+    override suspend fun update(
+        conversationId: Conversation.Id,
+        pinId: ConversationPin.Id,
+        expectedRevision: Long,
+        text: String,
+    ): ConversationPin = error("Unexpected update")
+    override suspend fun delete(conversationId: Conversation.Id, pinId: ConversationPin.Id, expectedRevision: Long) {
+        error("Unexpected delete")
+    }
+})
+
+private inline fun <reified T : Any> unusedProxy(): T = java.lang.reflect.Proxy.newProxyInstance(
+    T::class.java.classLoader,
+    arrayOf(T::class.java),
+) { _, method, _ -> error("Unexpected ${T::class.simpleName}.${method.name}") } as T

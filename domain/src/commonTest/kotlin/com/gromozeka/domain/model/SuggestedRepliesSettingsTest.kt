@@ -21,7 +21,7 @@ class SuggestedRepliesSettingsTest {
         assertContains(settings.inlinePrompt, "preserve the user's language")
         assertContains(settings.inlinePrompt, "zero to four")
         assertFalse("suggestedReplies:" in settings.inlinePrompt)
-        assertEquals(SuggestedRepliesSettings.ContextMode.RECENT_MESSAGES, settings.contextMode)
+        assertEquals(SuggestedRepliesSettings.ContextMode.FULL_THREAD, settings.contextMode)
     }
 
     @Test
@@ -61,6 +61,6 @@ class SuggestedRepliesSettingsTest {
         assertEquals(SuggestedRepliesSettings.Mode.SEPARATE_RUNTIME, profile.suggestedRepliesSettings.mode)
         assertEquals(SuggestedRepliesSettings.DEFAULT_PROMPT, profile.suggestedRepliesSettings.inlinePrompt)
         assertEquals(SuggestedRepliesSettings.DEFAULT_PROMPT, profile.suggestedRepliesSettings.separatePrompt)
-        assertEquals(SuggestedRepliesSettings.ContextMode.RECENT_MESSAGES, profile.suggestedRepliesSettings.contextMode)
+        assertEquals(SuggestedRepliesSettings.ContextMode.FULL_THREAD, profile.suggestedRepliesSettings.contextMode)
     }
 }

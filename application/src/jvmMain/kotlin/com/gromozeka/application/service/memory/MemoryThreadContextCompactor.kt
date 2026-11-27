@@ -292,6 +292,7 @@ private fun Conversation.Message.memoryCompactionCharCount(): Int =
             is Conversation.Message.ContentItem.DocumentItem -> 128
             is Conversation.Message.ContentItem.ArtifactItem -> item.artifact.fileName.length + item.artifact.mediaType.length
             is Conversation.Message.ContentItem.ContextCompactionResult -> item.compactionTextForMemory().length
+            is Conversation.Message.ContentItem.RuntimeJson -> item.json.toString().length
             is Conversation.Message.ContentItem.UnknownJson -> item.json.toString().length
         }
     }
@@ -321,6 +322,7 @@ private fun Conversation.Message.renderForMemoryCompaction(maxChars: Int): Strin
             is Conversation.Message.ContentItem.ArtifactItem ->
                 "[attachment:${item.artifact.fileName} media_type=${item.artifact.mediaType}]"
             is Conversation.Message.ContentItem.ContextCompactionResult -> item.compactionTextForMemory()
+            is Conversation.Message.ContentItem.RuntimeJson -> "[runtime_json] ${item.json}"
             is Conversation.Message.ContentItem.UnknownJson -> "[unknown_json] ${item.json}"
         }
     }.joinToString("\n").trim()

@@ -51,7 +51,8 @@ class ConversationUnreadStateApplicationService(
         }
     }
 
-    private fun Conversation.Message.hasUnreadContent(): Boolean = content.any { item ->
+    private fun Conversation.Message.hasUnreadContent(): Boolean =
+        role != Conversation.Message.Role.RUNTIME && content.any { item ->
         when (item) {
             is Conversation.Message.ContentItem.ToolCall,
             is Conversation.Message.ContentItem.ToolResult,
@@ -66,6 +67,7 @@ class ConversationUnreadStateApplicationService(
             is Conversation.Message.ContentItem.DocumentItem,
             is Conversation.Message.ContentItem.ArtifactItem,
             is Conversation.Message.ContentItem.ContextCompactionResult,
+            is Conversation.Message.ContentItem.RuntimeJson,
             is Conversation.Message.ContentItem.UnknownJson,
             -> true
         }

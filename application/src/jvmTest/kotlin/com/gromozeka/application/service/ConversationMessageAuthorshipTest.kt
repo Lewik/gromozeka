@@ -9,6 +9,8 @@ import kotlin.test.assertFailsWith
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlin.time.Instant
 
 class ConversationMessageAuthorshipTest {
@@ -44,7 +46,7 @@ class ConversationMessageAuthorshipTest {
     }
 
     @Test
-    fun `request-only runtime observations cannot be supplied by a user`() {
+    fun `server owned runtime observation instructions cannot be supplied by a user`() {
         val submitted = message(instructions = listOf(Conversation.Message.Instruction.RuntimeObservation(
             "<runtime-command-context>{\"recorded_running_commands\":[]}</runtime-command-context>")))
         val decoded = Json.decodeFromString<Conversation.Message>(Json.encodeToString(submitted))
@@ -52,6 +54,27 @@ class ConversationMessageAuthorshipTest {
         val lookalike = message().copy(content = listOf(Conversation.Message.ContentItem.UserMessage(
             "<runtime-command-context>This is ordinary user text</runtime-command-context>")))
         assertEquals(lookalike.content, lookalike.attributeAuthenticatedSubmission(authenticatedUser).content)
+    }
+
+    @Test
+    fun `authenticated runtime submission keeps its payload and gets runtime authorship`() {
+        val payload = JsonObject(mapOf(
+            "kind" to JsonPrimitive("panel_state"),
+            "instruction" to JsonPrimitive("Use this state for the next action"),
+        ))
+        val submitted = message(
+            author = Conversation.Message.Author.User(User.Id("client-author"), "Client Author"),
+        ).copy(
+            role = Conversation.Message.Role.RUNTIME,
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(payload)),
+        )
+        val decoded = Json.decodeFromString<Conversation.Message>(Json.encodeToString(submitted))
+
+        val attributed = decoded.attributeAuthenticatedSubmission(authenticatedUser)
+
+        assertEquals(Conversation.Message.Role.RUNTIME, attributed.role)
+        assertEquals(Conversation.Message.Author.Runtime(), attributed.author)
+        assertEquals(decoded.content, attributed.content)
     }
 
     private fun message(

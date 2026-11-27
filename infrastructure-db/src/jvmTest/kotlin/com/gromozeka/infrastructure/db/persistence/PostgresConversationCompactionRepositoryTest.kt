@@ -14,6 +14,7 @@ import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.service.*
 import com.gromozeka.infrastructure.db.runtime.PostgresConversationRuntimeCoordinator
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.junit.Assume.assumeTrue
@@ -42,6 +43,36 @@ class PostgresConversationCompactionRepositoryTest {
         }
     }
 
+    @Test fun `COW atomically persists ordered compaction continuation messages`() = runBlocking {
+        withDatabase { f ->
+            val instruction = Conversation.Message.Instruction.UserInstruction(
+                id = "readonly",
+                title = "Readonly",
+                description = "Do not modify files",
+            )
+            val continuation = Conversation.Message(
+                id = Conversation.Message.Id("continuation"),
+                conversationId = f.conversation.id,
+                role = Conversation.Message.Role.RUNTIME,
+                author = Conversation.Message.Author.Runtime(),
+                content = listOf(Conversation.Message.ContentItem.RuntimeJson(JsonPrimitive("sticky"))),
+                instructions = listOf(instruction),
+                createdAt = now,
+            )
+
+            assertTrue(f.repository.commitIfCurrent(
+                f.original.id,
+                listOf(f.summary, continuation),
+                f.derived,
+                f.first.id,
+            ))
+
+            assertEquals(listOf("first", "summary", "continuation", "second"), f.ids(f.derived.id))
+            assertEquals(continuation, f.messages.findById(continuation.id))
+            assertEquals(listOf("first", "second"), f.ids(f.original.id))
+        }
+    }
+
     @Test fun `missing insertion anchor rolls back the branch switch and every new row`() = runBlocking {
         withDatabase { f ->
             assertFailsWith<IllegalStateException> { f.commit(Conversation.Message.Id("missing")) }
@@ -56,7 +87,8 @@ class PostgresConversationCompactionRepositoryTest {
         withDatabase { f ->
             assertTrue(f.commit())
             val another = f.derived.copy(id = Conversation.Thread.Id("another"))
-            assertFalse(f.repository.commitIfCurrent(f.original.id, f.summary.copy(id = Conversation.Message.Id("another-summary")), another, f.first.id))
+            assertFalse(f.repository.commitIfCurrent(f.original.id,
+                listOf(f.summary.copy(id = Conversation.Message.Id("another-summary"))), another, f.first.id))
             assertNull(f.threads.findById(another.id))
             assertNull(f.messages.findById(Conversation.Message.Id("another-summary")))
             assertEquals(f.derived.id, f.conversations.findById(f.conversation.id)?.currentThread)
@@ -184,8 +216,9 @@ class PostgresConversationCompactionRepositoryTest {
             messages.save(message)
             links.add(original.id, message.id, (links.getMaxPosition(original.id) ?: -1) + 1)
         }
-        suspend fun ids(thread: Conversation.Thread.Id) = links.getByThread(thread).map { it.messageId.value }
-        suspend fun commit(anchor: Conversation.Message.Id = first.id, preparedId: String? = null) = repository.commitIfCurrent(original.id, summary, derived, anchor, preparedId)
+        suspend fun ids(thread: Conversation.Thread.Id) = links.readLinksForTest(thread).map { it.messageId.value }
+        suspend fun commit(anchor: Conversation.Message.Id = first.id, preparedId: String? = null) =
+            repository.commitIfCurrent(original.id, listOf(summary), derived, anchor, preparedId)
         fun installPreparation(): ProactiveCompaction {
             val prepared = ProactiveCompaction(summary.id.value, conversation.id, ConversationRuntimeTask.Id("source"), ConversationRuntimeTurnId("turn"),
                 ConversationRuntimeExecutorIdentity.Server(ConversationRuntimeServerSessionId("server")), AgentDefinition.Id("agent"), User.Id("actor"),

@@ -4832,9 +4832,9 @@
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/MessageInstructionTranslation.kt"
     ],
-    "description": "Label for request-only Runtime observation data attached to a model request, not a human instruction or utterance.",
+    "description": "Compact timeline label for a Harness-authored Runtime message. Its full JSON body is persisted and sent to the model but intentionally not rendered in chat.",
     "args": [],
-    "literal": "Runtime observation"
+    "literal": "Runtime message"
   },
   "client.instructions.previousInterrupted": {
     "description": "History chip stating that the user interrupted the previous agent turn; operations may have been partially cancelled. Preserve distinction from stop.",
@@ -4875,13 +4875,6 @@
     "description": "History chip telling an agent that another agent expects a response. This is not a UI waiting status.",
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/MessageInstructionTranslation.kt:45"
-    ],
-    "args": []
-  },
-  "client.instructions.revealedSecrets": {
-    "description": "History chip marking secrets explicitly approved by the user for inclusion in this model request. The label never includes secret values.",
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/MessageInstructionTranslation.kt:38"
     ],
     "args": []
   },
@@ -15173,7 +15166,7 @@
     "description": "Delivery mode label: insert new human input at the next safe execution boundary. Preserve Steer as the mode name; do not translate it as Stop or cancellation.",
     "args": []
   },
-  "client.delivery.afterTurn": {
+  "client.delivery.queue": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt",
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/MessageInput.kt",

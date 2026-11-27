@@ -28,7 +28,7 @@ class PostgresRuntimeMessageBatchTest {
             assertFailsWith<Exception> { f.append(listOf(first, second)) }
             assertNull(f.messages.findById(first.id))
             assertNull(f.messages.findById(second.id))
-            assertTrue(f.links.getByThread(f.conversation.currentThread).isEmpty())
+            assertTrue(f.links.readLinksForTest(f.conversation.currentThread).isEmpty())
         }
     }
 
@@ -37,9 +37,9 @@ class PostgresRuntimeMessageBatchTest {
             val packet = listOf(f.message("first"), f.message("second"))
             assertEquals(packet, f.append(packet))
             assertTrue(f.append(packet.map { it.copy(createdAt = Clock.System.now()) }).isEmpty())
-            assertEquals(packet.map { it.id }, f.links.getByThread(f.conversation.currentThread).map { it.messageId })
+            assertEquals(packet.map { it.id }, f.links.readLinksForTest(f.conversation.currentThread).map { it.messageId })
             assertFailsWith<IllegalArgumentException> { f.append(listOf(packet.last().copy(content = emptyList()))) }
-            assertEquals(packet, f.links.getMessagesByThread(f.conversation.currentThread))
+            assertEquals(packet, f.links.readArchiveForTest(f.conversation.currentThread))
         }
     }
 
@@ -50,7 +50,7 @@ class PostgresRuntimeMessageBatchTest {
             coroutineScope {
                 listOf(async(Dispatchers.IO) { f.append(a) }, async(Dispatchers.IO) { f.append(b) }).awaitAll()
             }
-            val order = f.links.getByThread(f.conversation.currentThread).map { it.messageId.value }
+            val order = f.links.readLinksForTest(f.conversation.currentThread).map { it.messageId.value }
             assertTrue(order == listOf("a1", "a2", "b1", "b2") || order == listOf("b1", "b2", "a1", "a2"), order.toString())
         }
     }
@@ -63,7 +63,7 @@ class PostgresRuntimeMessageBatchTest {
             val message = f.message("wrong-history")
             assertFailsWith<IllegalStateException> { f.append(listOf(message)) }
             assertNull(f.messages.findById(message.id))
-            assertTrue(f.links.getByThread(next.id).isEmpty())
+            assertTrue(f.links.readLinksForTest(next.id).isEmpty())
         }
     }
 

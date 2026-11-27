@@ -2,20 +2,17 @@ package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.MessageDelivery
 import com.gromozeka.domain.model.User
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
 
 interface ConversationRuntimeService {
-    suspend fun postMessage(
+    suspend fun submitMessage(
         conversationId: Conversation.Id,
-        userMessage: Conversation.Message,
-    ): Boolean
-
-    suspend fun invokeAgent(
-        conversationId: Conversation.Id,
-        userMessage: Conversation.Message,
-        agentDefinitionId: AgentDefinition.Id,
+        message: Conversation.Message,
+        agentDefinitionId: AgentDefinition.Id?,
+        delivery: MessageDelivery,
     ): Boolean
 
     fun observeConversation(
@@ -26,13 +23,6 @@ interface ConversationRuntimeService {
     fun observeActiveGeneration(
         conversationId: Conversation.Id,
     ): Flow<ActiveGenerationSnapshot?>
-
-    suspend fun enqueueAgentInvocation(
-        conversationId: Conversation.Id,
-        userMessage: Conversation.Message,
-        agentDefinitionId: AgentDefinition.Id,
-        placement: QueuedMessagePlacement,
-    ): Boolean
 
     suspend fun cancelQueuedMessage(
         conversationId: Conversation.Id,
@@ -62,25 +52,12 @@ interface ConversationRuntimeService {
 }
 
 interface ConversationRuntimeIngressService {
-    suspend fun postMessage(
+    suspend fun submitMessage(
         actorUser: User,
         conversationId: Conversation.Id,
-        userMessage: Conversation.Message,
-    ): Boolean
-
-    suspend fun invokeAgent(
-        actorUser: User,
-        conversationId: Conversation.Id,
-        userMessage: Conversation.Message,
-        agentDefinitionId: AgentDefinition.Id,
-    ): Boolean
-
-    suspend fun enqueueAgentInvocation(
-        actorUser: User,
-        conversationId: Conversation.Id,
-        userMessage: Conversation.Message,
-        agentDefinitionId: AgentDefinition.Id,
-        placement: QueuedMessagePlacement,
+        message: Conversation.Message,
+        agentDefinitionId: AgentDefinition.Id?,
+        delivery: MessageDelivery,
     ): Boolean
 }
 

@@ -22,4 +22,13 @@ interface ConversationRequestEnricher {
         request: AiRuntimeRequest,
     ): AiRuntimeRequest = throw UnsupportedOperationException(
         "This context enricher does not support read-only snapshots")
+
+    /** Detached compaction must reproduce the live request prefix without consuming live replay state. */
+    suspend fun enrichCompactionSnapshot(
+        conversationId: Conversation.Id,
+        rootUserMessageId: Conversation.Message.Id,
+        turnId: ConversationRuntimeTurnId,
+        model: AiModelSpec,
+        request: AiRuntimeRequest,
+    ): AiRuntimeRequest = enrichSnapshot(conversationId, rootUserMessageId, turnId, model, request)
 }

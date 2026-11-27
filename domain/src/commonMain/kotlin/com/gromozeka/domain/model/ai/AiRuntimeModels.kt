@@ -151,13 +151,28 @@ fun AiConnection.Kind.nativeCompactionProvider(): String? = when (this) {
     else -> null
 }
 
-fun AiRuntimeRequest.projectedMessages(nativeProvider: String? = null): List<Conversation.Message> {
+fun AiRuntimeRequest.projectedMessages(
+    nativeCompactionProvider: String? = null,
+    replayProvider: String? = nativeCompactionProvider,
+): List<Conversation.Message> {
     val currentThread = options.toolContext["threadId"] as? String
     // UI corrections never rewrite signed/native provider history. Restore the actual
     // generated blocks before compaction projection or native-session reconciliation.
-    val originalMessages = originalCollaborationMessages().withPortableSyntheticToolCallIds()
-    val window = ConversationContext(originalMessages).messagesForProvider(nativeProvider)
-    val retainedReplay = window.firstOrNull().retainedOpenAiReplayIds(nativeProvider, currentThread)
+    val restoredMessages = originalCollaborationMessages()
+        .withPortableSyntheticToolCallIds()
+    fun target(provider: String) =
+        Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(
+            provider = provider,
+            connectionId = options.toolContext["aiConnectionId"] as? String,
+            modelConfigurationId = options.toolContext["aiModelConfigurationId"] as? String,
+            modelName = options.toolContext["modelName"] as? String,
+        )
+    val contextWindow = ConversationContext(restoredMessages).messagesForProvider(
+        nativeCompactionTarget = nativeCompactionProvider?.let(::target),
+        replayTarget = replayProvider?.let(::target),
+    )
+    val window = contextWindow
+    val retainedReplay = window.firstOrNull().retainedOpenAiReplayIds(nativeCompactionProvider, currentThread)
     val projected = window.map { message ->
         val sourceThread = message.providerMetadata[AI_REPLAY_THREAD_METADATA_KEY]?.jsonPrimitive?.contentOrNull
         if (currentThread != null && sourceThread != currentThread && message.id !in retainedReplay) {
@@ -166,18 +181,11 @@ fun AiRuntimeRequest.projectedMessages(nativeProvider: String? = null): List<Con
             message.withoutProviderReplay()
         } else message
     }
-    val retainedIds = projected.mapTo(mutableSetOf()) { it.id }
-    // One-use runtime context must survive a covered user anchor, without restoring its archived text.
-    val oneUseInputs = originalMessages.filter { it.id !in retainedIds }.mapNotNull { message ->
-        val instructions = message.instructions.filterIsInstance<Conversation.Message.Instruction.RevealedSecretRuntimeContext>()
-        if (instructions.isEmpty()) null else {
-            val id = Conversation.Message.Id("${message.id.value}:one-use-context")
-            check(originalMessages.none { it.id == id }) { "One-use runtime context identity collides with history" }
-            message.copy(id = id, content = emptyList(), instructions = instructions, providerMetadata = JsonObject(emptyMap()))
-        }
-    }
-    return (projected + oneUseInputs)
+    return projected
 }
+
+fun AiRuntimeRequest.projectedMessages(connectionKind: AiConnection.Kind): List<Conversation.Message> =
+    projectedMessages(connectionKind.nativeCompactionProvider(), connectionKind.name)
 
 /** Preserve native CLI fingerprints while keeping human-facing corrections out of raw replay. */
 fun AiRuntimeRequest.originalCollaborationMessages(): List<Conversation.Message> =

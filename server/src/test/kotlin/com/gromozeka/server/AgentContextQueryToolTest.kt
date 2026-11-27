@@ -118,6 +118,7 @@ class AgentContextQueryToolTest {
             runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("model")),
             resolvedRuntime = Mockito.mock(ResolvedAiRuntime::class.java),
             request = AiRuntimeRequest(listOf("private system prefix"), emptyList()),
+            lastIncludedMessageId = null,
             capturedAt = Instant.fromEpochMilliseconds(0), sourceMessageCount = 3, omittedTrailingMessageCount = 2,
         )
         Mockito.`when`(provider.getObject()).thenReturn(service)

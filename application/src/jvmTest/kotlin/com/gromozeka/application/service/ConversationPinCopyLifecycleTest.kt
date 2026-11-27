@@ -86,7 +86,11 @@ class ConversationPinCopyLifecycleTest {
         }
         val messages = responding<MessageRepository> { emptyList<Conversation.Message>() }
         val links = responding<ThreadMessageRepository> { invocation ->
-            if (invocation.method.name.substringBefore('-') == "getByThread") emptyList<ThreadMessageLink>() else Mockito.RETURNS_DEFAULTS.answer(invocation)
+            when (invocation.method.name.substringBefore('-')) {
+                "getLinkPage" -> emptyList<ThreadMessageLink>()
+                "getMessagePage" -> emptyList<ThreadMessagePageEntry>()
+                else -> Mockito.RETURNS_DEFAULTS.answer(invocation)
+            }
         }
         val artifacts = responding<ConversationArtifactApplicationService> { invocation ->
             if (invocation.method.name.substringBefore('-') == "cloneReferences") invocation.arguments[2] else Mockito.RETURNS_DEFAULTS.answer(invocation)

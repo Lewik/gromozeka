@@ -35,6 +35,7 @@ interface ConversationHistoryService {
     suspend fun compactMessages(
         conversationId: Conversation.Id,
         messageIds: List<Conversation.Message.Id>,
+        fullSelection: Boolean,
         strategy: SquashType,
     ): Conversation
 }

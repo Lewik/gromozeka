@@ -3,19 +3,33 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.service.AiConfigurationProvider
+import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolContextField.MEMORY_NAMESPACE
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolDescriptor
 import com.gromozeka.domain.tool.AiToolLoadingPolicy
 import com.gromozeka.domain.tool.ServerToolMetadata
+import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
+import com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID
+import com.gromozeka.domain.tool.TOOL_CONTEXT_PROJECT_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.withContextRequirements
 import kotlin.time.Instant
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import org.mockito.Mockito
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -25,7 +39,7 @@ class AiToolSearchServiceTest {
     private val service = AiToolSearchService()
 
     @Test
-    fun `ranks realistic capability matches within top eight`() {
+    fun `ranks realistic capability matches within top five`() {
         val tools = listOf(
             tool("grz_execute_command", "Run shell commands and long-lived processes on a workspace."),
             tool("grz_get_command_task", "Read incremental output from a running command task.", "next_output_byte"),
@@ -138,6 +152,147 @@ class AiToolSearchServiceTest {
     }
 }
 
+class SearchToolsToolCallbackTest {
+    @Test
+    fun `returns five names and excludes exactly what the model already saw`() {
+        val now = Instant.fromEpochMilliseconds(0)
+        val project = Project(Project.Id("project"), "Test", createdAt = now, lastUsedAt = now)
+        val agent = AgentDefinition(
+            id = AgentDefinition.Id("agent"),
+            projectId = project.id,
+            name = "Test",
+            prompts = emptyList(),
+            runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("model")),
+            type = AgentDefinition.Type.Project,
+            createdAt = now,
+            updatedAt = now,
+        )
+        val conversation = Conversation(
+            id = Conversation.Id("conversation"),
+            projectId = project.id,
+            participants = setOf(Conversation.Participant.User(User.Id("user"))),
+            currentThread = Conversation.Thread.Id("thread"),
+            createdAt = now,
+            updatedAt = now,
+        )
+        val tools = (0..6).map { index ->
+            tool("calendar_tool_$index", "Manage calendar events and schedules.")
+        }
+        val catalog = DistributedAiToolCatalogSnapshot(
+            tools = tools,
+            entries = tools.associate { callback ->
+                callback.definition.name to DistributedAiTool(
+                    AiToolDescriptor(callback.definition, callback.metadata),
+                    emptyList(),
+                )
+            },
+            registrations = emptyList(),
+            environmentRevision = "revision",
+            environmentPrompt = "",
+        )
+        val callback = SearchToolsToolCallback(
+            projectDomainService = responding { project },
+            agentDomainService = responding { agent },
+            conversationDomainService = responding { conversation },
+            distributedToolCatalog = responding { catalog },
+            searchService = AiToolSearchService(),
+            settingsProvider = responding { UserProfile() },
+            aiConfigurationProvider = responding { null },
+        )
+        val context = ToolExecutionContext(
+            values = mapOf(
+                TOOL_CONTEXT_PROJECT_ID to project.id.value,
+                TOOL_CONTEXT_AGENT_DEFINITION_ID to agent.id.value,
+                TOOL_CONTEXT_CONVERSATION_ID to conversation.id.value,
+            ),
+            modelVisibleToolNames = setOf("calendar_tool_0"),
+        )
+
+        val result = Json.parseToJsonElement(
+            callback.call("""{"query":"calendar"}""", context)
+        ).jsonObject
+        val names = result.getValue("tools").jsonArray.map { it.jsonPrimitive.content }
+
+        assertEquals(setOf("tools"), result.keys)
+        assertEquals(5, names.size)
+        assertTrue("calendar_tool_0" !in names)
+    }
+
+    @Test
+    fun `does not find memory tools while automatic memory is disabled`() {
+        val now = Instant.fromEpochMilliseconds(0)
+        val project = Project(Project.Id("project"), "Test", createdAt = now, lastUsedAt = now)
+        val agent = AgentDefinition(
+            id = AgentDefinition.Id("agent"),
+            projectId = project.id,
+            name = "Test",
+            prompts = emptyList(),
+            runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("model")),
+            type = AgentDefinition.Type.Project,
+            createdAt = now,
+            updatedAt = now,
+        )
+        val conversation = Conversation(
+            id = Conversation.Id("conversation"),
+            projectId = project.id,
+            participants = setOf(Conversation.Participant.User(User.Id("user"))),
+            currentThread = Conversation.Thread.Id("thread"),
+            createdAt = now,
+            updatedAt = now,
+        )
+        val memory = tool(
+            "memory_remember",
+            "Remember durable user facts.",
+            memoryTool = true,
+        )
+        val catalog = DistributedAiToolCatalogSnapshot(
+            tools = listOf(memory),
+            entries = mapOf(
+                memory.definition.name to DistributedAiTool(
+                    AiToolDescriptor(memory.definition, memory.metadata),
+                    emptyList(),
+                )
+            ),
+            registrations = emptyList(),
+            environmentRevision = "revision",
+            environmentPrompt = "",
+        )
+        val context = ToolExecutionContext(
+            values = mapOf(
+                TOOL_CONTEXT_PROJECT_ID to project.id.value,
+                TOOL_CONTEXT_AGENT_DEFINITION_ID to agent.id.value,
+                TOOL_CONTEXT_CONVERSATION_ID to conversation.id.value,
+            ),
+        )
+        fun callback(settings: UserProfile.MemorySettings, runtime: AiRuntimeSelection?) =
+            SearchToolsToolCallback(
+                projectDomainService = responding { project },
+                agentDomainService = responding { agent },
+                conversationDomainService = responding { conversation },
+                distributedToolCatalog = responding { catalog },
+                searchService = AiToolSearchService(),
+                settingsProvider = responding { UserProfile(memorySettings = settings) },
+                aiConfigurationProvider = responding { runtime },
+            )
+
+        val disabled = Json.parseToJsonElement(
+            callback(UserProfile.MemorySettings(), null).call("""{"query":"memory remember"}""", context)
+        ).jsonObject.getValue("tools").jsonArray
+        val enabled = Json.parseToJsonElement(
+            callback(
+                UserProfile.MemorySettings(autoRemember = true),
+                AiRuntimeSelection(AiModelConfiguration.Id("memory-model")),
+            ).call("""{"query":"memory remember"}""", context)
+        ).jsonObject.getValue("tools").jsonArray
+
+        assertTrue(disabled.isEmpty())
+        assertEquals(listOf("memory_remember"), enabled.map { it.jsonPrimitive.content })
+    }
+
+    private inline fun <reified T : Any> responding(crossinline answer: () -> Any?): T =
+        Mockito.mock(T::class.java) { answer() }
+}
+
 class AiToolRuntimeCatalogServiceTest {
     @Test
     fun `access policy filters core and preloaded tools`() {
@@ -243,7 +398,7 @@ class AiToolRuntimeCatalogServiceTest {
                         toolName = SEARCH_TOOLS_TOOL_NAME,
                         result = listOf(
                             Conversation.Message.ContentItem.ToolResult.Data.Text(
-                                """{"tools":[{"name":"calendar_create_event"}]}"""
+                                """{"tools":["calendar_create_event"]}"""
                             )
                         ),
                     )
@@ -282,7 +437,7 @@ class AiToolRuntimeCatalogServiceTest {
                         toolName = SEARCH_TOOLS_TOOL_NAME,
                         result = listOf(
                             Conversation.Message.ContentItem.ToolResult.Data.Text(
-                                """{"tools":[{"name":"custom_tool"}]}"""
+                                """{"tools":["custom_tool"]}"""
                             ),
                             Conversation.Message.ContentItem.ToolResult.Data.Text("not-json"),
                         ),
@@ -324,7 +479,7 @@ class AiToolRuntimeCatalogServiceTest {
                         toolName = SEARCH_TOOLS_TOOL_NAME,
                         result = listOf(
                             Conversation.Message.ContentItem.ToolResult.Data.Text(
-                                """{"tools":[{"name":"custom_tool"}]}"""
+                                """{"tools":["custom_tool"]}"""
                             )
                         ),
                     )
@@ -429,6 +584,63 @@ class AiToolRuntimeCatalogServiceTest {
     }
 
     @Test
+    fun `disabled memory tools cannot be pinned or restored from search history`() {
+        val callId = Conversation.Message.ContentItem.ToolCall.Id("search-call")
+        val messages = listOf(
+            message(
+                role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(
+                    Conversation.Message.ContentItem.ToolCall(
+                        id = callId,
+                        call = Conversation.Message.ContentItem.ToolCall.Data(
+                            name = SEARCH_TOOLS_TOOL_NAME,
+                            input = buildJsonObject { put("query", "memory") },
+                        ),
+                    )
+                ),
+            ),
+            message(
+                role = Conversation.Message.Role.USER,
+                content = listOf(
+                    Conversation.Message.ContentItem.ToolResult(
+                        toolUseId = callId,
+                        toolName = SEARCH_TOOLS_TOOL_NAME,
+                        result = listOf(
+                            Conversation.Message.ContentItem.ToolResult.Data.Text(
+                                """{"tools":["memory_remember"]}"""
+                            )
+                        ),
+                    )
+                ),
+            ),
+        )
+        val catalog = catalog(
+            tool(SEARCH_TOOLS_TOOL_NAME, "Search tools."),
+            tool("memory_remember", "Remember facts.", memoryTool = true),
+        )
+
+        val disabled = service.selectTools(
+            agent(pinnedTools = listOf("memory_remember")),
+            catalog,
+            messages,
+            memoryEnabled = false,
+        )
+        val enabled = service.selectTools(
+            agent(pinnedTools = listOf("memory_remember")),
+            catalog,
+            messages,
+            memoryEnabled = true,
+        )
+
+        assertEquals(listOf(SEARCH_TOOLS_TOOL_NAME), disabled.tools.map { it.definition.name })
+        assertTrue("memory_remember" !in disabled.unavailableToolNames)
+        assertEquals(
+            listOf("memory_remember", SEARCH_TOOLS_TOOL_NAME),
+            enabled.tools.map { it.definition.name },
+        )
+    }
+
+    @Test
     fun `configured logical names expand to active contract variants`() {
         val search = tool("search_tools__v2", "Search tools.")
         val read = tool("grz_read_file__v3", "Read files.")
@@ -511,9 +723,12 @@ private fun tool(
     description: String,
     parameterDescription: String = "",
     loadingPolicy: AiToolLoadingPolicy = AiToolLoadingPolicy.ON_DEMAND,
+    memoryTool: Boolean = false,
 ): AiToolCallback =
     object : AiToolCallback {
-        override val metadata = ServerToolMetadata.copy(loadingPolicy = loadingPolicy)
+        override val metadata = ServerToolMetadata.copy(loadingPolicy = loadingPolicy).let {
+            if (memoryTool) it.withContextRequirements(MEMORY_NAMESPACE) else it
+        }
         override val definition = AiToolDefinition(
             name = name,
             description = description,

@@ -55,14 +55,13 @@ class AgentCollaborationServiceTest {
         val definition = targetOnAnotherRuntime()
         Mockito.`when`(agents.findById(target.agentId)).thenReturn(definition)
         val repository = mock<AgentCollaborationRepository>()
-        val history = mock<ConversationDomainService>()
-        val reader = AgentCollaborationService(repository, conversations, agentAccess, agents, coordinator, sync, tabLayouts, messageHistory, history)
+        val reader = AgentCollaborationService(repository, conversations, agentAccess, agents, coordinator, sync, tabLayouts, messageHistory)
         val resolved = reader.resolveEligibleTarget(source, actor.id, "b")
         assertEquals(target, resolved.endpoint)
         assertEquals(conversation(target), resolved.conversation)
         assertEquals(definition, resolved.agent)
         Mockito.verify(access, Mockito.times(2)).requirePermission(actor.id, Project.Id("p"), ProjectPermission.WRITE)
-        Mockito.verifyNoInteractions(repository, coordinator, sync, history)
+        Mockito.verifyNoInteractions(repository, coordinator, sync)
         assertTrue(reader.wakeups.tryReceive().isFailure)
         assertTrue(Mockito.mockingDetails(conversations).invocations.all { it.method.name.substringBefore('-') == "findById" })
     }
@@ -240,8 +239,7 @@ class AgentCollaborationServiceTest {
         repo.items["wait"] = AgentRequest("wait", source, target, actor.id, "PRIVATE_REQUEST_BODY", now,
             state = AgentRequest.State.WAITING_RESULT, waitFor = listOf("known-command"))
         val itemsBefore = repo.items.toMap()
-        val history = mock<ConversationDomainService>()
-        val reader = AgentCollaborationService(repo, conversations, agentAccess, agents, coordinator, sync, tabLayouts, messageHistory, history)
+        val reader = AgentCollaborationService(repo, conversations, agentAccess, agents, coordinator, sync, tabLayouts, messageHistory)
         val row = reader.sessions(source, actor.id, "b", "bb", details = true).getValue("sessions").jsonArray.single().jsonObject
         val runtime = row.getValue("runtime").jsonObject
         assertEquals("tb", row.getValue("thread_id").jsonPrimitive.content)
@@ -254,7 +252,7 @@ class AgentCollaborationServiceTest {
         Mockito.verify(conversations, Mockito.never()).findByProject(Project.Id("p"))
         Mockito.verify(coordinator).schedulingSnapshot(target.conversationId)
         Mockito.verifyNoMoreInteractions(coordinator)
-        Mockito.verifyNoInteractions(history, sync)
+        Mockito.verifyNoInteractions(sync)
     }
 
     @Test fun `ineligible selected sessions expose no runtime facts and do not bypass visibility`(): Unit = runBlocking {
@@ -563,7 +561,7 @@ class AgentCollaborationServiceTest {
     @Test fun `stop and interrupt cancel durable waits even without an active foreground turn`() = runBlocking {
         setup()
         val dispatcher = mock<ConversationRuntimeDispatcher>()
-        val runtime = ConversationRuntimeApplicationService(dispatcher, sync, mock(), mock(), mock(), mock(), service)
+        val runtime = ConversationRuntimeApplicationService(dispatcher, sync, mock(), mock(), mock(), collaboration = service)
         for (action in listOf(ConversationRuntimeControlAction.STOP, ConversationRuntimeControlAction.INTERRUPT)) {
             val id = service.send(source, actor.id, "b", null, "Wait for a user choice", "idle-$action", AgentSendMode.REQUEST, Conversation.Message.Id("source-message"))
             repo.items[id] = requireNotNull(repo.items[id]).copy(state = AgentRequest.State.WAITING_USER)
@@ -773,15 +771,16 @@ class AgentCollaborationServiceTest {
 
     @Test fun `readonly activation propagates through delegation without a parent request`(): Unit = runBlocking {
         setup()
-        val history = mock<ConversationDomainService>()
         val root = Conversation.Message(Conversation.Message.Id("readonly-source"), source.conversationId,
             role = Conversation.Message.Role.USER, author = Conversation.Message.Author.User(actor.id, "User"),
             content = listOf(Conversation.Message.ContentItem.UserMessage("Inspect only")), createdAt = now,
             instructions = listOf(Conversation.Message.Instruction.UserInstruction("mode_readonly", "Readonly", "No changes")))
-        Mockito.`when`(history.loadCurrentMessages(source.conversationId)).thenReturn(listOf(root))
-        Mockito.`when`(history.loadCurrentMessages(target.conversationId)).thenReturn(emptyList())
+        Mockito.`when`(messageHistory.latestUserInstructionId(
+            source.threadId,
+            setOf("mode_readonly", "mode_writable"),
+        )).thenReturn("mode_readonly")
         val scheduler = InMemoryConversationRuntimeCoordinator()
-        val transport = AgentCollaborationService(repo, conversations, agentAccess, agents, scheduler, sync, tabLayouts, messageHistory, history)
+        val transport = AgentCollaborationService(repo, conversations, agentAccess, agents, scheduler, sync, tabLayouts, messageHistory)
         val id = transport.send(source, actor.id, "b", null, "Inspect this", "readonly-activation", AgentSendMode.ACTIVATE, root.id)
         assertTrue(repo.items.isEmpty())
         assertTrue(repo.deliveries.getValue("$id:input").readOnly)
@@ -810,7 +809,7 @@ class AgentCollaborationServiceTest {
     @Test fun `stop blocks undelivered activation even without an active task or request`() = runBlocking {
         setup()
         val dispatcher = mock<ConversationRuntimeDispatcher>()
-        val runtime = ConversationRuntimeApplicationService(dispatcher, sync, mock(), mock(), mock(), mock(), service)
+        val runtime = ConversationRuntimeApplicationService(dispatcher, sync, mock(), mock(), mock(), collaboration = service)
         for (action in listOf(ConversationRuntimeControlAction.STOP, ConversationRuntimeControlAction.INTERRUPT)) {
             val id = service.send(source, actor.id, "b", null, "Activate", "stopped-$action", AgentSendMode.ACTIVATE, Conversation.Message.Id("source-message"))
             Mockito.`when`(dispatcher.controlExecution(target.conversationId, action)).thenReturn(false)

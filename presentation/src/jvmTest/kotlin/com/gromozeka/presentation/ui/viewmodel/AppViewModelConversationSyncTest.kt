@@ -13,9 +13,11 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.test.assertFailsWith
 import kotlin.time.Instant
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 
@@ -53,6 +55,84 @@ class AppViewModelConversationSyncTest {
     }
 
     @Test
+    fun projectObservationReplacesMissingConversationsAndAnEmptySnapshot() = runTest {
+        val fixture = Fixture(backgroundScope)
+        val first = fixture.add("one", "project-a")
+        val removed = fixture.add("two", "project-a")
+        val otherProject = fixture.add("three", "project-b")
+        fixture.open(first)
+        fixture.open(otherProject)
+        runCurrent()
+        assertEquals(setOf(first.id, removed.id, otherProject.id), fixture.app.conversations.value.keys)
+
+        fixture.removeExternally(removed)
+        runCurrent()
+        assertEquals(setOf(first.id, otherProject.id), fixture.app.conversations.value.keys)
+
+        fixture.removeExternally(first)
+        runCurrent()
+        assertEquals(setOf(otherProject.id), fixture.app.conversations.value.keys)
+    }
+
+    @Test
+    fun conversationObservationRecoversWhileItsTabRemainsOpen() = runTest {
+        val fixture = Fixture(backgroundScope)
+        val conversation = fixture.add("one", "project-a")
+        fixture.open(conversation)
+        runCurrent()
+
+        fixture.failNextConversationObservation(conversation.projectId)
+        fixture.renameExternally(conversation, "Dropped update")
+        runCurrent()
+        fixture.renameExternally(conversation, "Recovered update")
+        advanceTimeBy(1_000)
+        runCurrent()
+
+        assertEquals("Recovered update", fixture.app.conversations.value[conversation.id]?.displayName)
+        assertEquals(2, fixture.startedObservers[conversation.projectId])
+    }
+
+    @Test
+    fun agentObservationRecoversWhileItsTabRemainsOpen() = runTest {
+        val fixture = Fixture(backgroundScope)
+        val conversation = fixture.add("one", "project-a")
+        fixture.open(conversation)
+        runCurrent()
+
+        fixture.failNextAgentObservation(conversation.projectId)
+        fixture.updateAgents(conversation.projectId, listOf(fixture.defaultAgent.copy(name = "Dropped update")))
+        runCurrent()
+        fixture.updateAgents(conversation.projectId, listOf(fixture.defaultAgent.copy(name = "Recovered agent")))
+        advanceTimeBy(1_000)
+        runCurrent()
+
+        assertEquals("Recovered agent", fixture.app.tabs.value.single().agentMentionCandidates.value.single().name)
+        assertEquals(2, fixture.startedAgentObservers[conversation.projectId])
+    }
+
+    @Test
+    fun reopeningAProjectDoesNotReplayAgentsFromItsClosedTab() = runTest {
+        val fixture = Fixture(backgroundScope)
+        val conversation = fixture.add("one", "project-a")
+        fixture.open(conversation)
+        runCurrent()
+        assertEquals("Default", fixture.app.tabs.value.single().agentMentionCandidates.value.single().name)
+
+        fixture.app.closeTab(0)
+        runCurrent()
+        fixture.updateAgents(conversation.projectId, listOf(fixture.defaultAgent.copy(name = "Fresh agent")))
+        val observationGate = fixture.pauseNextAgentObservation(conversation.projectId)
+
+        fixture.open(conversation)
+        runCurrent()
+        assertTrue(fixture.app.tabs.value.single().agentMentionCandidates.value.isEmpty())
+
+        observationGate.complete(Unit)
+        runCurrent()
+        assertEquals("Fresh agent", fixture.app.tabs.value.single().agentMentionCandidates.value.single().name)
+    }
+
+    @Test
     fun sharesProjectObservationUntilItsLastTabClosesAndStopsOnCleanup() = runTest {
         val fixture = Fixture(backgroundScope)
         val first = fixture.add("one", "project-a")
@@ -63,21 +143,27 @@ class AppViewModelConversationSyncTest {
         runCurrent()
         assertEquals(1, fixture.activeObservers[first.projectId])
         assertEquals(1, fixture.startedObservers[first.projectId])
+        assertEquals(1, fixture.activeAgentObservers[first.projectId])
+        assertEquals(1, fixture.startedAgentObservers[first.projectId])
 
         fixture.app.closeTab(0)
         runCurrent()
         assertEquals(1, fixture.activeObservers[first.projectId])
         assertEquals(1, fixture.startedObservers[first.projectId])
+        assertEquals(1, fixture.activeAgentObservers[first.projectId])
+        assertEquals(1, fixture.startedAgentObservers[first.projectId])
 
         fixture.app.closeTab(0)
         runCurrent()
         assertEquals(0, fixture.activeObservers[first.projectId])
+        assertEquals(0, fixture.activeAgentObservers[first.projectId])
 
         fixture.open(first)
         runCurrent()
         fixture.app.cleanup()
         runCurrent()
         assertEquals(0, fixture.activeObservers[first.projectId])
+        assertEquals(0, fixture.activeAgentObservers[first.projectId])
     }
 
     @Test
@@ -216,11 +302,45 @@ class AppViewModelConversationSyncTest {
         assertEquals(setOf(secondMessages.first().id), secondTab.uiState.value.selectedMessageIds)
     }
 
+    @Test
+    fun fullHistoryCompactionSendsExplicitScopeWithoutMessageIds() = runTest {
+        val fixture = Fixture(backgroundScope)
+        val conversation = fixture.add("full-compact", "project-a")
+        val messages = (1..3).map { fixture.message(conversation, "message-$it", it.toLong()) }
+        fixture.historyMessages[conversation.id] = messages
+        fixture.historySelectionIds[conversation.id to ConversationMessageSelection.ALL] = messages.map { it.id }
+        fixture.open(conversation)
+        runCurrent()
+        val tab = fixture.app.tabs.value.single()
+
+        tab.toggleHistorySelection(ConversationMessageSelection.ALL)
+        runCurrent()
+        tab.compactSelectedMessages()
+
+        assertEquals(
+            listOf(CompactCall(conversation.id, emptyList(), true, SquashType.COMPACT)),
+            fixture.compactCalls,
+        )
+    }
+
+    private data class CompactCall(
+        val conversationId: Conversation.Id,
+        val messageIds: List<Conversation.Message.Id>,
+        val fullSelection: Boolean,
+        val strategy: SquashType,
+    )
+
     private class Fixture(scope: CoroutineScope) {
         private val records = mutableMapOf<String, Conversation>()
         private val projects = mutableMapOf<Project.Id, MutableStateFlow<List<Conversation>>>()
+        private val projectAgents = mutableMapOf<Project.Id, MutableStateFlow<List<AgentDefinition>>>()
+        private val agentObserverGates = mutableMapOf<Project.Id, CompletableDeferred<Unit>>()
+        private val failingConversationObservers = mutableSetOf<Project.Id>()
+        private val failingAgentObservers = mutableSetOf<Project.Id>()
         val activeObservers = mutableMapOf<Project.Id, Int>()
         val startedObservers = mutableMapOf<Project.Id, Int>()
+        val activeAgentObservers = mutableMapOf<Project.Id, Int>()
+        val startedAgentObservers = mutableMapOf<Project.Id, Int>()
         private val settings = TestSettingsService()
         val copiedSources = mutableListOf<Conversation.Id>()
         val copiedParticipants = mutableListOf<Set<Conversation.Participant>>()
@@ -229,6 +349,7 @@ class AppViewModelConversationSyncTest {
         val historyMessages = mutableMapOf<Conversation.Id, List<Conversation.Message>>()
         val historySelectionIds = mutableMapOf<Pair<Conversation.Id, ConversationMessageSelection>, List<Conversation.Message.Id>>()
         val messageLoads = mutableListOf<Pair<String, String>>()
+        val compactCalls = mutableListOf<CompactCall>()
         var failCopy = false
         val defaultAgent = AgentDefinition(id = AgentDefinition.Id("current-default"), name = "Default", prompts = emptyList(),
             runtimeSelection = com.gromozeka.domain.model.ai.AiRuntimeSelection(com.gromozeka.domain.model.ai.AiModelConfiguration.Id("test-model")),
@@ -253,7 +374,12 @@ class AppViewModelConversationSyncTest {
                         activeObservers[projectId] = activeObservers.getOrDefault(projectId, 0) + 1
                         startedObservers[projectId] = startedObservers.getOrDefault(projectId, 0) + 1
                         try {
-                            emitAll(projects.getValue(projectId))
+                            emitAll(projects.getValue(projectId).map { conversations ->
+                                if (failingConversationObservers.remove(projectId)) {
+                                    error("Synthetic conversation observation failure")
+                                }
+                                conversations
+                            })
                         } finally {
                             activeObservers[projectId] = activeObservers.getValue(projectId) - 1
                         }
@@ -263,15 +389,33 @@ class AppViewModelConversationSyncTest {
                     val id = args.first().toString()
                     records.getValue(id).copy(displayName = args[1] as String).also { records[id] = it }
                 }
-                name.startsWith("loadCurrentMessages") -> emptyList<Conversation.Message>()
                 else -> error(name)
             }
         }
         val app = AppViewModel(
             currentUserAuthor = Conversation.Message.Author.User(User.Id("user"), "User"),
-            agentService = stub { name, _ ->
+            agentService = stub { name, args ->
                 when {
-                    name.startsWith("observeByProject") -> emptyFlow<Nothing>()
+                    name.startsWith("observeByProject") -> {
+                        val projectId = Project.Id(args.first().toString())
+                        flow {
+                            activeAgentObservers[projectId] = activeAgentObservers.getOrDefault(projectId, 0) + 1
+                            startedAgentObservers[projectId] = startedAgentObservers.getOrDefault(projectId, 0) + 1
+                            try {
+                                agentObserverGates.remove(projectId)?.await()
+                                emitAll(projectAgents.getOrPut(projectId) {
+                                    MutableStateFlow(listOf(defaultAgent))
+                                }.map { agents ->
+                                    if (failingAgentObservers.remove(projectId)) {
+                                        error("Synthetic agent observation failure")
+                                    }
+                                    agents
+                                })
+                            } finally {
+                                activeAgentObservers[projectId] = activeAgentObservers.getValue(projectId) - 1
+                            }
+                        }
+                    }
                     name.startsWith("findByProject") -> emptyList<AgentDefinition>()
                     else -> error(name)
                 }
@@ -297,6 +441,17 @@ class AppViewModelConversationSyncTest {
                     name.startsWith("loadMessage") -> {
                         messageLoads += args[0].toString() to args[1].toString()
                         fullMessages.getValue(args[1].toString())
+                    }
+                    name.startsWith("compactMessages") -> {
+                        @Suppress("UNCHECKED_CAST")
+                        val messageIds = args[1] as List<Conversation.Message.Id>
+                        compactCalls += CompactCall(
+                            conversationId = Conversation.Id(args[0].toString()),
+                            messageIds = messageIds,
+                            fullSelection = args[2] as Boolean,
+                            strategy = args[3] as SquashType,
+                        )
+                        records.getValue(args[0].toString())
                     }
                     else -> error("Unexpected history method: $name")
                 }
@@ -350,6 +505,27 @@ class AppViewModelConversationSyncTest {
             projects.getValue(conversation.projectId).value =
                 records.values.filter { it.projectId == conversation.projectId }
         }
+
+        fun removeExternally(conversation: Conversation) {
+            records.remove(conversation.id.value)
+            projects.getValue(conversation.projectId).value =
+                records.values.filter { it.projectId == conversation.projectId }
+        }
+
+        fun failNextConversationObservation(projectId: Project.Id) {
+            failingConversationObservers += projectId
+        }
+
+        fun failNextAgentObservation(projectId: Project.Id) {
+            failingAgentObservers += projectId
+        }
+
+        fun updateAgents(projectId: Project.Id, agents: List<AgentDefinition>) {
+            projectAgents.getOrPut(projectId) { MutableStateFlow(listOf(defaultAgent)) }.value = agents
+        }
+
+        fun pauseNextAgentObservation(projectId: Project.Id): CompletableDeferred<Unit> =
+            CompletableDeferred<Unit>().also { agentObserverGates[projectId] = it }
     }
 
     private class TestSettingsService : SettingsService {

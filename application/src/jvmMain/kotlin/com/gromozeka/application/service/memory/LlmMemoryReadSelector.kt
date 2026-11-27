@@ -709,6 +709,7 @@ private fun MemoryReadRequest.targetTextForReadSelector(): String {
             is Conversation.Message.ContentItem.ArtifactItem ->
                 "[attachment:${item.artifact.fileName} media_type=${item.artifact.mediaType}]"
             is Conversation.Message.ContentItem.ContextCompactionResult -> item.readSelectorText()
+            is Conversation.Message.ContentItem.RuntimeJson -> item.json.toString()
             is Conversation.Message.ContentItem.UnknownJson -> item.json.toString()
             is Conversation.Message.ContentItem.Thinking -> null
         }

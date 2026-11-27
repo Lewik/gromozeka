@@ -241,12 +241,13 @@ class TabViewModelSubmissionTest {
             conversationRuntimeService = object : ConversationRuntimeService by stub() {
                 override fun observeConversation(conversationId: Conversation.Id, afterEventSequence: Long?) = emptyFlow<ConversationRuntimeEvent>()
                 override fun observeActiveGeneration(conversationId: Conversation.Id) = emptyFlow<ActiveGenerationSnapshot?>()
-                override suspend fun postMessage(conversationId: Conversation.Id, userMessage: Conversation.Message): Boolean {
-                    sent += userMessage to null
-                    return acceptMessage()
-                }
-                override suspend fun invokeAgent(conversationId: Conversation.Id, userMessage: Conversation.Message, agentDefinitionId: AgentDefinition.Id): Boolean {
-                    sent += userMessage to agentDefinitionId
+                override suspend fun submitMessage(
+                    conversationId: Conversation.Id,
+                    message: Conversation.Message,
+                    agentDefinitionId: AgentDefinition.Id?,
+                    delivery: MessageDelivery,
+                ): Boolean {
+                    sent += message to agentDefinitionId
                     return acceptMessage()
                 }
             },
@@ -254,7 +255,7 @@ class TabViewModelSubmissionTest {
                 override suspend fun loadPage(conversationId: Conversation.Id, request: ConversationHistoryPageRequest) =
                     ConversationHistoryPage(conversation.currentThread, emptyList())
             },
-            settingsService = settings, scope = scope,
+            settingsService = settings, parentScope = scope,
             initialTabUiState = UIState.Tab(projectId = projectId, conversationId = conversationId, tabId = "tab-1"),
             attachmentAcquisitionController = NoOpAttachmentAcquisitionController,
             artifactTransferService = stub<ArtifactTransferService>(),

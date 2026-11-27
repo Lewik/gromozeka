@@ -66,7 +66,7 @@ class BackgroundActivityRenderingTest {
                 }
             }
         }
-        onNodeWithText("Runtime observation").assertIsDisplayed()
+        onNodeWithText("Runtime message").assertIsDisplayed()
         runOnIdle { assertEquals(expected, status) }
         onNodeWithText(status).assertIsDisplayed()
     }

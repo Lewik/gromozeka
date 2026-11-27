@@ -38,7 +38,7 @@ internal class VoiceInputTestFixture(scope: CoroutineScope, autoSend: Boolean) {
         conversationRuntimeService = voiceStub { name, args ->
             when {
                 name.startsWith("observe") -> emptyFlow<Nothing>()
-                name.startsWith("postMessage") -> { submitted += args.filterIsInstance<Conversation.Message>().single(); true }
+                name.startsWith("submitMessage") -> { submitted += args.filterIsInstance<Conversation.Message>().single(); true }
                 else -> error(name)
             }
         },
@@ -46,7 +46,6 @@ internal class VoiceInputTestFixture(scope: CoroutineScope, autoSend: Boolean) {
             when {
                 name.startsWith("findById") -> conversation(args.first().toString())
                 name.startsWith("observeByProject") -> emptyFlow<Nothing>()
-                name.startsWith("loadCurrentMessages") -> emptyList<Conversation.Message>()
                 else -> error(name)
             }
         },

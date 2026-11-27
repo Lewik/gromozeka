@@ -205,7 +205,7 @@ internal class OpenAiSdkMessageMapper(
             }
         }
 
-        val messages = request.projectedMessages().flatMap { toMessageParams(it, modelName) }
+        val messages = request.projectedMessages(connectionKind).flatMap { toMessageParams(it, modelName) }
         require(messages.isNotEmpty()) { "OpenAI SDK request must contain at least one message" }
         messages.forEach(builder::addMessage)
 
@@ -374,6 +374,10 @@ internal class OpenAiSdkMessageMapper(
         buildList {
             when (message.role) {
                 Conversation.Message.Role.USER -> userMessageParam(message)?.let {
+                    add(ChatCompletionMessageParam.ofUser(it))
+                }
+
+                Conversation.Message.Role.RUNTIME -> userMessageParam(message)?.let {
                     add(ChatCompletionMessageParam.ofUser(it))
                 }
 

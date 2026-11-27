@@ -5,6 +5,7 @@ import com.gromozeka.application.service.memory.MemoryAsyncOperationApplicationS
 import com.gromozeka.application.service.memory.MemoryMaintenanceTargetKind
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.MessageDelivery
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.service.CommandMonitor
@@ -17,7 +18,6 @@ import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeIngressService
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationRuntimeStateSyncService
-import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.statesync.observe
 import klog.KLoggers
 import kotlinx.coroutines.flow.Flow
@@ -39,36 +39,49 @@ class ConversationRuntimeApplicationService(
     private val activeGenerationStateSyncService: ActiveGenerationStateSyncService,
     private val memoryOperations: MemoryAsyncOperationApplicationService,
     private val conversationService: ConversationDomainService,
-    private val userMessageDeliveryPreferenceService: com.gromozeka.domain.service.UserMessageDeliveryPreferenceService,
     private val collaboration: AgentCollaborationService? = null,
 ) : ConversationRuntimeService, ConversationRuntimeIngressService {
     private val log = KLoggers.logger(this)
 
-    override suspend fun enqueueAgentInvocation(
+    override suspend fun submitMessage(
         conversationId: Conversation.Id,
-        userMessage: Conversation.Message,
-        agentDefinitionId: AgentDefinition.Id,
-        placement: QueuedMessagePlacement,
+        message: Conversation.Message,
+        agentDefinitionId: AgentDefinition.Id?,
+        delivery: MessageDelivery,
     ): Boolean {
-        requireConnectedAgent(conversationId, agentDefinitionId)
-        return runtimeDispatcher.enqueueAgentInvocation(conversationId, userMessage, agentDefinitionId, placement)
+        if (agentDefinitionId == null) requireLocalInput(conversationId)
+        else requireConnectedAgent(conversationId, agentDefinitionId)
+        return runtimeDispatcher.submitMessage(
+            conversationId = conversationId,
+            message = message,
+            agentDefinitionId = agentDefinitionId,
+            delivery = delivery,
+            autoRespondAgentIds = if (agentDefinitionId == null) autoResponders(conversationId, message) else emptySet(),
+        )
     }
 
-    override suspend fun enqueueAgentInvocation(
+    override suspend fun submitMessage(
         actorUser: User,
         conversationId: Conversation.Id,
-        userMessage: Conversation.Message,
-        agentDefinitionId: AgentDefinition.Id,
-        placement: QueuedMessagePlacement,
+        message: Conversation.Message,
+        agentDefinitionId: AgentDefinition.Id?,
+        delivery: MessageDelivery,
     ): Boolean {
-        require(actorUser.canUseAi) { "AI access is not allowed for this user" }
-        requireConnectedAgent(conversationId, agentDefinitionId)
-        return runtimeDispatcher.enqueueAgentInvocation(
+        val attributedMessage = message.attributeAuthenticatedSubmission(actorUser)
+        if (agentDefinitionId == null) requireLocalInput(conversationId)
+        else {
+            require(actorUser.canUseAi) { "AI access is not allowed for this user" }
+            requireConnectedAgent(conversationId, agentDefinitionId)
+        }
+        return runtimeDispatcher.submitMessage(
             conversationId = conversationId,
-            userMessage = userMessage.attributeAuthenticatedSubmission(actorUser),
+            message = attributedMessage,
             agentDefinitionId = agentDefinitionId,
-            placement = placement,
+            delivery = delivery,
             actorUserId = actorUser.id,
+            autoRespondAgentIds = if (agentDefinitionId == null && actorUser.canUseAi) {
+                autoResponders(conversationId, attributedMessage)
+            } else emptySet(),
         )
     }
 
@@ -99,70 +112,14 @@ class ConversationRuntimeApplicationService(
         monitorId: CommandMonitor.Id,
     ): Boolean = runtimeDispatcher.cancelCommandMonitor(conversationId, monitorId)
 
-    override suspend fun postMessage(
-        conversationId: Conversation.Id,
-        userMessage: Conversation.Message,
-    ): Boolean = runtimeDispatcher.postMessage(
-        conversationId,
-        userMessage,
-        autoRespondAgentIds = autoResponders(conversationId, userMessage),
-    )
-
-    override suspend fun postMessage(
-        actorUser: User,
-        conversationId: Conversation.Id,
-        userMessage: Conversation.Message,
-    ): Boolean {
-        val attributedMessage = userMessage.attributeAuthenticatedSubmission(actorUser)
-        requireLocalInput(conversationId)
-        return runtimeDispatcher.postMessage(
-            conversationId = conversationId,
-            userMessage = attributedMessage,
-            actorUserId = actorUser.id,
-            autoRespondAgentIds = if (actorUser.canUseAi) autoResponders(conversationId, attributedMessage) else emptySet(),
-            userDeliveryMode = userDeliveryMode(actorUser, attributedMessage),
-        )
-    }
-
     private suspend fun autoResponders(
         conversationId: Conversation.Id,
-        userMessage: Conversation.Message,
+        message: Conversation.Message,
     ): Set<AgentDefinition.Id> {
-        require(userMessage.role == Conversation.Message.Role.USER) { "Only user messages can trigger automatic responses" }
         return requireNotNull(conversationService.findById(conversationId)) {
             "Conversation not found: ${conversationId.value}"
-        }.also { require(it.externalChannel == null) { "Send messages through the connected external channel" } }.autoRespondersFor(userMessage)
+        }.also { require(it.externalChannel == null) { "Send messages through the connected external channel" } }.autoRespondersFor(message)
     }
-
-    override suspend fun invokeAgent(
-        conversationId: Conversation.Id,
-        userMessage: Conversation.Message,
-        agentDefinitionId: AgentDefinition.Id,
-    ): Boolean {
-        requireConnectedAgent(conversationId, agentDefinitionId)
-        return runtimeDispatcher.invokeAgent(conversationId, userMessage, agentDefinitionId)
-    }
-
-    override suspend fun invokeAgent(
-        actorUser: User,
-        conversationId: Conversation.Id,
-        userMessage: Conversation.Message,
-        agentDefinitionId: AgentDefinition.Id,
-    ): Boolean {
-        require(actorUser.canUseAi) { "AI access is not allowed for this user" }
-        requireConnectedAgent(conversationId, agentDefinitionId)
-        return runtimeDispatcher.invokeAgent(
-            conversationId = conversationId,
-            userMessage = userMessage.attributeAuthenticatedSubmission(actorUser),
-            agentDefinitionId = agentDefinitionId,
-            actorUserId = actorUser.id,
-            userDeliveryMode = userDeliveryMode(actorUser, userMessage),
-        )
-    }
-
-    private suspend fun userDeliveryMode(actorUser: User, message: Conversation.Message): com.gromozeka.domain.model.UserMessageDeliveryMode? =
-        if (message.instructions.any { it is Conversation.Message.Instruction.Source.Agent }) null
-        else userMessageDeliveryPreferenceService.get(actorUser.id)
 
     private suspend fun requireConnectedAgent(
         conversationId: Conversation.Id,

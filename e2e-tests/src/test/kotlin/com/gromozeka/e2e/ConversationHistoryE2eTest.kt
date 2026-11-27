@@ -71,10 +71,20 @@ class ConversationHistoryE2eTest {
         onNodeWithTag(UiTestTag.EditMessageInput.value).performTextReplacement("Edited old message")
         onNodeWithTag(UiTestTag.EditMessageSaveButton.value).performClick()
         waitUntil(timeoutMillis = 30_000) { tab.uiState.value.editingMessageId == null && !tab.historyLoading.value }
-        val original = runBlocking { client.components.conversationService.loadCurrentMessages(conversation.id) }
-        val edited = original.single { editedId in it.originalIds }
+        val editedPreview = tab.allMessages.value.single { editedId in it.originalIds }
+        val edited = runBlocking {
+            client.components.conversationHistoryService.loadMessage(conversation.id, editedPreview.id)
+        }
         assertEquals(20_000, edited.content.filterIsInstance<Conversation.Message.ContentItem.Thinking>().single().signature?.length)
-        assertTrue(original.filterNot { it.id == edited.id }.all { (it.providerMetadata["providerReplay"] as JsonPrimitive).content.length == 12_000 })
+        for (index in listOf(0, 600, 1_199)) {
+            val sample = runBlocking {
+                client.components.conversationHistoryService.loadMessage(
+                    conversation.id,
+                    Conversation.Message.Id("${conversation.id.value}-$index"),
+                )
+            }
+            assertEquals(12_000, (sample.providerMetadata["providerReplay"] as JsonPrimitive).content.length)
+        }
         saveScreenshot("history-old-message-edited")
     }
 

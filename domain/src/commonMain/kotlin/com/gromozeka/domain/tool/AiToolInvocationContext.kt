@@ -72,8 +72,7 @@ fun AiToolDescriptor.withInvocationContext(bindings: AiToolContextBindings): AiT
     val envelopeProperties = buildJsonObject {
         put("async", buildJsonObject {
             put("type", "boolean"); put("default", false)
-            put("description", metadata.inlineOnlyReason?.let { "Cannot be detached: $it" }
-                ?: "Opt-in durable background execution. Returns an operation receipt; completion arrives separately. Requires a durable conversation call.")
+            put("description", "Opt-in durable background execution. Returns an operation receipt; completion arrives separately. Requires a durable conversation call.")
         })
         fields.forEach { field -> put(field.selector!!, identifierSchema("Calling ${field.name.lowercase()} context; not the business operation's target.")) }
         if (worker && !bindings.worker) put("worker_id", identifierSchema("Exact compatible Worker for this call."))
@@ -157,7 +156,6 @@ fun AiToolMetadata.parseInvocationInput(input: JsonElement, bound: ToolExecution
         require(value != null && !value.isString && value.booleanOrNull != null) { "Invalid _grz.async" }
         checkNotNull(value.booleanOrNull)
     }
-    if (async) require(inlineOnlyReason == null) { "Async invocation is unsupported: $inlineOnlyReason" }
     fun id(name: String): String? {
         if (name !in envelope) return null
         val value = envelope[name] as? JsonPrimitive

@@ -4,6 +4,8 @@ import com.gromozeka.application.service.*
 import com.gromozeka.domain.model.*
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.repository.ThreadMessageLink
+import com.gromozeka.domain.repository.ThreadMessagePageEntry
+import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.repository.MessageRepository
 import com.gromozeka.domain.repository.ArtifactRepository
 import com.gromozeka.domain.service.*
@@ -29,6 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import javax.sql.DataSource
 import kotlin.test.*
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 
 /** Real migrated PostgreSQL and independent local files; unrelated application services are not started. */
@@ -46,8 +49,10 @@ class PostgresConversationForkTest {
             val transactions = f.observed.commits.get()
             println("FORK_COPY messages=${history.size} artifacts=${sourceArtifacts.size} elapsed_ms=$elapsed jdbc_executions=$executions commits=$transactions")
             assertTrue(executions < 250, "Fork must use chunked JDBC batches, not per-message/artifact calls: $executions")
-            assertTrue(transactions <= 12, "Fork must not open a transaction for each item: $transactions")
-            val copied = f.links.getMessagesByThread(fork.currentThread)
+            // Repository pages commit independently. Keep that bounded by pages, never items.
+            val archivePages = (history.size + 999) / 1_000
+            assertTrue(transactions <= archivePages * 8, "Fork transactions must stay page-bounded: $transactions")
+            val copied = f.links.readArchiveForTest(fork.currentThread)
             val copiedArtifacts = f.artifacts.findByConversation(fork.id)
             assertEquals(history.size, copied.size)
             assertEquals(sourceArtifacts.size, copiedArtifacts.size)
@@ -87,13 +92,88 @@ class PostgresConversationForkTest {
             val search = f.sql.queryForObject("SELECT search_text FROM messages WHERE id=?", String::class.java, toolMessage.id.value)
             assertContains(requireNotNull(search), "TOOL_SEARCH_MARKER")
             assertNotNull(f.sql.queryForObject("SELECT context_metadata_json FROM messages WHERE id=?", String::class.java, copied.last().id.value))
-            assertEquals(history, f.links.getMessagesByThread(f.source.currentThread), "Source history is not rewritten")
+            assertEquals(history, f.links.readArchiveForTest(f.source.currentThread), "Source history is not rewritten")
             val original = sourceArtifacts.first()
             val clone = byName.getValue(original.fileName)
             assertContentEquals(f.store.read(original.id), f.store.read(clone.id))
             assertFailsWith<IllegalArgumentException> { f.artifactService.materialize(f.source.id, listOf(toolMessage)) }
             f.store.delete(original.id)
             assertContentEquals(f.bytes, f.store.read(clone.id))
+        }
+    }
+
+    @Test fun `fork keeps one source boundary when a message is appended between archive scans`() = runBlocking<Unit> {
+        database { f ->
+            val history = f.seed(messageCount = 4, artifactCount = 0)
+            val late = Conversation.Message(
+                id = Conversation.Message.Id("late-append"),
+                conversationId = f.source.id,
+                role = Conversation.Message.Role.USER,
+                content = listOf(ContentItem.UserMessage("Late append")),
+                createdAt = f.now + 10.milliseconds,
+            )
+            var appended = false
+            val appendingLinks = object : ThreadMessageRepository by f.links {
+                override suspend fun getMessagePage(
+                    threadId: Conversation.Thread.Id,
+                    afterPositionExclusive: Int,
+                    limit: Int,
+                    throughPositionInclusive: Int?,
+                ): List<ThreadMessagePageEntry> {
+                    if (!appended) {
+                        f.messages.save(late)
+                        f.links.add(f.source.currentThread, late.id, history.size)
+                        appended = true
+                    }
+                    return f.links.getMessagePage(
+                        threadId,
+                        afterPositionExclusive,
+                        limit,
+                        throughPositionInclusive,
+                    )
+                }
+            }
+
+            val fork = f.forkService(links = appendingLinks).fork(f.source.id)
+            val copied = f.links.readArchiveForTest(fork.currentThread)
+
+            assertTrue(appended)
+            assertEquals(history.size, copied.size)
+            assertTrue(copied.none { message ->
+                message.content.any { it is ContentItem.UserMessage && it.text == "Late append" }
+            })
+            assertEquals(history.size + 1, f.links.readArchiveForTest(f.source.currentThread).size)
+        }
+    }
+
+    @Test fun `fork failure after a committed page removes the partial destination`() = runBlocking<Unit> {
+        database { f ->
+            f.seed(messageCount = 1_001, artifactCount = 0)
+            var savedBatches = 0
+            var destinationId: Conversation.Id? = null
+            val failingMessages = object : MessageRepository by f.messages {
+                override suspend fun saveBatch(messages: List<Conversation.Message>) {
+                    if (savedBatches++ == 1) error("Synthetic second-page failure")
+                    destinationId = messages.first().conversationId
+                    f.messages.saveBatch(messages)
+                }
+            }
+
+            assertFailsWith<IllegalStateException> {
+                f.forkService(messages = failingMessages).fork(f.source.id)
+            }
+
+            val failedDestination = requireNotNull(destinationId)
+            assertNull(f.conversations.findById(failedDestination))
+            assertEquals(
+                0,
+                f.sql.queryForObject(
+                    "SELECT count(*) FROM messages WHERE conversation_id = ?",
+                    Int::class.java,
+                    failedDestination.value,
+                ),
+            )
+            assertEquals(1_001, f.links.readArchiveForTest(f.source.currentThread).size)
         }
     }
 
@@ -104,7 +184,7 @@ class PostgresConversationForkTest {
             val copies = history.mapIndexed { index, message -> message.copy(id = Conversation.Message.Id("copy-$index"), conversationId = target.id) }
             f.messages.save(copies.last())
             assertFails { f.messages.saveBatch(copies) }
-            assertEquals(listOf(copies.last()), f.messages.findByConversation(target.id), "An error in a later batch must roll back earlier inserts")
+            assertEquals(listOf(copies.last()), f.messages.findByIds(copies.map { it.id }), "An error in a later batch must roll back earlier inserts")
             val selected = history.take(300).reversed().map { it.id }
             assertEquals(selected, f.messages.findByIds(selected + Conversation.Message.Id("missing") + selected.first()).map { it.id })
             val sourceArtifacts = f.artifacts.findByConversation(f.source.id)
@@ -120,6 +200,61 @@ class PostgresConversationForkTest {
             assertTrue(f.artifacts.findByConversation(target.id).all { it.state == Artifact.State.DRAFT })
             f.artifacts.commit(cloned.map { it.id }, f.now)
             assertTrue(f.artifacts.findByConversation(target.id).all { it.state == Artifact.State.COMMITTED })
+        }
+    }
+
+    @Test fun `fork preserves message time across a full checkpoint`() = runBlocking<Unit> {
+        database { f ->
+            val before = Conversation.Message(
+                Conversation.Message.Id("before-checkpoint"),
+                f.source.id,
+                role = Conversation.Message.Role.USER,
+                content = listOf(ContentItem.UserMessage("Before")),
+                createdAt = f.now - 48.hours,
+            )
+            val checkpoint = Conversation.Message(
+                Conversation.Message.Id("checkpoint"),
+                f.source.id,
+                role = Conversation.Message.Role.ASSISTANT,
+                content = listOf(ContentItem.ContextCompactionResult(
+                    payload = ContentItem.ContextCompactionResult.Payload.ReadableSummary("Earlier conversation"),
+                    origin = ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY,
+                    coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+                    sourceBoundaryMessageId = before.id,
+                    continuationState = ContentItem.ContextCompactionResult.ContinuationState(
+                        previousHumanMessageAt = before.createdAt,
+                    ),
+                )),
+                createdAt = f.now - 36.hours,
+            )
+            val tail = Conversation.Message(
+                Conversation.Message.Id("tail"),
+                f.source.id,
+                role = Conversation.Message.Role.USER,
+                content = listOf(ContentItem.UserMessage("After")),
+                createdAt = f.now - 24.hours,
+            )
+            val source = listOf(before, checkpoint, tail)
+            f.messages.saveBatch(source)
+            f.links.addBatch(source.mapIndexed { position, message ->
+                ThreadMessageLink(f.source.currentThread, message.id, position)
+            })
+
+            val fork = f.service.fork(f.source.id)
+            val copied = f.links.readArchiveForTest(fork.currentThread)
+
+            assertEquals(source.map { it.createdAt }, copied.map { it.createdAt })
+            val context = f.links.getContextMessagesByThread(fork.currentThread, nativeProvider = null)
+            val enriched = MessageTemporalContextService().enrich(
+                context.messages,
+                enabled = true,
+                previousHumanMessageAt = context.continuationState.previousHumanMessageAt,
+            )
+            val temporal = enriched.last().instructions
+                .filterIsInstance<Conversation.Message.Instruction.MessageTemporalRuntimeContext>()
+                .single()
+                .context
+            assertEquals(24.hours.inWholeSeconds, temporal.elapsedSincePreviousUserMessageSeconds)
         }
     }
 
@@ -147,7 +282,7 @@ class PostgresConversationForkTest {
                 val millis = (System.nanoTime() - start) / 1_000_000
                 observations[name] = f.observed.executions.get() to f.observed.commits.get()
                 println("FORK_BATCH_COMPARISON mode=$name messages=640 artifacts=300 elapsed_ms=$millis jdbc_executions=${f.observed.executions.get()} commits=${f.observed.commits.get()}")
-                assertEquals(640, f.links.getByThread(fork.currentThread).size)
+                assertEquals(640, f.links.readLinksForTest(fork.currentThread).size)
                 assertEquals(300, f.artifacts.findByConversation(fork.id).size)
             }
             assertTrue(observations.getValue("batched").first * 10 < observations.getValue("single-item").first)
@@ -197,7 +332,11 @@ class PostgresConversationForkTest {
         val project = Project(Project.Id("project"), "Test", createdAt = now, lastUsedAt = now)
         lateinit var source: Conversation
         val service get() = forkService()
-        fun forkService(messages: MessageRepository = this.messages, artifacts: ArtifactRepository = this.artifacts) =
+        fun forkService(
+            messages: MessageRepository = this.messages,
+            artifacts: ArtifactRepository = this.artifacts,
+            links: ThreadMessageRepository = this.links,
+        ) =
             ConversationApplicationService(conversations, threads, messages, links, mock(), mock(), mock(),
                 ToolCallPairingService(), mock(), mock(), ConversationArtifactApplicationService(artifacts, store), mock(), mock(),
                 com.gromozeka.infrastructure.db.persistence.ExposedConversationMessageBatchRepository(Json, this.messages))

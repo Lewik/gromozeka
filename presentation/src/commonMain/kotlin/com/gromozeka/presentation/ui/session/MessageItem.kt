@@ -156,6 +156,10 @@ internal sealed interface MessageSegment {
     data object Error : MessageSegment {
         override val key: String = "error"
     }
+
+    data object RuntimeMessage : MessageSegment {
+        override val key: String = "runtime-message"
+    }
 }
 
 internal enum class MarkdownKind {
@@ -179,45 +183,49 @@ internal fun rememberConversationTimeline(
             val segments = mutableListOf<MessageSegment>()
             val collapsedItems = collapsedContentItems[message.id].orEmpty()
 
-            for (contentIndex in message.content.indices) {
-                val content = message.content[contentIndex]
-                when (content) {
-                    is Conversation.Message.ContentItem.UserMessage -> {
-                        if (content.text.isNotBlank()) {
-                            segments += rememberMarkdownSegments(
-                                messageId = message.id,
-                                contentIndex = contentIndex,
-                                kind = MarkdownKind.USER,
-                                text = content.text,
-                                isCollapsed = false,
-                            )
-                            if (message.instructions.isNotEmpty()) {
-                                segments += MessageSegment.Instructions(contentIndex)
+            if (message.role == Conversation.Message.Role.RUNTIME) {
+                segments += MessageSegment.RuntimeMessage
+            } else {
+                for (contentIndex in message.content.indices) {
+                    val content = message.content[contentIndex]
+                    when (content) {
+                        is Conversation.Message.ContentItem.UserMessage -> {
+                            if (content.text.isNotBlank()) {
+                                segments += rememberMarkdownSegments(
+                                    messageId = message.id,
+                                    contentIndex = contentIndex,
+                                    kind = MarkdownKind.USER,
+                                    text = content.text,
+                                    isCollapsed = false,
+                                )
+                                if (message.instructions.isNotEmpty()) {
+                                    segments += MessageSegment.Instructions(contentIndex)
+                                }
                             }
                         }
-                    }
 
-                    is Conversation.Message.ContentItem.Thinking ->
-                        segments += MessageSegment.Activity(contentIndex, ChatActivity.Reasoning(content))
+                        is Conversation.Message.ContentItem.Thinking ->
+                            segments += MessageSegment.Activity(contentIndex, ChatActivity.Reasoning(content))
 
-                    is Conversation.Message.ContentItem.ToolCall ->
-                        segments += MessageSegment.Activity(contentIndex, ChatActivity.Tool(content, toolResultsMap[content.id.value]))
+                        is Conversation.Message.ContentItem.ToolCall ->
+                            segments += MessageSegment.Activity(contentIndex, ChatActivity.Tool(content, toolResultsMap[content.id.value]))
 
-                    is Conversation.Message.ContentItem.AssistantMessage -> {
-                        val text = content.structured.fullText.trim()
-                        if (text.isNotEmpty()) {
-                            segments += rememberMarkdownSegments(
-                                messageId = message.id,
-                                contentIndex = contentIndex,
-                                kind = MarkdownKind.ASSISTANT,
-                                text = text,
-                                isCollapsed = contentIndex in collapsedItems,
-                            )
+                        is Conversation.Message.ContentItem.AssistantMessage -> {
+                            val text = content.structured.fullText.trim()
+                            if (text.isNotEmpty()) {
+                                segments += rememberMarkdownSegments(
+                                    messageId = message.id,
+                                    contentIndex = contentIndex,
+                                    kind = MarkdownKind.ASSISTANT,
+                                    text = text,
+                                    isCollapsed = contentIndex in collapsedItems,
+                                )
+                            }
                         }
-                    }
 
-                    is Conversation.Message.ContentItem.ToolResult -> Unit
-                    else -> segments += MessageSegment.Content(contentIndex, content)
+                        is Conversation.Message.ContentItem.ToolResult -> Unit
+                        else -> segments += MessageSegment.Content(contentIndex, content)
+                    }
                 }
             }
 
@@ -679,6 +687,13 @@ private fun MessageSegmentContent(
                 .padding(top = 6.dp),
         )
 
+        MessageSegment.RuntimeMessage -> Text(
+            text = LocalTranslation.current.text("client.instructions.runtimeObservation"),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(vertical = 4.dp),
+        )
+
         MessageSegment.Error -> MessageError(entry.message)
     }
 }
@@ -865,6 +880,7 @@ private fun GenericContentItem(
 
         is Conversation.Message.ContentItem.System -> Text(text = content.content)
         is Conversation.Message.ContentItem.ContextCompactionResult -> ContextCompactionResultItem(content, providerMetadata["compactionBoundary"] as? JsonObject)
+        is Conversation.Message.ContentItem.RuntimeJson -> Text(text = jsonPrettyPrint(content.json))
         is Conversation.Message.ContentItem.UnknownJson -> Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),

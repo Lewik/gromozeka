@@ -377,6 +377,19 @@ class ConversationArtifactApplicationService(
         sourceConversationId: Conversation.Id,
         targetConversation: Conversation,
         messages: List<Conversation.Message>,
+    ): List<Conversation.Message> = cloneReferences(
+        sourceConversationId,
+        targetConversation,
+        messages,
+        mutableMapOf(),
+    )
+
+    /** Reuses one source-to-target artifact map while a large archive is copied page by page. */
+    suspend fun cloneReferences(
+        sourceConversationId: Conversation.Id,
+        targetConversation: Conversation,
+        messages: List<Conversation.Message>,
+        replacements: MutableMap<Artifact.Id, Artifact.Reference>,
     ): List<Conversation.Message> {
         val references = messages.flatMap { it.content }.contentArtifactReferences()
         if (references.isEmpty()) return messages
@@ -389,7 +402,12 @@ class ConversationArtifactApplicationService(
             "Artifact fork must stay in the source project"
         }
         messages.forEach { requireMessageArtifactLimits(it.content.contentArtifactReferences(), sourceArtifacts) }
-        val sourceToTargetIds = sourceArtifacts.keys.associateWith { Artifact.Id(uuid7()) }
+        val sourceToTargetIds = (sourceArtifacts.keys - replacements.keys).associateWith { Artifact.Id(uuid7()) }
+        if (sourceToTargetIds.isEmpty()) {
+            return messages.map { message ->
+                message.copy(content = message.content.replaceArtifactReferences(replacements))
+            }
+        }
         val copies = artifactRepository.cloneBatch(sourceConversationId, targetConversation, sourceToTargetIds, Clock.System.now())
         val copiedFiles = mutableSetOf<Artifact.Id>()
         try {
@@ -402,7 +420,9 @@ class ConversationArtifactApplicationService(
                 }
             }
             val clonedReferences = copies.associate { it.id to it.reference() }
-            val replacements = sourceToTargetIds.mapValues { (_, targetId) -> clonedReferences.getValue(targetId) }
+            sourceToTargetIds.forEach { (sourceId, targetId) ->
+                replacements[sourceId] = clonedReferences.getValue(targetId)
+            }
             val clonedMessages = messages.map { message ->
                 message.copy(content = message.content.replaceArtifactReferences(replacements))
             }

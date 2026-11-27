@@ -1,7 +1,6 @@
 package com.gromozeka.presentation.ui.viewmodel
 
 import com.gromozeka.presentation.services.translation.LocalizedText
-import com.gromozeka.presentation.ui.liveSteeringInstruction
 import com.gromozeka.presentation.services.asAttachmentFailure
 import com.gromozeka.presentation.services.translation.LocalizedTextException
 import com.gromozeka.presentation.services.translation.localizedText
@@ -26,10 +25,10 @@ import com.gromozeka.domain.model.ConversationHistoryPageRequest
 import com.gromozeka.domain.model.ConversationHistoryCursor
 import com.gromozeka.domain.model.ConversationMessageSelection
 import com.gromozeka.domain.model.ConversationContext
-import kotlinx.coroutines.Job
 import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.domain.model.MessageInstructionTextShortcut
 import com.gromozeka.domain.model.MessageInputContext
+import com.gromozeka.domain.model.MessageDelivery
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
@@ -56,6 +55,8 @@ import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -71,8 +72,10 @@ class TabViewModel(
     private val conversationRuntimeService: ConversationRuntimeService,
     private val conversationService: ConversationDomainService,
     private val conversationHistoryService: ConversationHistoryService,
+    projectAgents: Flow<List<AgentDefinition>> = agentService.observeByProject(projectId),
+    projectConversations: Flow<List<Conversation>> = conversationService.observeByProject(projectId),
     private val settingsService: SettingsService,
-    private val scope: CoroutineScope,
+    parentScope: CoroutineScope,
     initialTabUiState: UIState.Tab,
     internal val attachmentAcquisitionController: AttachmentAcquisitionController,
     private val artifactTransferService: ArtifactTransferService,
@@ -80,9 +83,11 @@ class TabViewModel(
     private val messageInputClientPlatform: MessageInputContext.ClientPlatform,
     private val turnCompletionNotificationService: TurnCompletionNotificationService,
     private val conversationTitle: () -> String,
-    val messageDeliveryMode: StateFlow<com.gromozeka.domain.model.UserMessageDeliveryMode> = MutableStateFlow(com.gromozeka.domain.model.UserMessageDeliveryMode.STEER),
+    val messageDeliveryMode: StateFlow<com.gromozeka.domain.model.MessageDelivery> = MutableStateFlow(com.gromozeka.domain.model.MessageDelivery.STEER),
 ) {
     private val log = KLoggers.logger(this)
+    private val lifecycleJob = SupervisorJob(parentScope.coroutineContext[Job])
+    private val scope = CoroutineScope(parentScope.coroutineContext + lifecycleJob)
     private val settingsFlow: StateFlow<Settings> = settingsService.settingsFlow
     private val artifactUploadMutex = Mutex()
     private val composerSubmissionMutex = Mutex()
@@ -173,6 +178,10 @@ class TabViewModel(
 
     fun rememberHistoryAnchor(messageId: Conversation.Message.Id?) { historyAnchor.value = messageId }
 
+    internal fun cleanup() {
+        lifecycleJob.cancel()
+    }
+
     fun loadNewerHistory() { loadAdjacentHistory(null, older = false) }
 
     fun loadOlderHistory(expectedFirstMessageId: Conversation.Message.Id) {
@@ -258,13 +267,13 @@ class TabViewModel(
             } catch (error: Exception) { _historyError.value = error.message }
         }
     }
-    val externalChannel = conversationService.observeByProject(projectId).map { conversations ->
+    val externalChannel = projectConversations.map { conversations ->
         conversations.firstOrNull { it.id == conversationId }?.externalChannel
     }.stateIn(scope, SharingStarted.WhileSubscribed(5000), null)
 
     val agentMentionCandidates: StateFlow<List<AgentMentionCandidate>> = combine(
-        agentService.observeByProject(projectId),
-        conversationService.observeByProject(projectId),
+        projectAgents,
+        projectConversations,
     ) { agents, conversations ->
         val conversation = conversations.firstOrNull { it.id == conversationId }
         buildAgentMentionCandidates(
@@ -340,6 +349,29 @@ class TabViewModel(
 
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             observeActiveGeneration()
+        }
+
+        scope.launch {
+            combine(
+                settingsFlow.map { it.userProfile.messageInstructionGroups }.distinctUntilChanged(),
+                agentMentionCandidates,
+                messageDeliveryMode,
+            ) { instructionGroups, mentionCandidates, delivery ->
+                Triple(instructionGroups, mentionCandidates, delivery)
+            }.collect { (instructionGroups, mentionCandidates, delivery) ->
+                _pendingMessages.update { messages ->
+                    messages.map { message ->
+                        message.copy(
+                            composerRoundTripInstructionIds = message.composerRoundTripInstructionIdsOrNull(
+                                instructionGroups,
+                                currentUserAuthor,
+                                mentionCandidates,
+                                delivery,
+                            ),
+                        )
+                    }
+                }
+            }
         }
 
         scope.launch {
@@ -483,7 +515,9 @@ class TabViewModel(
                         true
                     } else {
                         applyHistoryEvent(event)
-                        if (runtimeReplayCompleted) _historyActivityRevision.update { it + 1 }
+                        if (runtimeReplayCompleted) {
+                            _historyActivityRevision.update { it + 1 }
+                        }
                         false
                     }
                 }
@@ -551,7 +585,14 @@ class TabViewModel(
         }
         lastRuntimeSnapshotRevision = snapshot.revision
 
-        _pendingMessages.value = snapshot.pendingTasks.mapNotNull { it.toPendingUserMessageOrNull() }
+        _pendingMessages.value = snapshot.pendingTasks.mapNotNull {
+            it.toPendingUserMessageOrNull(
+                messageInstructionGroups,
+                currentUserAuthor,
+                agentMentionCandidates.value,
+                messageDeliveryMode.value,
+            )
+        }
         _activeToolExecutions.value = snapshot.toolExecutions
         _runtimeTrace.value = snapshot.trace
         _runtimeSnapshot.value = snapshot
@@ -610,22 +651,7 @@ class TabViewModel(
         allMessages,
         settingsFlow
     ) { messages, settings ->
-        val visibleMessages = messages.filter { message ->
-            val containsOnlyToolResults = message.content.isNotEmpty() &&
-                    message.content.all { it is Conversation.Message.ContentItem.ToolResult }
-
-            if (containsOnlyToolResults) {
-                false
-            } else if (settings.userDeviceSettings.showSystemMessages) {
-                true
-            } else {
-                message.role != Conversation.Message.Role.SYSTEM ||
-                        message.content.any { content ->
-                            content is Conversation.Message.ContentItem.System &&
-                                    content.level == Conversation.Message.ContentItem.System.SystemLevel.ERROR
-                        }
-            }
-        }
+        val visibleMessages = messages.filter { it.isVisibleHistoryMessage(settings) }
         historyMutex.withLock {
             ConversationHistoryContent(visibleMessages, loadedHistoryBoundary(messages, older = true), loadedHistoryBoundary(messages, older = false))
         }
@@ -888,7 +914,12 @@ class TabViewModel(
 
     fun editPendingMessage(messageId: String) {
         val message = _pendingMessages.value.firstOrNull { it.id == messageId } ?: return
-        if (!message.editable) return
+        val instructionIds = message.composerRoundTripInstructionIdsOrNull(
+            messageInstructionGroups,
+            currentUserAuthor,
+            agentMentionCandidates.value,
+            messageDeliveryMode.value,
+        ) ?: return
         _pendingMessages.update { messages ->
             messages.filterNot { it.id == messageId }
         }
@@ -901,18 +932,28 @@ class TabViewModel(
                 composerArtifacts = message.artifacts,
                 composerMessageInputContext = message.messageInputContext,
                 workspaceContextReferences = message.workspaceContextReferences,
+                activeMessageInstructionIds = instructionIds,
             )
         }
     }
 
     fun sendPendingMessageInCurrentTurn(messageId: String) {
         val pendingMessage = _pendingMessages.value.firstOrNull { it.id == messageId } ?: return
+        if (pendingMessage.isRuntime) return
         val agentDefinitionId = pendingMessage.steeringAgentId
-        if (agentDefinitionId == null || pendingMessage.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT) {
+        val activeAgentDefinitionId = (_runtimeSnapshot.value?.activeTask ?: _runtimeSnapshot.value?.continuationTask)
+            ?.primaryAgentDefinitionIdOrNull()
+        if (agentDefinitionId == null ||
+            agentDefinitionId != activeAgentDefinitionId ||
+            pendingMessage.delivery == MessageDelivery.STEER
+        ) {
             return
         }
 
-        val steeredMessage = pendingMessage.copy(agentDefinitionId = agentDefinitionId).withMidTurnSteerInstruction()
+        val steeredMessage = pendingMessage.copy(
+            agentDefinitionId = agentDefinitionId,
+            delivery = MessageDelivery.STEER,
+        )
         _pendingMessages.update { messages ->
             messages.map { message ->
                 if (message.id == messageId) steeredMessage else message
@@ -920,11 +961,11 @@ class TabViewModel(
         }
         scope.launch {
             val runtimeAccepted = runCatching {
-                conversationRuntimeService.enqueueAgentInvocation(
+                conversationRuntimeService.submitMessage(
                     conversationId = conversationId,
-                    userMessage = steeredMessage.userMessage,
+                    message = steeredMessage.userMessage,
                     agentDefinitionId = agentDefinitionId,
-                    placement = QueuedMessagePlacement.AFTER_TOOL_RESULT
+                    delivery = MessageDelivery.STEER,
                 )
             }.onFailure { error ->
                 log.warn(error) {
@@ -935,7 +976,7 @@ class TabViewModel(
             if (!runtimeAccepted) {
                 _pendingMessages.update { messages ->
                     messages.map { message ->
-                        if (message.id == messageId && message.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT) {
+                        if (message.id == messageId && message.delivery == MessageDelivery.STEER) {
                             pendingMessage
                         } else {
                             message
@@ -1009,15 +1050,20 @@ class TabViewModel(
             instructions = instructions
         )
 
-        return PendingUserMessage(
+        val pendingMessage = PendingUserMessage(
             userMessage = userMessage,
             agentDefinitionId = agentDefinitionId,
             autoRespondAgentIds = agentMentionCandidates.value.filter { it.connected && it.autoRespond }
                 .mapTo(linkedSetOf()) { it.agentDefinitionId },
-            placement = when (messageDeliveryMode.value) {
-                com.gromozeka.domain.model.UserMessageDeliveryMode.STEER -> QueuedMessagePlacement.AFTER_TOOL_RESULT
-                com.gromozeka.domain.model.UserMessageDeliveryMode.AFTER_CURRENT_TURN -> QueuedMessagePlacement.END_OF_TURN
-            },
+            delivery = messageDeliveryMode.value,
+        )
+        return pendingMessage.copy(
+            composerRoundTripInstructionIds = pendingMessage.composerRoundTripInstructionIdsOrNull(
+                messageInstructionGroups,
+                currentUserAuthor,
+                agentMentionCandidates.value,
+                messageDeliveryMode.value,
+            ),
         )
     }
 
@@ -1074,17 +1120,12 @@ class TabViewModel(
     }
 
     private suspend fun submitPendingMessage(pendingMessage: PendingUserMessage): Boolean = try {
-        val accepted =
-            pendingMessage.agentDefinitionId?.let { agentDefinitionId ->
-                conversationRuntimeService.invokeAgent(
-                    conversationId = conversationId,
-                    userMessage = pendingMessage.userMessage,
-                    agentDefinitionId = agentDefinitionId,
-                )
-            } ?: conversationRuntimeService.postMessage(
-                conversationId = conversationId,
-                userMessage = pendingMessage.userMessage,
-            )
+        val accepted = conversationRuntimeService.submitMessage(
+            conversationId = conversationId,
+            message = pendingMessage.userMessage,
+            agentDefinitionId = pendingMessage.agentDefinitionId,
+            delivery = pendingMessage.delivery,
+        )
         if (!accepted) {
             _messageSubmissionError.value = localizedText("client.message.rejected")
         }
@@ -1111,19 +1152,6 @@ class TabViewModel(
 
     private suspend fun PendingUserMessage.cancelRuntimeQueueIfNeeded() {
         conversationRuntimeService.cancelQueuedMessage(conversationId, userMessage.id)
-    }
-
-    private fun PendingUserMessage.withMidTurnSteerInstruction(): PendingUserMessage {
-        val instructions = userMessage.instructions
-            .filterNot { instruction ->
-                instruction is Conversation.Message.Instruction.UserInstruction &&
-                    instruction.id == liveSteeringInstruction.id
-            } + liveSteeringInstruction
-
-        return copy(
-            userMessage = userMessage.copy(instructions = instructions),
-            placement = QueuedMessagePlacement.AFTER_TOOL_RESULT,
-        )
     }
 
     private fun Conversation.connectedAgentIds(): Set<AgentDefinition.Id> =
@@ -1350,7 +1378,7 @@ class TabViewModel(
         }
 
         val lastId = _uiState.value.lastToggledMessageId ?: return
-        val allMessages = _allMessages.value
+        val allMessages = _allMessages.value.filter { it.isVisibleHistoryMessage(settingsFlow.value) }
         
         val lastIndex = allMessages.indexOfFirst { it.id == lastId }
         val currentIndex = allMessages.indexOfFirst { it.id == messageId }
@@ -1509,6 +1537,7 @@ class TabViewModel(
         squashType: SquashType,
     ) {
         val selectedIds = _uiState.value.selectedMessageIds
+        val fullSelection = ConversationMessageSelection.ALL in _selectedHistoryKinds.value
         val minimum = if (squashType == SquashType.CONCATENATE) 2 else 1
         if (selectedIds.size < minimum) {
             _messageSquashState.value = MessageSquashUiState.Failed(
@@ -1522,7 +1551,12 @@ class TabViewModel(
 
         _messageSquashState.value = MessageSquashUiState.Running(squashType)
         try {
-            conversationHistoryService.compactMessages(conversationId, selectedIds.toList(), squashType)
+            conversationHistoryService.compactMessages(
+                conversationId = conversationId,
+                messageIds = if (fullSelection) emptyList() else selectedIds.toList(),
+                fullSelection = fullSelection,
+                strategy = squashType,
+            )
             clearMessageSelection()
             loadMessages()
             val succeededState = MessageSquashUiState.Succeeded(squashType)
@@ -1594,6 +1628,17 @@ private fun UIState.Tab.withSelectedMessageInstruction(
 }
 
 /** Visible messages and their unfiltered loaded-window boundaries are one presentation snapshot. */
+private fun Conversation.Message.isVisibleHistoryMessage(settings: Settings): Boolean {
+    val containsOnlyToolResults = content.isNotEmpty() &&
+        content.all { it is Conversation.Message.ContentItem.ToolResult }
+    if (containsOnlyToolResults) return false
+    if (settings.userDeviceSettings.showSystemMessages) return true
+    return role != Conversation.Message.Role.SYSTEM || content.any { item ->
+        item is Conversation.Message.ContentItem.System &&
+            item.level == Conversation.Message.ContentItem.System.SystemLevel.ERROR
+    }
+}
+
 data class ConversationHistoryContent(
     val messages: List<Conversation.Message> = emptyList(),
     val firstLoadedMessageId: Conversation.Message.Id? = null,
@@ -1603,11 +1648,13 @@ data class ConversationHistoryContent(
 data class PendingUserMessage(
     val userMessage: Conversation.Message,
     val agentDefinitionId: AgentDefinition.Id?,
-    val placement: QueuedMessagePlacement,
+    val delivery: MessageDelivery,
     val autoRespondAgentIds: Set<AgentDefinition.Id> = emptySet(),
+    val composerRoundTripInstructionIds: Set<String>? = null,
 ) {
     val steeringAgentId: AgentDefinition.Id? get() = agentDefinitionId ?: autoRespondAgentIds.singleOrNull()
     val id: String get() = userMessage.id.value
+    val isRuntime: Boolean get() = userMessage.role == Conversation.Message.Role.RUNTIME
 
     val text: String
         get() = userMessage.content.mapNotNull { item ->
@@ -1618,7 +1665,7 @@ data class PendingUserMessage(
             }
         }.joinToString("\n")
 
-    val editable: Boolean get() = userMessage.content.none { it is Conversation.Message.ContentItem.VisualInteraction }
+    val editable: Boolean get() = composerRoundTripInstructionIds != null
 
     val artifacts: List<com.gromozeka.domain.model.Artifact.Reference>
         get() = userMessage.content
@@ -1637,20 +1684,121 @@ data class PendingUserMessage(
             ?.context
 }
 
-private fun ConversationRuntimeTask.toPendingUserMessageOrNull(): PendingUserMessage? =
+private fun Conversation.Message.composerRoundTripInstructionIdsOrNull(
+    instructionGroups: List<MessageInstructionGroup>,
+    currentUserAuthor: Conversation.Message.Author.User,
+): Set<String>? {
+    if (
+        role != Conversation.Message.Role.USER ||
+        (author as? Conversation.Message.Author.User)?.userId != currentUserAuthor.userId ||
+        originalIds.isNotEmpty() ||
+        replyTo != null ||
+        providerMetadata.isNotEmpty() ||
+        error != null
+    ) return null
+
+    val textItems = content.filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
+    if (textItems.size > 1) return null
+    val text = textItems.singleOrNull()?.text.orEmpty()
+    val artifacts = content.filterIsInstance<Conversation.Message.ContentItem.ArtifactItem>()
+    val expectedContent = buildList {
+        text.takeIf(String::isNotBlank)?.let {
+            add(Conversation.Message.ContentItem.UserMessage(it))
+        }
+        artifacts.forEach { add(Conversation.Message.ContentItem.ArtifactItem(it.artifact)) }
+    }
+    if (expectedContent.isEmpty() || content != expectedContent) return null
+
+    val inputContexts = instructions.filterIsInstance<Conversation.Message.Instruction.MessageInputRuntimeContext>()
+    val workspaceContexts = instructions.filterIsInstance<Conversation.Message.Instruction.WorkspaceContext>()
+    val userInstructions = instructions.filterIsInstance<Conversation.Message.Instruction.UserInstruction>()
+    if (
+        inputContexts.size > 1 ||
+        workspaceContexts.size > 1 ||
+        instructions.size != inputContexts.size + workspaceContexts.size + userInstructions.size
+    ) return null
+
+    val selectedControls = buildList {
+        instructionGroups.forEach { group ->
+            val matchingInstructions = userInstructions.filter { instruction ->
+                group.controls.any { it.data.id == instruction.id }
+            }
+            if (matchingInstructions.size > 1) return null
+            val selected = if (matchingInstructions.isNotEmpty()) {
+                val instruction = matchingInstructions.single()
+                group.controls.singleOrNull { control ->
+                    control.includeInMessage && control.data == instruction
+                } ?: return null
+            } else {
+                group.controls.singleOrNull { !it.includeInMessage } ?: return null
+            }
+            add(selected)
+        }
+    }
+    val expectedUserInstructions = selectedControls.filter { it.includeInMessage }.map { it.data }
+    val expectedInstructions = inputContexts + expectedUserInstructions + workspaceContexts
+    if (instructions != expectedInstructions) return null
+
+    return selectedControls.mapTo(linkedSetOf()) { it.data.id }
+}
+
+private fun PendingUserMessage.composerRoundTripInstructionIdsOrNull(
+    instructionGroups: List<MessageInstructionGroup>,
+    currentUserAuthor: Conversation.Message.Author.User,
+    mentionCandidates: List<AgentMentionCandidate>,
+    currentDelivery: MessageDelivery,
+): Set<String>? {
+    if (delivery != currentDelivery) return null
+    val routeMatches = when (val mention = resolveAgentMention(text, mentionCandidates)) {
+        AgentMentionResolution.None -> agentDefinitionId == null && autoRespondAgentIds == mentionCandidates
+            .filter { it.connected && it.autoRespond }
+            .mapTo(linkedSetOf()) { it.agentDefinitionId }
+
+        is AgentMentionResolution.Target -> agentDefinitionId == mention.candidate.agentDefinitionId
+        is AgentMentionResolution.Invalid -> false
+    }
+    if (!routeMatches) return null
+    return userMessage.composerRoundTripInstructionIdsOrNull(instructionGroups, currentUserAuthor)
+}
+
+private fun ConversationRuntimeTask.toPendingUserMessageOrNull(
+    instructionGroups: List<MessageInstructionGroup>,
+    currentUserAuthor: Conversation.Message.Author.User,
+    mentionCandidates: List<AgentMentionCandidate>,
+    currentDelivery: MessageDelivery,
+): PendingUserMessage? =
     when (val taskPayload = payload) {
         is ConversationRuntimeTask.Payload.AgentInvocation -> PendingUserMessage(
             userMessage = taskPayload.userMessage,
             agentDefinitionId = taskPayload.agentDefinitionId,
-            placement = placement,
-        )
+            delivery = placement.toMessageDelivery(),
+        ).let { pendingMessage ->
+            pendingMessage.copy(composerRoundTripInstructionIds = pendingMessage.composerRoundTripInstructionIdsOrNull(
+                instructionGroups,
+                currentUserAuthor,
+                mentionCandidates,
+                currentDelivery,
+            ))
+        }
 
         is ConversationRuntimeTask.Payload.PostMessage -> PendingUserMessage(
             userMessage = taskPayload.userMessage,
             agentDefinitionId = null,
             autoRespondAgentIds = taskPayload.autoRespondAgentIds,
-            placement = placement,
-        )
+            delivery = placement.toMessageDelivery(),
+        ).let { pendingMessage ->
+            pendingMessage.copy(composerRoundTripInstructionIds = pendingMessage.composerRoundTripInstructionIdsOrNull(
+                instructionGroups,
+                currentUserAuthor,
+                mentionCandidates,
+                currentDelivery,
+            ))
+        }
 
         else -> null
     }
+
+private fun QueuedMessagePlacement.toMessageDelivery(): MessageDelivery = when (this) {
+    QueuedMessagePlacement.AFTER_TOOL_RESULT -> MessageDelivery.STEER
+    QueuedMessagePlacement.END_OF_TURN -> MessageDelivery.QUEUE
+}

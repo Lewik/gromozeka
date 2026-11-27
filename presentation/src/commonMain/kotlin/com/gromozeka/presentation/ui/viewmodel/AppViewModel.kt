@@ -19,7 +19,9 @@ import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.presentation.ui.effectiveDisplayName
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
@@ -42,7 +44,7 @@ open class AppViewModel(
     private val messageInputClientPlatform: MessageInputContext.ClientPlatform,
     private val turnCompletionNotificationService: TurnCompletionNotificationService,
     private val currentTranslation: () -> Translation,
-    private val messageDeliveryMode: StateFlow<UserMessageDeliveryMode> = MutableStateFlow(UserMessageDeliveryMode.STEER),
+    private val messageDeliveryMode: StateFlow<MessageDelivery> = MutableStateFlow(MessageDelivery.STEER),
 ) : TabManager {
     private val log = KLoggers.logger(this)
     private val mutex = Mutex()
@@ -52,6 +54,7 @@ open class AppViewModel(
 
     private val _conversations = MutableStateFlow<Map<Conversation.Id, Conversation>>(emptyMap())
     val conversations: StateFlow<Map<Conversation.Id, Conversation>> = _conversations.asStateFlow()
+    private val sharedProjectAgents = mutableMapOf<Project.Id, StateFlow<List<AgentDefinition>>>()
 
     private val _currentTabIndex = MutableStateFlow<Int?>(null)
     val currentTabIndex: StateFlow<Int?> = _currentTabIndex.asStateFlow()
@@ -72,12 +75,13 @@ open class AppViewModel(
                 .flatMapLatest { projectIds ->
                     merge(*projectIds.map { projectId ->
                         conversationService.observeByProject(projectId)
-                            .catch { error ->
-                                log.warn(error) { "Failed to observe conversations for project ${projectId.value}" }
-                            }
+                            .retryProjectObservation("conversations", projectId)
+                            .map { conversations -> projectId to conversations }
                     }.toTypedArray())
                 }
-                .collect(::mergeConversationSnapshots)
+                .collect { (projectId, conversations) ->
+                    replaceProjectConversationSnapshots(projectId, conversations)
+                }
         }
         scope.launch {
             conversationUnreadStateService.observe()
@@ -324,6 +328,8 @@ open class AppViewModel(
         val synchronizedTabs = layout.conversationIds.mapNotNull { conversationId ->
             existingTabs[conversationId] ?: restoreTab(conversationId, savedTabs[conversationId])
         }
+        val synchronizedIds = synchronizedTabs.mapTo(mutableSetOf(), TabViewModel::conversationId)
+        existingTabs.values.filterNot { it.conversationId in synchronizedIds }.forEach(TabViewModel::cleanup)
 
         _tabs.value = synchronizedTabs
         _currentTabIndex.value = currentSystemTab ?: currentConversationId?.let { conversationId ->
@@ -380,8 +386,12 @@ open class AppViewModel(
         conversationRuntimeService = conversationRuntimeService,
         conversationService = conversationService,
         conversationHistoryService = conversationHistoryService,
+        projectAgents = sharedAgents(conversation.projectId),
+        projectConversations = conversations.map { snapshots ->
+            snapshots.values.filter { it.projectId == conversation.projectId }
+        }.distinctUntilChanged(),
         settingsService = settingsService,
-        scope = scope,
+        parentScope = scope,
         initialTabUiState = initialTabUiState,
         attachmentAcquisitionController = attachmentAcquisitionController,
         artifactTransferService = artifactTransferService,
@@ -391,6 +401,25 @@ open class AppViewModel(
         conversationTitle = { _conversations.value.getValue(conversation.id).effectiveDisplayName(currentTranslation()) },
         messageDeliveryMode = messageDeliveryMode,
     )
+
+    private fun sharedAgents(projectId: Project.Id): StateFlow<List<AgentDefinition>> =
+        sharedProjectAgents.getOrPut(projectId) {
+            agentService.observeByProject(projectId)
+                .retryProjectObservation("agents", projectId)
+                .stateIn(
+                    scope,
+                    SharingStarted.WhileSubscribed(replayExpirationMillis = 0),
+                    emptyList(),
+                )
+        }
+
+    private fun <T> Flow<T>.retryProjectObservation(kind: String, projectId: Project.Id): Flow<T> =
+        retryWhen { error, _ ->
+            if (error is CancellationException) throw error
+            log.warn(error) { "Failed to observe $kind for project ${projectId.value}; retrying" }
+            delay(PROJECT_OBSERVATION_RETRY_DELAY_MILLIS)
+            true
+        }
 
     private suspend fun TabViewModel.sendInitialMessage(
         message: Conversation.Message,
@@ -423,6 +452,7 @@ open class AppViewModel(
         val tabList = _tabs.value
         val index = tabList.indexOfFirst { it.conversationId == conversationId }
         if (index < 0) return
+        tabList[index].cleanup()
         val currentIndex = _currentTabIndex.value
         _tabs.value = tabList.filterIndexed { tabIndex, _ -> tabIndex != index }
         _currentTabIndex.value = when {
@@ -439,6 +469,16 @@ open class AppViewModel(
         if (updates.isEmpty()) return
 
         _conversations.update { current -> current + updates }
+    }
+
+    private fun replaceProjectConversationSnapshots(
+        projectId: Project.Id,
+        conversations: Iterable<Conversation>,
+    ) {
+        val replacement = conversations.associateBy(Conversation::id)
+        _conversations.update { current ->
+            current.filterValues { conversation -> conversation.projectId != projectId } + replacement
+        }
     }
 
     fun focusMessage(
@@ -464,6 +504,7 @@ open class AppViewModel(
 
     suspend fun cleanup() {
         mutex.withLock {
+            _tabs.value.forEach(TabViewModel::cleanup)
             _tabs.value = emptyList()
             _conversations.value = emptyMap()
             _currentTabIndex.value = null
@@ -472,6 +513,7 @@ open class AppViewModel(
     }
 
     private companion object {
+        const val PROJECT_OBSERVATION_RETRY_DELAY_MILLIS = 1_000L
         val systemTabIndexes = setOf(-1, -2, -3)
     }
 }

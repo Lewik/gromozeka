@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.ai.AiStepOutcome
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiAssistantMessage
+import com.gromozeka.domain.model.ai.AiContextInspection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiReasoningConfig
 import com.gromozeka.domain.model.ai.AiReasoningDisplay
@@ -1629,7 +1630,8 @@ class ClaudeCodeCliRuntimeTest {
         val compact = runtime.compact(compactRequest)
         assertEquals(2, executor.commands.size, "Compact must not run ordinary inference")
         val checkpoint = compact.messages.single().content.single() as Conversation.Message.ContentItem.ContextCompactionResult
-        assertEquals(history.take(2).map { it.id }, checkpoint.sourceMessageIds)
+        assertTrue(checkpoint.sourceMessageIds.isEmpty())
+        assertEquals(history.take(2).last().id, checkpoint.sourceBoundaryMessageId)
         val targetThread = Conversation.Thread.Id("after-compaction")
         val checkpointMessage = assistantMessage("").copy(content = listOf(checkpoint.copy(
             historyTransition = Conversation.Message.ContentItem.ContextCompactionResult.HistoryTransition(
@@ -1686,6 +1688,27 @@ class ClaudeCodeCliRuntimeTest {
         runtime(executor).call(request(listOf(userMessage("Unrelated earlier instruction"), summary, userMessage("Next")), emptyList()))
         assertTrue(executor.commands.single().userPrompt.contains("Unrelated earlier instruction"))
         assertTrue(executor.commands.single().userPrompt.contains("Selected middle messages"))
+    }
+
+    @Test
+    fun freshTranscriptIncludesRuntimeMessageContent() = runBlocking {
+        val executor = FakeClaudeCodeCliExecutor(response(structuredOutput = jsonObject(
+            "kind" to JsonPrimitive("final_answer"),
+            "final_answer" to JsonPrimitive("OK"),
+        )))
+        val runtimeMessage = userMessage("ignored").copy(
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(jsonObject(
+                "kind" to JsonPrimitive("runtime_state"),
+                "value" to JsonPrimitive("CURRENT_RUNTIME_STATE"),
+            ))),
+        )
+
+        runtime(executor).call(request(listOf(userMessage("Earlier"), runtimeMessage, userMessage("Next")), emptyList()))
+
+        val prompt = executor.commands.single().userPrompt
+        assertTrue(prompt.contains("CURRENT_RUNTIME_STATE"))
     }
 
     @Test

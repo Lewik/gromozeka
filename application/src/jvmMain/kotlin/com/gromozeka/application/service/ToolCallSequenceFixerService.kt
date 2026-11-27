@@ -1,15 +1,15 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.isFullContextCompaction
+import com.gromozeka.domain.model.ToolSequenceMessageHeader
+import com.gromozeka.domain.model.toolSequenceRepairBodyIds
 import com.gromozeka.domain.model.ai.AI_PROVIDER_MANAGED_TOOL_METADATA_KEY
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import com.gromozeka.domain.model.Conversation.Message.BlockState
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
-import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.MessageRepository
-import com.gromozeka.domain.repository.ThreadMessageLink
 import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.repository.ThreadRepository
 import com.gromozeka.shared.uuid.uuid7
@@ -26,7 +26,6 @@ import org.springframework.transaction.annotation.Transactional
  */
 @Service
 class ToolCallSequenceFixerService(
-    private val conversationService: ConversationDomainService,
     private val conversationRepository: ConversationRepository,
     private val threadRepository: ThreadRepository,
     private val messageRepository: MessageRepository,
@@ -39,6 +38,11 @@ class ToolCallSequenceFixerService(
         val addedResults: Int,
         val convertedResults: Int,
         val mergedToolCallMessages: Int,
+    )
+
+    private data class PendingToolCall(
+        val sourceMessageId: Conversation.Message.Id,
+        val call: ContentItem.ToolCall,
     )
     
     /**
@@ -69,19 +73,11 @@ class ToolCallSequenceFixerService(
      */
     @Transactional
     suspend fun fixNonSequentialPairs(conversationId: Conversation.Id): FixResult {
-        val messages = conversationService.loadCurrentMessages(conversationId)
-        val replayWindow = messages.toFixableReplayWindow()
-
-        val fixedSequence = buildFixedMessageSequence(
-            messages = replayWindow.messages,
-            conversationId = conversationId
-        )
-
-        if (
-            fixedSequence.addedResults == 0 &&
-            fixedSequence.convertedResults == 0 &&
-            fixedSequence.mergedToolCallMessages == 0
-        ) {
+        val conversation = conversationRepository.findById(conversationId)
+            ?: throw IllegalStateException("Conversation not found: $conversationId")
+        val expectedThreadId = conversation.currentThread
+        val replayWindow = threadMessageRepository.invalidToolSequenceWindow(expectedThreadId)
+        if (replayWindow.isEmpty()) {
             log.debug { "No non-sequential pairs found in conversation $conversationId" }
             return FixResult(
                 fixed = false,
@@ -90,8 +86,24 @@ class ToolCallSequenceFixerService(
                 mergedToolCallMessages = 0,
             )
         }
+        val bodyIds = toolSequenceRepairBodyIds(replayWindow)
+        val bodies = threadMessageRepository.compactionBodies(expectedThreadId, bodyIds).associateBy { it.id }
+        check(bodies.keys == bodyIds.toSet()) { "Tool sequence repair could not load every affected message" }
+        val messages = replayWindow.map { header -> bodies[header.id] ?: header.placeholder(conversationId) }
+        val bodylessMessageIds = replayWindow.mapTo(mutableSetOf(), ToolSequenceMessageHeader::id) - bodies.keys
 
-        val fixedMessages = replayWindow.preservedPrefix + fixedSequence.messages
+        val fixedSequence = buildFixedMessageSequence(
+            messages = messages,
+            conversationId = conversationId,
+            bodylessMessageIds = bodylessMessageIds,
+        )
+
+        check(!(
+            fixedSequence.addedResults == 0 &&
+            fixedSequence.convertedResults == 0 &&
+            fixedSequence.mergedToolCallMessages == 0
+        )) { "SQL detected an invalid tool sequence that the repair did not change" }
+
         val addedResults = fixedSequence.addedResults
         val convertedResults = fixedSequence.convertedResults
         val mergedToolCallMessages = fixedSequence.mergedToolCallMessages
@@ -102,36 +114,33 @@ class ToolCallSequenceFixerService(
             "added $addedResults messages, converted $convertedResults orphaned results" 
         }
         
-        // Create new thread with fixed messages
-        val conversation = conversationService.findById(conversationId)
-            ?: throw IllegalStateException("Conversation not found: $conversationId")
+        check(conversationRepository.findById(conversationId)?.currentThread == expectedThreadId) {
+            "Conversation thread changed while planning tool sequence repair"
+        }
         
         val now = Clock.System.now()
         val newThread = Conversation.Thread(
             id = Conversation.Thread.Id(uuid7()),
             conversationId = conversationId,
-            originalThread = conversation.currentThread,
+            originalThread = expectedThreadId,
             createdAt = now,
             updatedAt = now
         )
         
         threadRepository.save(newThread)
 
-        val existingMessageIds = messageRepository.findByIds(fixedMessages.map { it.id })
-            .mapTo(mutableSetOf()) { it.id }
-
-        fixedMessages.filter { it.id !in existingMessageIds }.forEach { message ->
-            messageRepository.save(message)
+        val sourceIds = replayWindow.mapTo(mutableSetOf(), ToolSequenceMessageHeader::id)
+        val newMessages = fixedSequence.messages.filter { it.id !in sourceIds }
+        check(newMessages.map { it.id }.distinct().size == newMessages.size) {
+            "Tool sequence repair produced duplicate immutable message IDs"
         }
+        messageRepository.saveBatch(newMessages)
 
-        threadMessageRepository.addBatch(
-            fixedMessages.mapIndexed { index, message ->
-                ThreadMessageLink(
-                    threadId = newThread.id,
-                    messageId = message.id,
-                    position = index
-                )
-            }
+        threadMessageRepository.copyPrefixAndAddSuffix(
+            sourceThreadId = expectedThreadId,
+            targetThreadId = newThread.id,
+            suffixStartPosition = replayWindow.first().position,
+            suffixMessageIds = fixedSequence.messages.map { it.id },
         )
         
         // Update conversation to use new thread
@@ -154,11 +163,18 @@ class ToolCallSequenceFixerService(
     
     internal fun buildFixedMessageSequence(
         messages: List<Conversation.Message>,
-        conversationId: Conversation.Id
+        conversationId: Conversation.Id,
+        bodylessMessageIds: Set<Conversation.Message.Id> = emptySet(),
     ): FixedMessageSequence {
-        val normalizedSequence = messages.mergeAdjacentToolCallMessages()
+        fun requireBody(messageId: Conversation.Message.Id, purpose: String) {
+            check(messageId !in bodylessMessageIds) {
+                "Tool sequence repair requires message body to $purpose: ${messageId.value}"
+            }
+        }
+
+        val normalizedSequence = messages.mergeAdjacentToolCallMessages(bodylessMessageIds)
         val fixedMessages = mutableListOf<Conversation.Message>()
-        var pendingToolCalls = emptyMap<ContentItem.ToolCall.Id, ContentItem.ToolCall>()
+        var pendingToolCalls = emptyMap<ContentItem.ToolCall.Id, PendingToolCall>()
         var addedResults = 0
         var convertedResults = 0
         val completedCallIds = normalizedSequence.flatMap { it.content }.filterIsInstance<ContentItem.ToolResult>()
@@ -172,6 +188,7 @@ class ToolCallSequenceFixerService(
                 message.content.isNotEmpty() && message.content.all { it is ContentItem.ToolResult && it.toolUseId in providerManagedCallIds }) {
                 fixedMessages += message
                 message.content.filterIsInstance<ContentItem.ToolCall>().filter { it.id !in completedCallIds }.forEach {
+                    requireBody(message.id, "construct a missing result")
                     fixedMessages += createErrorToolResult(conversationId, it)
                     addedResults++
                 }
@@ -185,12 +202,13 @@ class ToolCallSequenceFixerService(
                 .mapTo(mutableSetOf()) { it.toolUseId }
 
             if (pendingToolCalls.isNotEmpty() && matchedResultIds.isEmpty()) {
-                pendingToolCalls.values.forEach { toolCall ->
+                pendingToolCalls.values.forEach { pending ->
+                    requireBody(pending.sourceMessageId, "construct a missing result")
                     log.debug {
                         "Inserting error ToolResult for orphaned ToolCall before message ${message.id.value}: " +
-                            "${toolCall.call.name} (id=${toolCall.id.value})"
+                            "${pending.call.call.name} (id=${pending.call.id.value})"
                     }
-                    fixedMessages += createErrorToolResult(conversationId, toolCall)
+                    fixedMessages += createErrorToolResult(conversationId, pending.call)
                     addedResults++
                 }
                 pendingToolCalls = emptyMap()
@@ -199,16 +217,23 @@ class ToolCallSequenceFixerService(
             val remainingContent = if (unmatchedResults.isEmpty()) {
                 message.content
             } else {
+                requireBody(message.id, "rewrite an orphaned result")
                 message.content.filterNot { content ->
                     content is ContentItem.ToolResult && content.toolUseId !in pendingToolCalls.keys
                 }
             }
 
-            if (remainingContent.isNotEmpty()) {
+            // Body-free placeholders carry only sequence facts and are retained by their original links.
+            if (remainingContent.isNotEmpty() || message.content.isEmpty()) {
                 fixedMessages += if (remainingContent.size == message.content.size) {
                     message
                 } else {
-                    message.copy(content = remainingContent)
+                    message.copy(
+                        id = Conversation.Message.Id(uuid7()),
+                        originalIds = (message.originalIds + message.id).distinct(),
+                        content = remainingContent,
+                        createdAt = Clock.System.now(),
+                    )
                 }
             }
 
@@ -216,30 +241,32 @@ class ToolCallSequenceFixerService(
                 log.debug {
                     "Converting ${unmatchedResults.size} orphaned ToolResult(s) in message ${message.id.value}"
                 }
-                fixedMessages += createConvertedOrphanedToolResultsMessage(conversationId, unmatchedResults)
+                fixedMessages += createConvertedOrphanedToolResultsMessage(conversationId, message, unmatchedResults)
                 convertedResults += unmatchedResults.size
             }
 
             val unmatchedCallIds = pendingToolCalls.keys - matchedResultIds
             unmatchedCallIds.forEach { callId ->
-                val toolCall = pendingToolCalls.getValue(callId)
+                val pending = pendingToolCalls.getValue(callId)
+                requireBody(pending.sourceMessageId, "construct a missing result")
                 log.debug {
                     "Inserting error ToolResult for orphaned ToolCall: " +
-                        "${toolCall.call.name} (id=${callId.value})"
+                        "${pending.call.call.name} (id=${callId.value})"
                 }
-                fixedMessages += createErrorToolResult(conversationId, toolCall)
+                fixedMessages += createErrorToolResult(conversationId, pending.call)
                 addedResults++
             }
 
-            pendingToolCalls = toolCalls.associateBy { it.id }
+            pendingToolCalls = toolCalls.associate { it.id to PendingToolCall(message.id, it) }
         }
 
-        pendingToolCalls.values.forEach { toolCall ->
+        pendingToolCalls.values.forEach { pending ->
+            requireBody(pending.sourceMessageId, "construct a missing result")
             log.debug {
                 "Inserting error ToolResult for final orphaned ToolCall: " +
-                    "${toolCall.call.name} (id=${toolCall.id.value})"
+                    "${pending.call.call.name} (id=${pending.call.id.value})"
             }
-            fixedMessages += createErrorToolResult(conversationId, toolCall)
+            fixedMessages += createErrorToolResult(conversationId, pending.call)
             addedResults++
         }
 
@@ -251,53 +278,36 @@ class ToolCallSequenceFixerService(
         )
     }
 
-    private data class ReplayWindow(
-        val preservedPrefix: List<Conversation.Message>,
-        val messages: List<Conversation.Message>,
-    )
-
-    private fun List<Conversation.Message>.toFixableReplayWindow(): ReplayWindow {
-        val compactionAnchorIndex = indexOfLast { it.hasCompactionReplayAnchor() }
-        if (compactionAnchorIndex < 0) {
-            return ReplayWindow(
-                preservedPrefix = emptyList(),
-                messages = this,
-            )
-        }
-
-        log.info {
-            "Tool call sequence fixer limited to post-compaction replay window: " +
-                "preservedMessages=$compactionAnchorIndex, fixableMessages=${size - compactionAnchorIndex}"
-        }
-
-        return ReplayWindow(
-            preservedPrefix = take(compactionAnchorIndex),
-            messages = drop(compactionAnchorIndex),
-        )
-    }
-
-    private fun Conversation.Message.hasCompactionReplayAnchor(): Boolean =
-        isFullContextCompaction()
-
-    private fun List<Conversation.Message>.mergeAdjacentToolCallMessages(): List<Conversation.Message> {
+    private fun List<Conversation.Message>.mergeAdjacentToolCallMessages(
+        bodylessMessageIds: Set<Conversation.Message.Id>,
+    ): List<Conversation.Message> {
         if (size < 2) return this
 
         val merged = mutableListOf<Conversation.Message>()
-
-        forEach { message ->
-            val previous = merged.lastOrNull()
-            if (previous != null && previous.canMergeAdjacentToolCallsWith(message)) {
-                merged[merged.lastIndex] = previous.copy(
-                    content = previous.content + message.content,
-                    providerMetadata = kotlinx.serialization.json.JsonObject(
-                        previous.providerMetadata.toMap() + message.providerMetadata.toMap()
-                    ),
-                )
-            } else {
-                merged += message
+        var index = 0
+        while (index < size) {
+            val group = mutableListOf(this[index])
+            while (index + group.size < size && group.last().canMergeAdjacentToolCallsWith(this[index + group.size])) {
+                group += this[index + group.size]
             }
+            merged += if (group.size == 1) {
+                group.single()
+            } else {
+                check(group.none { it.id in bodylessMessageIds }) {
+                    "Tool sequence repair tried to merge a body-free message"
+                }
+                group.first().copy(
+                    id = Conversation.Message.Id(uuid7()),
+                    originalIds = group.flatMap { it.originalIds + it.id }.distinct(),
+                    content = group.flatMap { it.content },
+                    providerMetadata = JsonObject(group.fold(emptyMap()) { metadata, message ->
+                        metadata + message.providerMetadata.toMap()
+                    }),
+                    createdAt = Clock.System.now(),
+                )
+            }
+            index += group.size
         }
-
         return merged
     }
 
@@ -340,6 +350,7 @@ class ToolCallSequenceFixerService(
     
     private fun createConvertedOrphanedToolResultsMessage(
         conversationId: Conversation.Id,
+        sourceMessage: Conversation.Message,
         orphanedResults: List<ContentItem.ToolResult>
     ): Conversation.Message {
         val convertedContent = orphanedResults.map { orphanedResult ->
@@ -370,9 +381,61 @@ class ToolCallSequenceFixerService(
         return Conversation.Message(
             id = Conversation.Message.Id(uuid7()),
             conversationId = conversationId,
+            originalIds = (sourceMessage.originalIds + sourceMessage.id).distinct(),
             role = Conversation.Message.Role.ASSISTANT,
             content = convertedContent,
             createdAt = Clock.System.now(),
         )
     }
+
+    private fun ToolSequenceMessageHeader.placeholder(
+        conversationId: Conversation.Id,
+    ): Conversation.Message {
+        check(!facts.fullCompactionAnchor) { "The latest full checkpoint must not be in the repair window" }
+        check(role != Conversation.Message.Role.RUNTIME || facts.callIds.isEmpty() && facts.resultIds.isEmpty()) {
+            "Runtime message has tool sequence facts: ${id.value}"
+        }
+        return Conversation.Message(
+            id = id,
+            conversationId = conversationId,
+            role = role,
+            content = if (role == Conversation.Message.Role.RUNTIME) {
+                listOf(ContentItem.RuntimeJson(JsonObject(emptyMap())))
+            } else {
+                // The fixer needs only pairing IDs for unchanged rows. These placeholders are never persisted.
+                buildList {
+                    facts.callIds.forEach { callId ->
+                        add(ContentItem.ToolCall(
+                            id = ContentItem.ToolCall.Id(callId),
+                            call = ContentItem.ToolCall.Data(
+                                name = TOOL_SEQUENCE_BODY_PLACEHOLDER_TOOL_NAME,
+                                input = JsonObject(emptyMap()),
+                            ),
+                        ))
+                    }
+                    facts.resultIds.forEach { callId ->
+                        add(ContentItem.ToolResult(
+                            toolUseId = ContentItem.ToolCall.Id(callId),
+                            toolName = TOOL_SEQUENCE_BODY_PLACEHOLDER_TOOL_NAME,
+                            result = emptyList(),
+                        ))
+                    }
+                    if (facts.resultIds.isNotEmpty() && facts.callIds.isEmpty() && !facts.toolResultsOnly) {
+                        add(ContentItem.System(
+                            level = ContentItem.System.SystemLevel.INFO,
+                            content = "",
+                        ))
+                    }
+                }
+            },
+            providerMetadata = if (facts.providerManaged) {
+                JsonObject(mapOf(AI_PROVIDER_MANAGED_TOOL_METADATA_KEY to JsonPrimitive(true)))
+            } else {
+                JsonObject(emptyMap())
+            },
+            createdAt = Clock.System.now(),
+        )
+    }
 }
+
+private const val TOOL_SEQUENCE_BODY_PLACEHOLDER_TOOL_NAME = "__unloaded_tool_sequence_body__"

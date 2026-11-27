@@ -954,6 +954,7 @@ private fun MemoryReadRequest.targetQueryText(): String {
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.ArtifactItem ->
                 "[attachment:${item.artifact.fileName} media_type=${item.artifact.mediaType}]"
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult -> item.readPipelineText()
+            is com.gromozeka.domain.model.Conversation.Message.ContentItem.RuntimeJson -> item.json.toString()
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.UnknownJson -> item.json.toString()
             is com.gromozeka.domain.model.Conversation.Message.ContentItem.Thinking -> null
         }

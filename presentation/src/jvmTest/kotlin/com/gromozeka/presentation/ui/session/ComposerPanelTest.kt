@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageInstructionGroup
-import com.gromozeka.domain.model.UserMessageDeliveryMode
+import com.gromozeka.domain.model.MessageDelivery
 import com.gromozeka.presentation.services.*
 import com.gromozeka.presentation.ui.AgentMentionCandidate
 import com.gromozeka.presentation.ui.ClientPlatform
@@ -393,7 +393,7 @@ class ComposerPanelTest {
     fun busySendButtonShowsDeliveryModeOnlyInTooltip() = verifyDeliveryTooltip(waiting = true)
 
     private fun verifyDeliveryTooltip(waiting: Boolean) = runComposeUiTest {
-        var mode by mutableStateOf(UserMessageDeliveryMode.STEER)
+        var mode by mutableStateOf(MessageDelivery.STEER)
         mainClock.autoAdvance = false
         setContent {
             GromozekaTheme {
@@ -403,8 +403,8 @@ class ComposerPanelTest {
             }
         }
         for ((selected, label) in listOf(
-            UserMessageDeliveryMode.STEER to "Steer — next safe point",
-            UserMessageDeliveryMode.AFTER_CURRENT_TURN to "After the current turn",
+            MessageDelivery.STEER to "Steer — next safe point",
+            MessageDelivery.QUEUE to "After the current turn",
         )) {
             runOnIdle { mode = selected }
             mainClock.advanceTimeByFrame()

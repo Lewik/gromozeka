@@ -55,21 +55,25 @@ internal class ConversationSearchToolContributor(
                 setOf(Conversation.Message.Role.USER, Conversation.Message.Role.ASSISTANT)
             } else {
                 roleNames.mapTo(linkedSetOf()) { role ->
-                    runCatching { Conversation.Message.Role.valueOf(role.uppercase()) }
+                    val parsed = runCatching { Conversation.Message.Role.valueOf(role.uppercase()) }
                         .getOrElse {
                             throw ServerToolException(
                                 "invalid_argument",
                                 "'roles' accepts only USER and ASSISTANT",
                             )
                         }
-                        .also {
-                            if (it == Conversation.Message.Role.SYSTEM) {
-                                throw ServerToolException(
-                                    "invalid_argument",
-                                    "'roles' accepts only USER and ASSISTANT",
-                                )
-                            }
-                        }
+                    when (parsed) {
+                        Conversation.Message.Role.USER,
+                        Conversation.Message.Role.ASSISTANT,
+                        -> parsed
+
+                        Conversation.Message.Role.SYSTEM,
+                        Conversation.Message.Role.RUNTIME,
+                        -> throw ServerToolException(
+                            "invalid_argument",
+                            "'roles' accepts only USER and ASSISTANT",
+                        )
+                    }
                 }
             }
             val threadScope = input.optionalString("threadScope")

@@ -9,6 +9,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySource
+import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.service.ConversationDomainService
 import java.security.MessageDigest
 import org.springframework.stereotype.Service
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service
 @Service
 class MemoryOperationPreparer(
     private val conversationService: ConversationDomainService,
+    private val threadMessages: ThreadMessageRepository,
 ) {
     private val sourceMapper = ConversationMessageMemorySourceMapper()
 
@@ -25,28 +27,36 @@ class MemoryOperationPreparer(
     ): List<PreparedMemoryOperation> {
         val conversationId = Conversation.Id(conversationIdValue)
         val conversation = requireConversation(conversationId)
-        return conversationService.loadCurrentMessages(conversationId).mapNotNull { message ->
-            if (message.isSyntheticMemoryMessage()) {
-                return@mapNotNull null
-            }
-            val source = sourceMapper.toChatTurn(
-                namespace = namespace,
-                conversationId = conversationId,
-                threadId = conversation.currentThread,
-                message = message,
-            ) ?: return@mapNotNull null
-            PreparedMemoryOperation(
-                request = MemoryOperationRequest.RememberMessage(
-                    namespace = namespace,
-                    conversationId = conversationId,
-                    threadId = conversation.currentThread,
-                    targetMessageId = message.id,
-                    forceWrite = null,
-                    confirmedPreflightRunId = null,
-                ),
-                summary = "Memory remember queued",
-                inputHash = source.contentHash,
-            )
+        return buildList {
+            var afterPosition = -1
+            do {
+                val page = threadMessages.getMessagePage(conversation.currentThread, afterPosition, MEMORY_ARCHIVE_PAGE_SIZE)
+                page.forEach { entry ->
+                    val message = entry.message
+                    if (!message.isSyntheticMemoryMessage()) {
+                        sourceMapper.toChatTurn(
+                            namespace = namespace,
+                            conversationId = conversationId,
+                            threadId = conversation.currentThread,
+                            message = message,
+                        )?.let { source ->
+                            add(PreparedMemoryOperation(
+                                request = MemoryOperationRequest.RememberMessage(
+                                    namespace = namespace,
+                                    conversationId = conversationId,
+                                    threadId = conversation.currentThread,
+                                    targetMessageId = message.id,
+                                    forceWrite = null,
+                                    confirmedPreflightRunId = null,
+                                ),
+                                summary = "Memory remember queued",
+                                inputHash = source.contentHash,
+                            ))
+                        }
+                    }
+                }
+                afterPosition = page.lastOrNull()?.position ?: afterPosition
+            } while (page.size == MEMORY_ARCHIVE_PAGE_SIZE)
         }
     }
 
@@ -59,10 +69,7 @@ class MemoryOperationPreparer(
     ): PreparedMemoryOperation {
         val conversationId = Conversation.Id(conversationIdValue)
         val conversation = requireConversation(conversationId)
-        val targetMessage = resolveTargetMessage(
-            conversationService.loadCurrentMessages(conversationId),
-            targetMessageId,
-        )
+        val targetMessage = resolveTargetMessage(conversation.currentThread, targetMessageId)
         return PreparedMemoryOperation(
             request = MemoryOperationRequest.RememberMessage(
                 namespace = namespace,
@@ -146,10 +153,7 @@ class MemoryOperationPreparer(
     ): PreparedMemoryOperation {
         val conversationId = Conversation.Id(conversationIdValue)
         val conversation = requireConversation(conversationId)
-        val targetMessage = resolveTargetMessage(
-            conversationService.loadCurrentMessages(conversationId),
-            targetMessageId,
-        )
+        val targetMessage = resolveTargetMessage(conversation.currentThread, targetMessageId)
         return PreparedMemoryOperation(
             request = MemoryOperationRequest.EnrichMessage(
                 namespace = namespace,
@@ -191,10 +195,7 @@ class MemoryOperationPreparer(
     ): PreparedMemoryOperation {
         val conversationId = Conversation.Id(conversationIdValue)
         val conversation = requireConversation(conversationId)
-        val targetMessage = resolveTargetMessage(
-            conversationService.loadCurrentMessages(conversationId),
-            targetMessageId,
-        )
+        val targetMessage = resolveTargetMessage(conversation.currentThread, targetMessageId)
         return PreparedMemoryOperation(
             request = MemoryOperationRequest.AnswerMessage(
                 namespace = namespace,
@@ -233,18 +234,19 @@ class MemoryOperationPreparer(
         conversationService.findById(conversationId)
             ?: throw IllegalArgumentException("Conversation not found: ${conversationId.value}")
 
-    private fun resolveTargetMessage(
-        threadMessages: List<Conversation.Message>,
+    private suspend fun resolveTargetMessage(
+        threadId: Conversation.Thread.Id,
         targetMessageId: String?,
     ): Conversation.Message {
         val explicitMessageId = targetMessageId?.takeIf { it.isNotBlank() }
         if (explicitMessageId != null) {
-            return threadMessages.firstOrNull { message ->
-                message.id.value == explicitMessageId && !message.isSyntheticMemoryMessage()
-            } ?: throw IllegalArgumentException("Target message not found in the current thread: $explicitMessageId")
+            return threadMessages.findMessage(threadId, Conversation.Message.Id(explicitMessageId))?.takeIf { message ->
+                    message.role != Conversation.Message.Role.RUNTIME &&
+                    !message.isSyntheticMemoryMessage()
+                } ?: throw IllegalArgumentException("Target message not found in the current thread: $explicitMessageId")
         }
 
-        return threadMessages
+        return threadMessages.getContextMessagesByThread(threadId, nativeProvider = null).messages
             .asReversed()
             .firstOrNull { message ->
                 message.hasUserAuthoredContent() && !message.isSyntheticMemoryMessage()
@@ -259,7 +261,8 @@ class MemoryOperationPreparer(
         this?.trim()?.takeIf { it.isNotBlank() }?.let(MemoryRun::Id)
 
     private fun Conversation.Message.hasUserAuthoredContent(): Boolean =
-        content.any { it is Conversation.Message.ContentItem.UserMessage }
+        role == Conversation.Message.Role.USER &&
+            content.any { it is Conversation.Message.ContentItem.UserMessage }
 
     private fun Conversation.Message.isSyntheticMemoryMessage(): Boolean =
         syntheticKind == SyntheticMessageKind.MEMORY
@@ -277,3 +280,5 @@ class MemoryOperationPreparer(
         return digest.joinToString("") { "%02x".format(it) }
     }
 }
+
+private const val MEMORY_ARCHIVE_PAGE_SIZE = 256

@@ -225,7 +225,7 @@ class AsyncToolNativePipelineTest {
         }
     }
 
-    @Test fun `approval refusal and invocation-bound effect never create an operation or invoke a callback`() = runBlocking {
+    @Test fun `approval refusal never creates an operation or invokes a callback`() = runBlocking {
         val rejected = Fixture(reject = true)
         try {
             rejected.begin(); rejected.executeSource()
@@ -233,16 +233,6 @@ class AsyncToolNativePipelineTest {
             assertTrue(rejected.messages.last().content.filterIsInstance<ContentItem.ToolResult>().single().isError)
             assertEquals(0, rejected.effects.get())
         } finally { rejected.scope.cancel() }
-        val inline = Fixture(inlineOnly = true)
-        try {
-            inline.begin(); inline.executeSource()
-            val refusal = inline.messages.last().content.filterIsInstance<ContentItem.ToolResult>().single()
-            assertTrue(refusal.isError)
-            assertTrue(assertIs<ContentItem.ToolResult.Data.Text>(refusal.result.single()).content.contains("next model request"))
-            assertTrue(inline.store.records.isEmpty())
-            assertEquals(0, inline.effects.get())
-            assertEquals(0, inline.approvalCount)
-        } finally { inline.scope.cancel() }
     }
 
     @Test fun `retry after a lost append acknowledgement recovers the exact durable source without accepting a changed call`() = runBlocking {
@@ -279,7 +269,6 @@ class AsyncToolNativePipelineTest {
 
     private class Fixture(
         val reject: Boolean = false,
-        val inlineOnly: Boolean = false,
         val asynchronous: Boolean = true,
         val callbackResult: AiToolCallResult? = null,
         val continueAfterCompletion: Boolean = true,
@@ -308,8 +297,7 @@ class AsyncToolNativePipelineTest {
         val working = buildJsonObject { put("status", "WORKING"); put("task_id", "nested-managed-command") }
         private val callback = object : AiToolCallback {
             override val definition get() = this@Fixture.definition
-            override val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.SERVER,
-                inlineOnlyReason = "Affects only the next model request".takeIf { inlineOnly })
+            override val metadata = AiToolMetadata(executionScope = AiToolExecutionScope.SERVER)
             override fun call(toolInput: String, context: ToolExecutionContext?) = error("Result callback required")
             override suspend fun callResult(toolInput: String, context: ToolExecutionContext?): AiToolCallResult {
                 assertEquals(JsonObject(emptyMap()), Json.parseToJsonElement(toolInput))
@@ -325,7 +313,6 @@ class AsyncToolNativePipelineTest {
             when (it.method.name.substringBefore('-')) {
                 "findById" -> conversation
                 "getProject" -> project
-                "loadCurrentMessages" -> messages.toList()
                 else -> error("Unexpected conversation call ${it.method.name}")
             }
         }
@@ -346,17 +333,31 @@ class AsyncToolNativePipelineTest {
             }
         }
         val scopes = AsyncToolScopeAccess(users, conversationRepo, projects, agents)
-        val admission = AsyncToolAdmissionService(store, scopes, conversations, agents, catalog, contexts, slots, approvals, coordinator, workers)
-        private val outcomes = AsyncToolOutcomeService(store, scopes)
-        private val historyStore = responding<ConversationHistoryRepository> {
-            assertEquals("thread", it.arguments[0])
-            val index = messages.indexOfFirst { message -> message.id.value == it.arguments[1] }
-            when (it.method.name.substringBefore('-')) {
-                "position" -> index.takeIf { position -> position >= 0 }
-                "message" -> index.takeIf { position -> position >= 0 }?.let { position -> PositionedConversationMessage(position, messages[position]) }
-                else -> error("Unexpected history read ${it.method.name}")
+        private val historyStore = responding<ConversationHistoryRepository> { invocation ->
+            assertEquals("thread", invocation.arguments[0])
+            when (invocation.method.name.substringBefore('-')) {
+                "position" -> messages.indexOfFirst { message -> message.id.value == invocation.arguments[1] }
+                    .takeIf { position -> position >= 0 }
+                "message" -> messages.indexOfFirst { message -> message.id.value == invocation.arguments[1] }
+                    .takeIf { position -> position >= 0 }
+                    ?.let { position -> PositionedConversationMessage(position, messages[position]) }
+                "latestUserInstructionId" -> {
+                    @Suppress("UNCHECKED_CAST")
+                    val ids = invocation.arguments[1] as Set<String>
+                    messages.asReversed().asSequence()
+                        .filter { it.author !is Conversation.Message.Author.Agent }
+                        .flatMap { it.instructions.asSequence() }
+                        .filterIsInstance<Conversation.Message.Instruction.UserInstruction>()
+                        .firstOrNull { it.id in ids }
+                        ?.id
+                }
+                else -> error("Unexpected history read ${invocation.method.name}")
             }
         }
+        val admission = AsyncToolAdmissionService(
+            store, scopes, conversations, agents, catalog, contexts, slots, approvals, coordinator, workers, historyStore,
+        )
+        private val outcomes = AsyncToolOutcomeService(store, scopes)
         private val history = ConversationHistoryReadService(conversationRepo, historyStore, coordinator)
         private val secrets = ToolSecretResolutionService(mock())
         private val parallel = ParallelToolExecutor(provider, approvals)
@@ -419,7 +420,7 @@ class AsyncToolNativePipelineTest {
             runtimeStateSyncService = mock(), distributedToolCatalog = catalog, agentSkillRuntimeCatalogService = mock(),
             aiToolRuntimeCatalogService = mock(), aiToolCapabilityCatalogService = mock(), toolRoutingService = mock(), artifactService = artifacts,
             activeGenerationPublisher = mock(), messageTemporalContextService = MessageTemporalContextService(),
-            stickyMessageInstructionService = StickyMessageInstructionService(), pendingSecretRevealService = mock(),
+            stickyMessageInstructionService = StickyMessageInstructionService(),
             suggestedRepliesGenerationService = mock(), conversationPins = mock(),
         )
         lateinit var task: ConversationRuntimeTask

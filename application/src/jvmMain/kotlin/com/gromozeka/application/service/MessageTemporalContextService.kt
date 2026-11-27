@@ -3,6 +3,7 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageTemporalContext
 import kotlinx.serialization.json.JsonPrimitive
+import kotlin.time.Instant
 import org.springframework.stereotype.Service
 
 @Service
@@ -10,15 +11,15 @@ class MessageTemporalContextService {
     fun enrich(
         messages: List<Conversation.Message>,
         enabled: Boolean,
+        previousHumanMessageAt: Instant? = null,
     ): List<Conversation.Message> {
         if (!enabled) return messages
 
-        var previousUserMessage: Conversation.Message? = null
+        var previousUserMessageAt = previousHumanMessageAt
         return messages.map { message ->
             if (!message.isHumanInputMessage()) return@map message
 
-            val elapsedSeconds = previousUserMessage
-                ?.createdAt
+            val elapsedSeconds = previousUserMessageAt
                 ?.let { previous ->
                     if (message.createdAt >= previous) {
                         (message.createdAt - previous).inWholeSeconds
@@ -26,7 +27,7 @@ class MessageTemporalContextService {
                         null
                     }
                 }
-            previousUserMessage = message
+            previousUserMessageAt = message.createdAt
 
             message.copy(
                 instructions = message.instructions
@@ -40,6 +41,9 @@ class MessageTemporalContextService {
             )
         }
     }
+
+    fun latestHumanMessageAt(messages: List<Conversation.Message>, inherited: Instant? = null): Instant? =
+        messages.lastOrNull { it.isHumanInputMessage() }?.createdAt ?: inherited
 
     private fun Conversation.Message.isHumanInputMessage(): Boolean =
         role == Conversation.Message.Role.USER &&

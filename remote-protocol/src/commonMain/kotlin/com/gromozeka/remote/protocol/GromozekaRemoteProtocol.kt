@@ -17,6 +17,7 @@ import com.gromozeka.domain.model.ConversationSearchRequest
 import com.gromozeka.domain.model.ConversationTabLayout
 import com.gromozeka.domain.model.ConversationUnreadState
 import com.gromozeka.domain.model.MemoryAction
+import com.gromozeka.domain.model.MessageDelivery
 import com.gromozeka.domain.model.NamedSecret
 import com.gromozeka.domain.model.PersonalAccessToken
 import com.gromozeka.domain.model.Project
@@ -58,7 +59,6 @@ import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationHistoryMutationKind
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
-import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.domain.service.WorkerCatalogEntry
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -656,12 +656,6 @@ data class ForkConversationRequest(
 ) : ClientRequest
 
 @Serializable
-@SerialName("load_current_messages")
-data class LoadCurrentMessagesRequest(
-    val conversationId: Conversation.Id,
-) : ClientRequest
-
-@Serializable
 @SerialName("regenerate_suggested_replies")
 data class RegenerateSuggestedRepliesRequest(
     val conversationId: Conversation.Id,
@@ -703,6 +697,7 @@ data class CompactMessagesRequest(
     val taskId: ConversationRuntimeTask.Id,
     val conversationId: Conversation.Id,
     val messageIds: List<Conversation.Message.Id>,
+    val fullSelection: Boolean,
     val strategy: SquashType,
 ) : ClientRequest
 
@@ -1006,27 +1001,12 @@ data class StopObserveConversationCommand(
 ) : ClientPayload
 
 @Serializable
-@SerialName("post_message")
-data class PostMessageRequest(
+@SerialName("submit_message")
+data class SubmitMessageRequest(
     val conversationId: Conversation.Id,
-    val userMessage: Conversation.Message,
-) : ClientRequest
-
-@Serializable
-@SerialName("invoke_agent")
-data class InvokeAgentRequest(
-    val conversationId: Conversation.Id,
-    val userMessage: Conversation.Message,
-    val agentDefinitionId: AgentDefinition.Id,
-) : ClientRequest
-
-@Serializable
-@SerialName("enqueue_agent_invocation")
-data class EnqueueAgentInvocationRequest(
-    val conversationId: Conversation.Id,
-    val userMessage: Conversation.Message,
-    val agentDefinitionId: AgentDefinition.Id,
-    val placement: QueuedMessagePlacement,
+    val message: Conversation.Message,
+    val agentDefinitionId: AgentDefinition.Id?,
+    val delivery: MessageDelivery,
 ) : ClientRequest
 
 @Serializable
@@ -1454,12 +1434,6 @@ data class ConversationUnreadStateResponse(
 @SerialName("conversation_search_page")
 data class ConversationSearchPageResponse(
     val page: ConversationSearchPage,
-) : ServerResponse
-
-@Serializable
-@SerialName("messages")
-data class MessagesResponse(
-    val messages: List<Conversation.Message>,
 ) : ServerResponse
 
 @Serializable

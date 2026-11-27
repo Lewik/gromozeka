@@ -6,7 +6,11 @@ import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationPin
 import com.gromozeka.domain.model.ConversationContext
+import com.gromozeka.domain.model.MessageInstructionGroup
+import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.compactions
+import com.gromozeka.domain.model.isFullContextCompaction
+import com.gromozeka.domain.model.withoutProviderReplay
 import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult as Compaction
 import com.gromozeka.domain.model.ai.AI_REPLAY_THREAD_METADATA_KEY
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
@@ -31,12 +35,20 @@ import com.gromozeka.domain.repository.ConversationCompactionRepository
 import com.gromozeka.domain.repository.MessageRepository
 import com.gromozeka.domain.repository.ThreadMessageLink
 import com.gromozeka.domain.repository.ThreadMessageRepository
+import com.gromozeka.domain.repository.ThreadMessageReplacement
 import com.gromozeka.domain.repository.ThreadRepository
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.service.AiRuntimeProvider
+import com.gromozeka.domain.service.ConversationHistoryMutation
+import com.gromozeka.domain.service.ConversationRuntimeCapability
+import com.gromozeka.domain.service.ConversationRuntimeTask
+import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
+import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.NoOpDeclarativeStateChangePublisher
+import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.domain.service.ResolvedAiRuntime
+import com.gromozeka.domain.service.SettingsProvider
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -54,9 +66,9 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
-class MessageSquashServiceTest {
+class ManualCompactionServiceTest {
     @Test
-    fun `foreign nested native checkpoints load only the surviving readable handoff and its tail`() = runBlocking {
+    fun `foreign nested native checkpoints do not recover an older archive window`() = runBlocking {
         val f = Fixture()
         val readable = f.checkpoint()
         val tail = f.third.copy(id = Conversation.Message.Id("old-tail"))
@@ -66,13 +78,13 @@ class MessageSquashServiceTest {
         ))
         listOf(readable, tail, inner, outer).forEach(f::append)
         val history = f.threadMessages.messages(f.initialThread.id)
-        val window = CompactionHistoryWindow(f.threadMessages.compactionHeaders(f.initialThread.id))
+        val window = CompactionHistoryWindow(f.threadMessages.compactionWindowHeaders(f.initialThread.id))
         val input = window.headers.takeLast(1)
         val selected = setOf(outer.id)
         val foreign = window.messages(f.threadMessages, f.initialThread.id, input, null)
         assertEquals(ConversationContext(history).messagesForProvider(null, selected), foreign)
-        assertEquals(listOf(readable.id, tail.id), foreign.map { it.id })
-        assertEquals(listOf(readable.id, tail.id, inner.id, outer.id), f.threadMessages.bodyReads)
+        assertTrue(foreign.isEmpty())
+        assertEquals(listOf(outer.id), f.threadMessages.bodyReads)
 
         f.threadMessages.bodyReads.clear()
         val native = window.messages(f.threadMessages, f.initialThread.id, input, AiConnection.Kind.OPENAI_SUBSCRIPTION.name)
@@ -81,14 +93,14 @@ class MessageSquashServiceTest {
     }
 
     @Test
-    fun `manual selection in a 16000 message thread reads only the tool exchange including through commit`() = runBlocking {
+    fun `manual partial selection cannot cross a full checkpoint in a 16000 message archive`() = runBlocking {
         val f = Fixture()
         repeat(15_996) { f.append(f.third.copy(id = Conversation.Message.Id("archived-$it"))) }
         f.append(f.checkpoint())
-        val updated = f.service().compactRuntimeHistory(f.conversation.id, listOf(f.first.id), SquashType.DISTILL)
-        val checkpoint = f.threadMessages.messages(updated.currentThread).last().compactions().single()
-        assertEquals(listOf(f.first.id, f.toolResult.id), checkpoint.sourceMessageIds)
-        assertEquals(checkpoint.sourceMessageIds, f.threadMessages.bodyReads)
+        assertFailsWith<IllegalArgumentException> {
+            f.service().compactRuntimeHistory(f.conversation.id, listOf(f.first.id), false, SquashType.DISTILL)
+        }
+        assertTrue(f.threadMessages.bodyReads.isEmpty())
     }
 
     @Test
@@ -113,7 +125,11 @@ class MessageSquashServiceTest {
         val sources = listOf(f.first.id, f.toolResult.id, f.third.id)
         suspend fun commit(id: String, thread: Conversation.Thread.Id, prefix: List<Conversation.Message.Id>): Conversation.Thread.Id {
             val checkpoint = f.checkpoint(opaque = true)
-            val result = checkpoint.compactions().single().copy(providerScope = scope, sourceMessageIds = prefix)
+            val result = checkpoint.compactions().single().copy(
+                providerScope = scope,
+                sourceMessageIds = emptyList(),
+                sourceBoundaryMessageId = prefix.last(),
+            )
             return f.committer.commit(thread, checkpoint.copy(id = Conversation.Message.Id(id), content = listOf(result))).currentThread
         }
         fun reasoning(history: List<Conversation.Message>, thread: String) =
@@ -138,6 +154,7 @@ class MessageSquashServiceTest {
             val updated = service.compactRuntimeHistory(
                 conversationId = fixture.conversation.id,
                 messageIds = listOf(fixture.third.id, fixture.first.id),
+                fullSelection = false,
                 strategy = strategy,
             )
 
@@ -180,7 +197,7 @@ class MessageSquashServiceTest {
         for (strategy in SquashType.entries) {
             val f = Fixture()
             f.pins.values = listOf(testPin(f.conversation.id, "SQUASH_PIN"))
-            f.service().compactRuntimeHistory(f.conversation.id, listOf(f.first.id, f.third.id), strategy)
+            f.service().compactRuntimeHistory(f.conversation.id, listOf(f.first.id, f.third.id), false, strategy)
             if (strategy == SquashType.CONCATENATE) {
                 assertTrue(f.pins.reads.isEmpty()); assertTrue(f.runtimeProvider.requests.isEmpty())
             } else {
@@ -201,6 +218,7 @@ class MessageSquashServiceTest {
             service.compactRuntimeHistory(
                 conversationId = fixture.conversation.id,
                 messageIds = listOf(fixture.first.id, fixture.third.id),
+                fullSelection = false,
                 strategy = SquashType.COMPACT,
             )
         }
@@ -219,6 +237,7 @@ class MessageSquashServiceTest {
             fixture.service().compactRuntimeHistory(
                 conversationId = fixture.conversation.id,
                 messageIds = listOf(fixture.first.id, fixture.third.id),
+                fullSelection = false,
                 strategy = SquashType.CONCATENATE,
             )
         }
@@ -232,11 +251,11 @@ class MessageSquashServiceTest {
         val fixture = Fixture()
         val service = fixture.service()
         val first = service.compactRuntimeHistory(
-            fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), SquashType.COMPACT,
+            fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), false, SquashType.COMPACT,
         )
         val firstHistory = fixture.threadMessages.messages(first.currentThread)
         val updated = service.compactRuntimeHistory(
-            fixture.conversation.id, firstHistory.map { it.id }, SquashType.DISTILL,
+            fixture.conversation.id, emptyList(), true, SquashType.DISTILL,
         )
         val request = fixture.runtimeProvider.requests.last()
         val text = (request.messages.single().content.single() as Conversation.Message.ContentItem.UserMessage).text
@@ -249,26 +268,16 @@ class MessageSquashServiceTest {
     }
 
     @Test
-    fun `single old source can be compacted or distilled without unlocking a full checkpoint`() = runBlocking {
+    fun `single archived source cannot be compacted across a full checkpoint`() = runBlocking {
         listOf(SquashType.COMPACT, SquashType.DISTILL).forEach { strategy ->
             val fixture = Fixture()
             val boundary = fixture.checkpoint(opaque = true)
             fixture.append(boundary)
-            val updated = fixture.service().compactRuntimeHistory(
-                fixture.conversation.id, listOf(fixture.third.id), strategy,
-            )
-            val history = fixture.threadMessages.messages(updated.currentThread)
-            assertEquals(5, history.size)
-            assertTrue(fixture.third.id in ConversationContext(history).protectedMessageIds())
-            assertEquals(listOf(boundary, history.last()), ConversationContext(history).messages())
-            assertFalse(history.last().id in ConversationContext(history).protectedMessageIds())
-            val request = fixture.runtimeProvider.requests.single()
-            assertTrue(request.messages.single().providerMetadata.isEmpty())
-            assertEquals(AiToolChoice.None, request.options.toolChoice)
-            assertEquals("MESSAGE_SQUASH", request.options.usagePurpose)
-            val text = (request.messages.single().content.single() as Conversation.Message.ContentItem.UserMessage).text
-            assertContains(text, "Keep this decision")
-            assertFalse(text.contains("raw output"))
+            assertFailsWith<IllegalArgumentException> {
+                fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(fixture.third.id), false, strategy)
+            }
+            assertEquals(listOf(boundary), ConversationContext(fixture.threadMessages.messages(fixture.initialThread.id)).messages())
+            assertTrue(fixture.runtimeProvider.requests.isEmpty())
         }
     }
 
@@ -276,42 +285,75 @@ class MessageSquashServiceTest {
     fun `single message concatenate is rejected before storage or provider calls`() = runBlocking {
         val fixture = Fixture()
         assertFailsWith<IllegalArgumentException> {
-            fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(fixture.third.id), SquashType.CONCATENATE)
+            fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(fixture.third.id), false, SquashType.CONCATENATE)
         }
         assertEquals(listOf(1, 3, 1, 3), fixture.storageCounts())
         assertTrue(fixture.runtimeProvider.requests.isEmpty())
     }
 
     @Test
-    fun `select all with opaque checkpoint recovers original material for helper`() = runBlocking {
+    fun `partial selection rejects an unknown id even when every active message is selected`() = runBlocking {
         val fixture = Fixture()
-        fixture.append(fixture.checkpoint(opaque = true))
-        val original = fixture.threadMessages.messages(fixture.initialThread.id)
-        val updated = fixture.service().compactRuntimeHistory(
-            fixture.conversation.id, original.map { it.id }, SquashType.COMPACT,
-        )
-        val text = fixture.runtimeProvider.requests.single().messages.single().content.single().toString()
-        assertContains(text, "raw output")
-        assertContains(text, "Keep this decision")
-        assertFalse(text.contains("encrypted_content"))
-        assertEquals(1, ConversationContext(fixture.threadMessages.messages(updated.currentThread)).messages().size)
+        val selected = fixture.threadMessages.messages(fixture.initialThread.id).map { it.id } +
+            Conversation.Message.Id("not-in-current-thread")
+        val before = fixture.storageCounts()
+
+        assertFailsWith<IllegalArgumentException> {
+            fixture.service().compactRuntimeHistory(
+                fixture.conversation.id,
+                selected,
+                false,
+                SquashType.DISTILL,
+            )
+        }
+
+        assertEquals(before, fixture.storageCounts())
+        assertTrue(fixture.runtimeProvider.requests.isEmpty())
     }
 
     @Test
-    fun `repeated select all after opaque and selective compaction respects coverage including after fork`() = runBlocking {
+    fun `full selection rejects explicit message ids`() = runBlocking {
+        val fixture = Fixture()
+        val before = fixture.storageCounts()
+
+        assertFailsWith<IllegalArgumentException> {
+            fixture.service().compactRuntimeHistory(
+                fixture.conversation.id,
+                listOf(fixture.first.id),
+                true,
+                SquashType.DISTILL,
+            )
+        }
+
+        assertEquals(before, fixture.storageCounts())
+        assertTrue(fixture.runtimeProvider.requests.isEmpty())
+    }
+
+    @Test
+    fun `opaque checkpoint without portable tail or native request is not replaced by an empty summary`() = runBlocking {
+        val fixture = Fixture()
+        fixture.append(fixture.checkpoint(opaque = true))
+        assertFailsWith<IllegalArgumentException> {
+            fixture.service().compactRuntimeHistory(fixture.conversation.id, emptyList(), true, SquashType.COMPACT)
+        }
+        assertTrue(fixture.runtimeProvider.requests.isEmpty())
+    }
+
+    @Test
+    fun `repeated select all after opaque and selective compaction stays inside the active window including after fork`() = runBlocking {
         for (strategy in listOf(SquashType.COMPACT, SquashType.DISTILL)) {
             for (forked in listOf(false, true)) {
-                for (coverToolPair in listOf(false, true)) {
-                    val case = "$strategy fork=$forked toolPair=$coverToolPair"
-                    val fixture = Fixture()
-                    val service = fixture.service()
-                    fixture.append(fixture.checkpoint(opaque = true))
-                    val original = fixture.threadMessages.messages(fixture.initialThread.id)
-                    val selected = if (coverToolPair) fixture.first else fixture.third
-                    val partial = service.compactRuntimeHistory(fixture.conversation.id, listOf(selected.id), strategy)
-                    val partialHistory = fixture.threadMessages.messages(partial.currentThread)
+                val case = "$strategy fork=$forked"
+                val fixture = Fixture()
+                val service = fixture.service()
+                fixture.append(fixture.checkpoint(opaque = true))
+                val selected = fixture.third.copy(id = Conversation.Message.Id("active-tail"))
+                fixture.append(selected)
+                val original = fixture.threadMessages.messages(fixture.initialThread.id)
+                val partial = service.compactRuntimeHistory(fixture.conversation.id, listOf(selected.id), false, strategy)
+                val partialHistory = fixture.threadMessages.messages(partial.currentThread)
                     assertEquals(
-                        if (coverToolPair) listOf(fixture.first.id, fixture.toolResult.id) else listOf(fixture.third.id),
+                        listOf(selected.id),
                         partialHistory.last().compactions().single().sourceMessageIds,
                         case,
                     )
@@ -319,9 +361,8 @@ class MessageSquashServiceTest {
                     val target = if (forked) fixture.historyService().fork(partial.id) else partial
                     val targetHistory = fixture.threadMessages.messages(target.currentThread)
                     val targetIds = targetHistory.map { it.id }
-                    val protectedIds = ConversationContext(targetHistory).protectedMessageIds()
                     assertTrue(targetHistory.flatMap { it.compactions() }.flatMap { it.sourceMessageIds }.all { it in targetIds }, message = case)
-                    val updated = service.compactRuntimeHistory(target.id, targetIds, strategy)
+                    val updated = service.compactRuntimeHistory(target.id, emptyList(), true, strategy)
 
                     val request = fixture.runtimeProvider.requests.last()
                     val message = request.messages.single()
@@ -332,24 +373,17 @@ class MessageSquashServiceTest {
                     assertEquals("MESSAGE_SQUASH", request.options.usagePurpose, message = case)
                     assertEquals(1, Regex("AI compacted text").findAll(text).count(), message = case)
                     assertFalse(text.contains("encrypted_content"), message = case)
-                    if (coverToolPair) {
-                        assertContains(text, "Keep this decision", message = case)
-                        assertFalse(text.contains("I will inspect it"), message = case)
-                        assertFalse(text.contains("raw output"), message = case)
-                        assertFalse(text.contains("[tool_call:"), message = case)
-                        assertFalse(text.contains("[tool_result:"), message = case)
-                    } else {
-                        assertFalse(text.contains("Keep this decision"), message = case)
-                        assertContains(text, "I will inspect it", message = case)
-                        assertContains(text, "raw output", message = case)
-                        assertContains(text, "[tool_call:read_file]", message = case)
-                        assertContains(text, "[tool_result:read_file error=false call_id=", message = case)
-                    }
+                    assertFalse(text.contains("Keep this decision"), message = case)
+                    assertFalse(text.contains("raw output"), message = case)
 
                     val history = fixture.threadMessages.messages(updated.currentThread)
                     assertEquals(targetHistory, history.dropLast(1), message = case)
-                    assertEquals(targetIds, history.last().compactions().single().sourceMessageIds, message = case)
-                    assertEquals(protectedIds, ConversationContext(history).protectedMessageIds(), message = case)
+                    val checkpoint = history.last().compactions().single()
+                    assertTrue(checkpoint.sourceMessageIds.isEmpty(), message = case)
+                    assertEquals(targetIds.last(), checkpoint.sourceBoundaryMessageId, message = case)
+                    assertEquals(Compaction.Coverage.ALL_PREVIOUS, checkpoint.coverage, message = case)
+                    assertEquals(Compaction.Origin.USER_REQUESTED, checkpoint.origin, message = case)
+                    assertTrue(targetIds.all { it in ConversationContext(history).protectedMessageIds() }, message = case)
                     assertEquals(listOf(history.last()), ConversationContext(history).messages(), message = case)
                     assertEquals(targetHistory, fixture.threadMessages.messages(target.currentThread), message = case)
                     assertEquals(original, fixture.threadMessages.messages(fixture.initialThread.id), message = case)
@@ -358,16 +392,19 @@ class MessageSquashServiceTest {
                         assertEquals(partial.currentThread, fixture.conversations.values.getValue(partial.id).currentThread, message = case)
                     }
 
-                    val repeated = service.compactRuntimeHistory(target.id, history.map { it.id }, strategy)
+                    val repeated = service.compactRuntimeHistory(target.id, emptyList(), true, strategy)
                     val repeatedText = (fixture.runtimeProvider.requests.last().messages.single().content.single()
                         as Conversation.Message.ContentItem.UserMessage).text
                     assertEquals(1, Regex("AI compacted text").findAll(repeatedText).count(), message = case)
                     assertFalse(repeatedText.contains("raw output"), message = case)
                     assertFalse(repeatedText.contains("Keep this decision"), message = case)
-                    assertEquals(1, ConversationContext(fixture.threadMessages.messages(repeated.currentThread)).messages().size, message = case)
+                    val repeatedHistory = fixture.threadMessages.messages(repeated.currentThread)
+                    val repeatedCheckpoint = repeatedHistory.last().compactions().single()
+                    assertTrue(repeatedCheckpoint.sourceMessageIds.isEmpty(), message = case)
+                    assertEquals(history.last().id, repeatedCheckpoint.sourceBoundaryMessageId, message = case)
+                    assertEquals(1, ConversationContext(repeatedHistory).messages().size, message = case)
                     assertEquals(history, fixture.threadMessages.messages(updated.currentThread), message = case)
-                    assertEquals(3, fixture.runtimeProvider.requests.size, message = case)
-                }
+                assertEquals(3, fixture.runtimeProvider.requests.size, message = case)
             }
         }
     }
@@ -376,19 +413,22 @@ class MessageSquashServiceTest {
     fun `editing selective source invalidates nested summaries and restores the other sources`() = runBlocking {
         val fixture = Fixture()
         val first = fixture.service().compactRuntimeHistory(
-            fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), SquashType.COMPACT,
+            fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), false, SquashType.COMPACT,
         )
         val summaryId = fixture.threadMessages.messages(first.currentThread).last().id
-        val second = fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(summaryId), SquashType.DISTILL)
+        val tail = fixture.third.copy(id = Conversation.Message.Id("tail"))
+        fixture.append(tail, first.currentThread)
+        val second = fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(summaryId), false, SquashType.DISTILL)
         val before = fixture.threadMessages.messages(second.currentThread)
         val updated = fixture.historyService().editRuntimeHistory(
             fixture.conversation.id, fixture.third.id, listOf(Conversation.Message.ContentItem.UserMessage("Changed decision")),
         )!!
         val after = fixture.threadMessages.messages(updated.currentThread)
-        assertEquals(3, after.size)
+        assertEquals(4, after.size)
         assertTrue(after.all { it.compactions().isEmpty() })
         assertEquals(listOf(fixture.first, fixture.toolResult), after.take(2))
-        assertEquals(listOf(fixture.third.id), after.last().originalIds)
+        assertEquals(listOf(fixture.third.id), after[2].originalIds)
+        assertEquals(tail, after.last())
         assertEquals(before, fixture.threadMessages.messages(second.currentThread))
     }
 
@@ -397,7 +437,7 @@ class MessageSquashServiceTest {
         listOf(false, true).forEach { deleteSummary ->
             val fixture = Fixture()
             val compacted = fixture.service().compactRuntimeHistory(
-                fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), SquashType.COMPACT,
+                fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), false, SquashType.COMPACT,
             )
             val selected = if (deleteSummary) fixture.threadMessages.messages(compacted.currentThread).last().id else fixture.third.id
             val updated = fixture.historyService().deleteRuntimeHistory(fixture.conversation.id, listOf(selected))!!
@@ -426,24 +466,26 @@ class MessageSquashServiceTest {
     }
 
     @Test
-    fun `tool pair deletion cannot bypass full checkpoint protection`() = runBlocking {
+    fun `deleting an orphaned result after a full checkpoint does not reopen the archived call`() = runBlocking {
         val fixture = Fixture()
         val checkpoint = fixture.checkpoint()
         fixture.messages.values[checkpoint.id] = checkpoint
         fixture.threadMessages.links[fixture.initialThread.id] = listOf(fixture.first, checkpoint, fixture.toolResult, fixture.third)
             .mapIndexed { index, message -> ThreadMessageLink(fixture.initialThread.id, message.id, index) }.toMutableList()
-        val counts = fixture.storageCounts()
-        assertFailsWith<IllegalArgumentException> {
-            fixture.historyService().deleteRuntimeHistory(fixture.conversation.id, listOf(fixture.toolResult.id))
-        }
-        assertEquals(counts, fixture.storageCounts())
+        val updated = assertNotNull(
+            fixture.historyService().deleteRuntimeHistory(fixture.conversation.id, listOf(fixture.toolResult.id)),
+        )
+        assertEquals(
+            listOf(fixture.first.id, checkpoint.id, fixture.third.id),
+            fixture.threadMessages.messages(updated.currentThread).map { it.id },
+        )
     }
 
     @Test
     fun `fork remaps selective coverage and keeps source mutations independent`() = runBlocking {
         val fixture = Fixture()
         val compacted = fixture.service().compactRuntimeHistory(
-            fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), SquashType.COMPACT,
+            fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), false, SquashType.COMPACT,
         )
         val sourceHistory = fixture.threadMessages.messages(compacted.currentThread)
         val fork = fixture.historyService().fork(fixture.conversation.id)
@@ -467,11 +509,51 @@ class MessageSquashServiceTest {
             fixture.messages.values[fixture.third.id] = fixture.third.copy(content = content)
             val counts = fixture.storageCounts()
             assertFailsWith<IllegalArgumentException> {
-                fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(fixture.third.id), SquashType.COMPACT)
+                fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(fixture.third.id), false, SquashType.COMPACT)
             }
             assertEquals(counts, fixture.storageCounts())
             assertTrue(fixture.runtimeProvider.requests.isEmpty())
         }
+    }
+
+    @Test
+    fun `Runtime rows are ordinary manual compaction input`() = runBlocking {
+        for (strategy in listOf(SquashType.COMPACT, SquashType.DISTILL)) {
+            val fixture = Fixture()
+            val runtime = fixture.third.copy(
+                id = Conversation.Message.Id("runtime-${strategy.name.lowercase()}"),
+                role = Conversation.Message.Role.RUNTIME,
+                author = Conversation.Message.Author.Runtime(),
+                content = listOf(Conversation.Message.ContentItem.RuntimeJson(
+                    kotlinx.serialization.json.JsonPrimitive("RUNTIME_JSON_${strategy.name}"),
+                )),
+            )
+            fixture.append(runtime)
+
+            fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(runtime.id), false, strategy)
+
+            assertContains(fixture.runtimeProvider.requests.single().toString(), "RUNTIME_JSON_${strategy.name}")
+        }
+
+        val fixture = Fixture()
+        val runtime = fixture.third.copy(
+            id = Conversation.Message.Id("runtime-concatenate"),
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(
+                kotlinx.serialization.json.JsonPrimitive("RUNTIME_JSON_CONCATENATE"),
+            )),
+        )
+        fixture.append(runtime)
+
+        val updated = fixture.service().compactRuntimeHistory(
+            fixture.conversation.id,
+            listOf(fixture.third.id, runtime.id),
+            false,
+            SquashType.CONCATENATE,
+        )
+
+        assertContains(fixture.threadMessages.messages(updated.currentThread).last().toString(), "RUNTIME_JSON_CONCATENATE")
     }
 
     @Test
@@ -481,37 +563,139 @@ class MessageSquashServiceTest {
         fixture.messages.values[checkpoint.id] = checkpoint
         fixture.threadMessages.links[fixture.initialThread.id] = mutableListOf(ThreadMessageLink(fixture.initialThread.id, checkpoint.id, 0))
         val counts = fixture.storageCounts()
-        assertFailsWith<IllegalStateException> {
-            fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(checkpoint.id), SquashType.COMPACT)
+        assertFailsWith<IllegalArgumentException> {
+            fixture.service().compactRuntimeHistory(fixture.conversation.id, emptyList(), true, SquashType.COMPACT)
         }
         assertEquals(counts, fixture.storageCounts())
         assertTrue(fixture.runtimeProvider.requests.isEmpty())
     }
 
-    @Test fun `full manual compaction keeps whole recent messages while partial selection adds no suffix`() = runBlocking {
-        for (strategy in listOf(SquashType.COMPACT, SquashType.DISTILL)) {
+    @Test fun `full compact keeps the recent suffix while full distill and concatenate consume all history`() = runBlocking {
+        for (strategy in SquashType.entries) {
             val f = Fixture()
             val crossing = f.third.copy(id = Conversation.Message.Id("crossing"), content = listOf(Conversation.Message.ContentItem.UserMessage("a".repeat(45_000))))
             val latest = f.third.copy(id = Conversation.Message.Id("latest"), content = listOf(Conversation.Message.ContentItem.UserMessage("b".repeat(40_000))))
             f.append(crossing); f.append(latest)
             val all = f.threadMessages.messages(f.initialThread.id)
-            val compacted = f.service().compactRuntimeHistory(f.conversation.id, all.map { it.id }, strategy)
+            val compacted = f.service().compactRuntimeHistory(f.conversation.id, emptyList(), true, strategy)
             val active = ConversationContext(f.threadMessages.messages(compacted.currentThread)).messages()
-            assertEquals(3, active.size)
-            assertEquals(listOf(crossing, latest), active.takeLast(2))
-            assertEquals(all.take(3).map { it.id }, active.first().compactions().single().sourceMessageIds)
-            val selection = f.service().compactRuntimeHistory(f.conversation.id, listOf(crossing.id), strategy)
+            val checkpoint = active.first().compactions().single()
+            assertTrue(checkpoint.sourceMessageIds.isEmpty())
+            assertEquals(Compaction.Coverage.ALL_PREVIOUS, checkpoint.coverage)
+            assertEquals(Compaction.Origin.USER_REQUESTED, checkpoint.origin)
+            if (strategy == SquashType.COMPACT) {
+                assertEquals(3, active.size)
+                assertEquals(listOf(crossing, latest), active.takeLast(2))
+                assertEquals(all[2].id, checkpoint.sourceBoundaryMessageId)
+            } else {
+                assertEquals(listOf(active.first()), active)
+                assertEquals(latest.id, checkpoint.sourceBoundaryMessageId)
+            }
+            if (strategy == SquashType.CONCATENATE) assertTrue(f.runtimeProvider.requests.isEmpty())
+
+            val queued = f.third.copy(
+                id = Conversation.Message.Id("queued-after-${strategy.name.lowercase()}"),
+                content = listOf(Conversation.Message.ContentItem.UserMessage("queued after compact")),
+            )
+            assertNotNull(f.historyService().appendRuntimeMessage(f.conversation.id, queued))
+            assertEquals(queued, f.threadMessages.messages(compacted.currentThread).last())
+            assertEquals(queued, ConversationContext(f.threadMessages.messages(compacted.currentThread)).messages().last())
+        }
+        for (strategy in listOf(SquashType.COMPACT, SquashType.DISTILL)) {
+            val f = Fixture()
+            val crossing = f.third.copy(id = Conversation.Message.Id("crossing"), content = listOf(Conversation.Message.ContentItem.UserMessage("a".repeat(45_000))))
+            val latest = f.third.copy(id = Conversation.Message.Id("latest"), content = listOf(Conversation.Message.ContentItem.UserMessage("b".repeat(40_000))))
+            f.append(crossing); f.append(latest)
+            val selection = f.service().compactRuntimeHistory(f.conversation.id, listOf(crossing.id), false, strategy)
             val after = ConversationContext(f.threadMessages.messages(selection.currentThread)).messages()
             assertTrue(after.none { it.id == crossing.id })
             assertTrue(after.any { it.id == latest.id && it.content == latest.content })
         }
     }
 
+    @Test fun `full compaction persists one sticky continuation runtime message`() = runBlocking {
+        val readonly = Conversation.Message.Instruction.UserInstruction(
+            id = "readonly",
+            title = "Readonly",
+            description = "Do not modify files",
+        )
+        val writable = Conversation.Message.Instruction.UserInstruction(
+            id = "writable",
+            title = "Writable",
+            description = "File changes are allowed",
+        )
+        val group = MessageInstructionGroup(
+            id = "access",
+            title = "Access",
+            controls = listOf(
+                MessageInstructionGroup.Control(readonly, "R"),
+                MessageInstructionGroup.Control(writable, "W"),
+            ),
+            retentionMode = MessageInstructionGroup.RetentionMode.STICKY_LATEST,
+        )
+        val fixture = Fixture(messageInstructionGroups = listOf(group))
+        fixture.append(fixture.third.copy(
+            id = Conversation.Message.Id("readonly-selection"),
+            instructions = listOf(readonly),
+        ))
+
+        val updated = fixture.service().compactRuntimeHistory(
+            fixture.conversation.id,
+            emptyList(),
+            true,
+            SquashType.DISTILL,
+        )
+
+        val active = ConversationContext(fixture.threadMessages.messages(updated.currentThread)).messages()
+        assertEquals(listOf(Conversation.Message.Role.ASSISTANT, Conversation.Message.Role.RUNTIME), active.map { it.role })
+        val carrier = active.last()
+        assertEquals(listOf(readonly), carrier.instructions)
+        assertTrue(carrier.author is Conversation.Message.Author.Runtime)
+        assertTrue(carrier.content.single() is Conversation.Message.ContentItem.RuntimeJson)
+        assertEquals(carrier, fixture.messages.values[carrier.id])
+        assertEquals(active, StickyMessageInstructionService().materialize(active, listOf(group)))
+    }
+
+    @Test fun `queued history mutation is stale after an earlier copy-on-write change`() = runBlocking {
+        val f = Fixture()
+        val history = f.historyService()
+        val initialThread = f.conversation.currentThread
+        val edited = assertNotNull(history.editRuntimeHistory(
+            f.conversation.id,
+            f.third.id,
+            listOf(Conversation.Message.ContentItem.UserMessage("first mutation")),
+        ))
+        val before = f.storageCounts()
+        val executor = ConversationRuntimeHistoryMutationExecutor(history, f.service())
+        val mutation = ConversationHistoryMutation.Delete(listOf(f.first.id))
+        val task = ConversationRuntimeTask(
+            id = ConversationRuntimeTask.Id("stale-history-mutation"),
+            conversationId = f.conversation.id,
+            actorUserId = User.Id("user"),
+            payload = ConversationRuntimeTask.Payload.HistoryMutation(mutation, initialThread),
+            placement = QueuedMessagePlacement.END_OF_TURN,
+            idempotencyKey = "stale-history-mutation",
+            requirements = ConversationRuntimeTaskRequirements(
+                setOf(ConversationRuntimeCapability.CONVERSATION_TURN),
+                ConversationRuntimeTaskTarget.Server,
+            ),
+            createdAt = Clock.System.now(),
+        )
+
+        assertFailsWith<IllegalStateException> {
+            executor.execute(f.conversation.id, mutation, initialThread, task) {}
+        }
+        assertEquals(edited.currentThread, f.conversations.values.getValue(f.conversation.id).currentThread)
+        assertEquals(before, f.storageCounts())
+        assertTrue(f.runtimeProvider.requests.isEmpty())
+    }
+
     @Test fun `full manual compaction with only the raw suffix fails explicitly without generation`() = runBlocking {
         val f = Fixture()
-        val history = f.threadMessages.messages(f.initialThread.id)
         val before = f.storageCounts()
-        assertFailsWith<IllegalArgumentException> { f.service().compactRuntimeHistory(f.conversation.id, history.map { it.id }, SquashType.COMPACT) }
+        assertFailsWith<IllegalArgumentException> {
+            f.service().compactRuntimeHistory(f.conversation.id, emptyList(), true, SquashType.COMPACT)
+        }
         assertEquals(before, f.storageCounts())
         assertTrue(f.runtimeProvider.requests.isEmpty())
     }
@@ -543,6 +727,7 @@ class MessageSquashServiceTest {
     private class Fixture(
         runtimeFailure: Throwable? = null,
         commitConflict: Boolean = false,
+        messageInstructionGroups: List<MessageInstructionGroup> = emptyList(),
     ) {
         val initialThread = Conversation.Thread(
             id = Conversation.Thread.Id("thread-initial"),
@@ -617,30 +802,68 @@ class MessageSquashServiceTest {
         private val configurationProvider = FixedConfigurationProvider()
 
         private val pairingService = ToolCallPairingService()
+        private val settingsProvider = Mockito.mock(SettingsProvider::class.java).also { settings ->
+            Mockito.`when`(settings.userProfile).thenReturn(UserProfile(
+                messageInstructionGroups = messageInstructionGroups,
+            ))
+        }
         val committer = ContextCompactionCommitService(
-            conversations, compactions, threadMessages, pairingService, NoOpDeclarativeStateChangePublisher,
+            conversations,
+            compactions,
+            threadMessages,
+            pairingService,
+            NoOpDeclarativeStateChangePublisher,
+            settingsProvider,
+            StickyMessageInstructionService(),
         )
 
-        fun service(): MessageSquashService {
-            return MessageSquashService(
+        fun service(): ManualCompactionService {
+            val artifacts = Mockito.mock(ConversationArtifactApplicationService::class.java) { invocation ->
+                if (invocation.method.name.startsWith("materializeSnapshot")) invocation.arguments[1]
+                else org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation)
+            }
+            val agentService = Mockito.mock(com.gromozeka.domain.service.AgentDomainService::class.java) { invocation ->
+                if (invocation.method.name.startsWith("findById")) AgentDefinition(
+                    id = AgentDefinition.Id("agent"), name = "Agent", prompts = emptyList(),
+                    runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("model-config")),
+                    type = AgentDefinition.Type.Global, createdAt = Clock.System.now(), updatedAt = Clock.System.now(),
+                ) else org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation)
+            }
+            val conversationPins = ConversationPinnedPrompt(pins)
+            val textCompactions = CompactionTextService(
                 aiRuntimeProvider = runtimeProvider,
-                artifacts = Mockito.mock(ConversationArtifactApplicationService::class.java) { invocation ->
-                    if (invocation.method.name.startsWith("materializeSnapshot")) invocation.arguments[1]
-                    else org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation)
-                },
                 aiConfigurationProvider = configurationProvider,
-                agents = Mockito.mock(com.gromozeka.domain.service.AgentDomainService::class.java) { invocation ->
-                    if (invocation.method.name.startsWith("findById")) AgentDefinition(
-                        id = AgentDefinition.Id("agent"), name = "Agent", prompts = emptyList(),
-                        runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("model-config")),
-                        type = AgentDefinition.Type.Global, createdAt = Clock.System.now(), updatedAt = Clock.System.now(),
-                    ) else org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation)
-                },
+                artifacts = artifacts,
+                conversationPins = conversationPins,
+            )
+            val fullCompactions = ConversationCompactionService(
+                configurations = configurationProvider,
+                history = threadMessages,
+                textCompactions = textCompactions,
+                committer = committer,
+                runtimeCoordinator = mock(),
+                events = mock(),
+                runtimes = runtimeProvider,
+                preparations = mock(),
+                preparationScope = CompactionPreparationScope(
+                    conversations = conversations,
+                    agents = agentService,
+                    users = mock(),
+                    projects = mock(),
+                    workers = mock(),
+                    configurations = configurationProvider,
+                    pins = conversationPins,
+                ),
+                toolPairs = pairingService,
+            )
+            return ManualCompactionService(
+                agents = agentService,
                 conversationRepository = conversations,
                 threadMessageRepository = threadMessages,
                 toolCallPairingService = pairingService,
+                textCompactions = textCompactions,
+                fullCompactions = fullCompactions,
                 compactionCommitter = committer,
-                conversationPins = ConversationPinnedPrompt(pins),
             )
         }
 
@@ -650,16 +873,16 @@ class MessageSquashServiceTest {
                     else Compaction.Payload.ReadableSummary("Earlier context"),
                 origin = Compaction.Origin.PROVIDER_AUTO,
                 strategy = Compaction.Strategy.PROVIDER_MANAGED,
-                sourceMessageIds = listOf(first.id, toolResult.id, third.id),
+                sourceBoundaryMessageId = third.id,
                 providerScope = Compaction.ProviderScope(provider = AiConnection.Kind.OPENAI_SUBSCRIPTION.name),
                 coverage = Compaction.Coverage.ALL_PREVIOUS,
             )),
         )
 
-        fun append(message: Conversation.Message) {
+        fun append(message: Conversation.Message, threadId: Conversation.Thread.Id = initialThread.id) {
             messages.values[message.id] = message
-            val links = threadMessages.links.getValue(initialThread.id)
-            links += ThreadMessageLink(initialThread.id, message.id, links.size)
+            val links = threadMessages.links.getValue(threadId)
+            links += ThreadMessageLink(threadId, message.id, links.size)
         }
 
         private inline fun <reified T> mock(): T = Mockito.mock(T::class.java)
@@ -678,7 +901,7 @@ class MessageSquashServiceTest {
                     batch: List<Conversation.Message>, at: kotlin.time.Instant): List<Conversation.Message> {
                     val linked = threadMessages.links.getValue(expectedThreadId).map { it.messageId }.toSet()
                     val appended = batch.filterNot { it.id in linked }
-                    appended.forEach { append(it) }
+                    appended.forEach { append(it, expectedThreadId) }
                     return appended
                 }
             },
@@ -814,8 +1037,6 @@ private class InMemoryMessageRepository(
     }
     override suspend fun findById(id: Conversation.Message.Id): Conversation.Message? = values[id]
     override suspend fun findByIds(ids: List<Conversation.Message.Id>): List<Conversation.Message> = ids.mapNotNull(values::get)
-    override suspend fun findByConversation(conversationId: Conversation.Id): List<Conversation.Message> =
-        values.values.filter { it.conversationId == conversationId }
     override suspend fun findVersions(originalId: Conversation.Message.Id): List<Conversation.Message> =
         values.values.filter { originalId in it.originalIds }
 }
@@ -852,27 +1073,106 @@ private class InMemoryThreadMessageRepository(
     override suspend fun addBatch(links: List<ThreadMessageLink>) {
         links.forEach { link -> add(link.threadId, link.messageId, link.position) }
     }
-    override suspend fun getByThread(threadId: Conversation.Thread.Id): List<ThreadMessageLink> =
-        links[threadId].orEmpty().sortedBy(ThreadMessageLink::position)
     override suspend fun contains(threadId: Conversation.Thread.Id, messageId: Conversation.Message.Id): Boolean =
         links[threadId].orEmpty().any { it.messageId == messageId }
     override suspend fun getMaxPosition(threadId: Conversation.Thread.Id): Int? =
         links[threadId]?.maxOfOrNull(ThreadMessageLink::position)
-    override suspend fun getMessagesByThread(threadId: Conversation.Thread.Id): List<Conversation.Message> =
-        messages(threadId)
+    override suspend fun getLinkPage(
+        threadId: Conversation.Thread.Id,
+        afterPositionExclusive: Int,
+        limit: Int,
+        throughPositionInclusive: Int?,
+    ) = links[threadId].orEmpty().asSequence()
+        .filter { it.position > afterPositionExclusive }
+        .filter { throughPositionInclusive == null || it.position <= throughPositionInclusive }
+        .sortedBy(ThreadMessageLink::position)
+        .take(limit)
+        .toList()
+    override suspend fun getMessagePage(
+        threadId: Conversation.Thread.Id,
+        afterPositionExclusive: Int,
+        limit: Int,
+        throughPositionInclusive: Int?,
+    ) = links[threadId].orEmpty().asSequence()
+        .filter { it.position > afterPositionExclusive }
+        .filter { throughPositionInclusive == null || it.position <= throughPositionInclusive }
+        .sortedBy(ThreadMessageLink::position)
+        .take(limit)
+        .map { link -> com.gromozeka.domain.repository.ThreadMessagePageEntry(link.position, messages.values.getValue(link.messageId)) }
+        .toList()
+    override suspend fun findMessage(
+        threadId: Conversation.Thread.Id,
+        messageId: Conversation.Message.Id,
+    ): Conversation.Message? = messageId.takeIf { contains(threadId, it) }?.let(messages.values::get)
+    override suspend fun findMessageByIdOrOriginal(
+        threadId: Conversation.Thread.Id,
+        messageId: Conversation.Message.Id,
+    ): Conversation.Message? = messages(threadId).firstOrNull { it.id == messageId || messageId in it.originalIds }
+    override suspend fun copyWithChanges(
+        sourceThreadId: Conversation.Thread.Id,
+        targetThreadId: Conversation.Thread.Id,
+        replacement: ThreadMessageReplacement?,
+        excludedMessageIds: Set<Conversation.Message.Id>,
+    ) {
+        val copied = links[sourceThreadId].orEmpty().sortedBy(ThreadMessageLink::position)
+            .filterNot { it.messageId in excludedMessageIds }
+            .mapIndexed { index, link ->
+                ThreadMessageLink(
+                    targetThreadId,
+                    if (link.messageId == replacement?.sourceMessageId) replacement.replacementMessageId else link.messageId,
+                    index,
+                )
+            }
+        addBatch(copied)
+    }
+    override suspend fun hasAtLeastResponseReviewContinuations(
+        threadId: Conversation.Thread.Id,
+        turnId: String,
+        requiredCount: Int,
+    ) = error("Response review is outside this compaction fixture")
     val bodyReads = mutableListOf<Conversation.Message.Id>()
-    override suspend fun compactionHeaders(threadId: Conversation.Thread.Id) = messages(threadId).map(CompactionMessageHeader::from)
+    override suspend fun compactionWindowHeaders(threadId: Conversation.Thread.Id): List<CompactionMessageHeader> {
+        val history = messages(threadId)
+        val boundary = history.indexOfLast(Conversation.Message::isFullContextCompaction).coerceAtLeast(0)
+        return history.drop(boundary).map(CompactionMessageHeader::from)
+    }
     override suspend fun compactionBodies(threadId: Conversation.Thread.Id, ids: List<Conversation.Message.Id>): List<Conversation.Message> {
         bodyReads += ids
         return ids.map(messages(threadId).associateBy { it.id }::getValue)
     }
-    override suspend fun getContextMessagesByThread(threadId: Conversation.Thread.Id, nativeProvider: String?): List<Conversation.Message> {
-        val history = messages(threadId)
+    override suspend fun recentVisibleMessageTextThrough(
+        threadId: Conversation.Thread.Id,
+        throughMessageId: Conversation.Message.Id,
+        limit: Int,
+        maxCharacters: Int,
+    ) = error("Suggested replies are outside this compaction fixture")
+    override suspend fun getContextMessagesThrough(
+        threadId: Conversation.Thread.Id,
+        throughMessageId: Conversation.Message.Id,
+        nativeProvider: String?,
+    ) = error("Suggested replies are outside this compaction fixture")
+    override suspend fun invalidToolSequenceWindow(threadId: Conversation.Thread.Id) =
+        error("Tool sequence repair is outside this compaction fixture")
+    override suspend fun copyPrefixAndAddSuffix(
+        sourceThreadId: Conversation.Thread.Id,
+        targetThreadId: Conversation.Thread.Id,
+        suffixStartPosition: Int,
+        suffixMessageIds: List<Conversation.Message.Id>,
+    ) = error("Tool sequence repair is outside this compaction fixture")
+    override suspend fun getContextMessagesByThread(
+        threadId: Conversation.Thread.Id,
+        nativeProvider: String?,
+    ): com.gromozeka.domain.repository.ThreadContextMessages {
+        val archive = messages(threadId)
+        val history = archive.drop(archive.indexOfLast(Conversation.Message::isFullContextCompaction).coerceAtLeast(0))
         val selected = com.gromozeka.domain.model.selectModelHistoryMessageIds(
             history.map { com.gromozeka.domain.model.MessageContextHeader(it.id, com.gromozeka.domain.model.MessageContextMetadata.from(it)) },
             history.filter { com.gromozeka.domain.model.MessageContextMetadata.from(it).hasCompaction }, nativeProvider,
         )
-        return history.filter { it.id in selected }
+        return com.gromozeka.domain.repository.ThreadContextMessages(
+            messages = history.filter { it.id in selected },
+            sourceMessageCount = history.size,
+        )
     }
     override suspend fun deleteByThread(threadId: Conversation.Thread.Id) {
         links.remove(threadId)
@@ -893,20 +1193,22 @@ private class InMemoryConversationCompactionRepository(
 ) : ConversationCompactionRepository {
     override suspend fun commitIfCurrent(
         expectedThreadId: Conversation.Thread.Id,
-        compactionMessage: Conversation.Message,
+        compactionMessages: List<Conversation.Message>,
         newThread: Conversation.Thread,
         insertionAnchorId: Conversation.Message.Id,
         preparedCompactionId: String?,
     ): Boolean {
         require(preparedCompactionId == null) { "This fixture is for manual compaction" }
+        val compactionMessage = compactionMessages.first()
         if (forceConflict) return false
         val conversation = conversations.values[compactionMessage.conversationId] ?: return false
         if (conversation.currentThread != expectedThreadId) return false
-        val links = threadMessages.getByThread(expectedThreadId)
+        val links = threadMessages.links[expectedThreadId].orEmpty().sortedBy(ThreadMessageLink::position)
         val anchor = links.indexOfFirst { it.messageId == insertionAnchorId }
         check(anchor >= 0)
-        val ids = links.take(anchor + 1).map { it.messageId } + compactionMessage.id + links.drop(anchor + 1).map { it.messageId }
-        messages.save(compactionMessage)
+        val ids = links.take(anchor + 1).map { it.messageId } + compactionMessages.map { it.id } +
+            links.drop(anchor + 1).map { it.messageId }
+        compactionMessages.forEach { messages.save(it) }
         threads.save(newThread.copy(lastTurnNumber = requireNotNull(threads.findById(expectedThreadId)).lastTurnNumber))
         threadMessages.addBatch(ids.mapIndexed { index, id -> ThreadMessageLink(newThread.id, id, index) })
         conversations.updateCurrentThread(conversation.id, newThread.id)

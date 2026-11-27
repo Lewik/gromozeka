@@ -6,7 +6,11 @@ import com.gromozeka.domain.model.ai.*
 import com.gromozeka.domain.model.memory.MemoryRun
 import kotlinx.serialization.json.*
 import com.gromozeka.domain.service.*
+import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.ServerToolMetadata
 import com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID
+import com.gromozeka.domain.tool.ToolExecutionContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import org.mockito.Mockito
@@ -91,6 +95,127 @@ class ConversationEngineDeliveryTest {
         }
     }
 
+    @Test fun `history mutation batch rechecks proactive compaction once even when its last mutation is stale`() = runBlocking {
+        val reasoning = AiReasoningConfig(effort = AiReasoningEffort.MAX)
+        val tool = object : AiToolCallback {
+            override val definition = AiToolDefinition("inspect_state", "Inspect current state", """{"type":"object"}""")
+            override val metadata = ServerToolMetadata
+            override fun call(toolInput: String, context: ToolExecutionContext?) = error("Not executed")
+        }
+        val releaseTool = object : AiToolCallback {
+            override val definition = AiToolDefinition("grz_slot_release", "Release the held slot", """{"type":"object"}""")
+            override val metadata = ServerToolMetadata
+            override fun call(toolInput: String, context: ToolExecutionContext?) = error("Not executed")
+        }
+        val capabilityPrompt = """<tool_source status="generating">inspect_state</tool_source>"""
+        val f = Fixture(proactive = true, withEnricher = true, reasoningOverride = reasoning,
+            maxOutputTokens = 256, selectedTools = listOf(tool), compactionEnrichedTools = listOf(releaseTool),
+            catalogTools = listOf(tool), capabilityCatalogPrompt = capabilityPrompt)
+        f.pins.values = listOf(testPin(conversation.id, "CURRENT_PIN"))
+        val source = f.begin()
+        val preparation = ProactiveCompaction(
+            id = "stale-preparation",
+            conversationId = conversation.id,
+            sourceTaskId = source.id,
+            sourceTurnId = source.turnId,
+            executor = executor,
+            agentId = agentId,
+            actorUserId = user,
+            threadId = conversation.currentThread,
+            capturedMessageCount = 1,
+            historyFingerprint = "a".repeat(64),
+            scopeFingerprint = "b".repeat(64),
+            inputTokens = 600,
+            sourceCount = 1,
+            retainedCount = 0,
+            createdAt = now,
+        )
+        assertTrue(f.coordinator.beginProactiveCompaction(preparation))
+
+        fun mutation(id: String) = ConversationRuntimeTask(
+            id = ConversationRuntimeTask.Id(id),
+            conversationId = conversation.id,
+            actorUserId = user,
+            payload = ConversationRuntimeTask.Payload.HistoryMutation(
+                mutation = ConversationHistoryMutation.Delete(listOf(Conversation.Message.Id("root"))),
+                expectedThreadId = conversation.currentThread,
+            ),
+            placement = QueuedMessagePlacement.END_OF_TURN,
+            idempotencyKey = id,
+            requirements = requirements,
+            createdAt = now,
+        )
+
+        val first = mutation("history-1")
+        val second = mutation("history-2")
+        assertTrue(f.coordinator.submit(first))
+        assertTrue(f.coordinator.submit(second))
+        assertNotNull(f.coordinator.cancelProactiveCompactionForHistoryMutation(conversation.id))
+        assertTrue(f.coordinator.completeActiveTask(conversation.id, source.id, executor, ConversationRuntimeTaskOutcome.CompleteTurn))
+
+        f.claim(first)
+        val firstOutcome = f.engine.runRuntimeTask(first, executor) {}
+        assertIs<ConversationRuntimeTaskOutcome.HistoryChanged>(firstOutcome)
+        assertTrue(f.preparations.isEmpty(), "The second mutation keeps the batch open")
+        f.currentConversation = f.currentConversation.copy(currentThread = Conversation.Thread.Id("after-history-1"))
+        assertTrue(f.coordinator.completeActiveTask(conversation.id, first.id, executor, firstOutcome))
+
+        f.claim(second)
+        f.historyMutationFailure = IllegalStateException("stale mutation")
+        assertFailsWith<IllegalStateException> {
+            f.engine.runRuntimeTask(second, executor) {}
+        }
+        val request = f.preparations.single()
+        assertEquals("after-history-1", request.options.toolContext["threadId"])
+        assertEquals(reasoning, request.options.reasoning)
+        assertEquals(256, request.options.maxOutputTokens)
+        assertEquals(listOf("inspect_state", "grz_slot_release"), request.tools.map { it.definition.name })
+        assertTrue("COMPACTION_SNAPSHOT_ENRICHER" in request.systemPrompts)
+        assertTrue(capabilityPrompt in request.systemPrompts)
+        assertFalse("SNAPSHOT_ENRICHER" in request.systemPrompts)
+        assertFalse("ENRICHER_LAST" in request.systemPrompts)
+        assertTrue(request.systemPrompts.none { "CURRENT_PIN" in it },
+            "prepareAfterResponse owns the fresh pin snapshot")
+        assertEquals(listOf("readSnapshot"), f.catalogOperations)
+        assertEquals(listOf("readOnlyPromptFor"), f.capabilityCatalogOperations)
+    }
+
+    @Test fun `manual compact task supplies the canonical detached request to its native generator`() = runBlocking {
+        fun tool(name: String) = object : AiToolCallback {
+            override val definition = AiToolDefinition(name, "Synthetic $name", """{"type":"object"}""")
+            override val metadata = ServerToolMetadata
+            override fun call(toolInput: String, context: ToolExecutionContext?) = error("Not executed")
+        }
+        val reasoning = AiReasoningConfig(effort = AiReasoningEffort.MAX)
+        val f = Fixture(
+            withEnricher = true,
+            reasoningOverride = reasoning,
+            maxOutputTokens = 512,
+            selectedTools = listOf(tool("inspect_state")),
+            compactionEnrichedTools = listOf(tool("grz_slot_release")),
+            assembledSystemPrompts = listOf("Actual agent instructions"),
+        )
+        f.captureNativeCompactRequest = true
+        f.pins.values = listOf(testPin(conversation.id, "CURRENT_PIN"))
+        val task = input("manual-compact").copy(payload = ConversationRuntimeTask.Payload.HistoryMutation(
+            mutation = ConversationHistoryMutation.Compact(emptyList(), true, SquashType.COMPACT),
+            expectedThreadId = conversation.currentThread,
+        ))
+        assertTrue(f.coordinator.submit(task))
+        f.claim(task)
+
+        assertIs<ConversationRuntimeTaskOutcome.HistoryChanged>(f.engine.runRuntimeTask(task, executor) {})
+
+        val request = assertNotNull(f.nativeCompactRequest)
+        assertTrue("Actual agent instructions" in request.systemPrompts)
+        assertTrue("COMPACTION_SNAPSHOT_ENRICHER" in request.systemPrompts)
+        assertTrue(request.systemPrompts.none { "CURRENT_PIN" in it })
+        assertEquals(listOf("inspect_state", "grz_slot_release"), request.tools.map { it.definition.name })
+        assertEquals(reasoning, request.options.reasoning)
+        assertEquals(512, request.options.maxOutputTokens)
+        assertEquals(listOf("readSnapshot"), f.catalogOperations)
+    }
+
     @Test fun `foreground pins are not baked into the input used to prepare the next compact`() = runBlocking {
         val f = Fixture(proactive = true)
         val task = f.begin()
@@ -106,10 +231,10 @@ class ConversationEngineDeliveryTest {
     }
 
     @Test fun `queued idle bursts produce one request containing every distinct message in either mode`() = runBlocking {
-        for (mode in UserMessageDeliveryMode.entries) {
+        for (mode in MessageDelivery.entries) {
             val f = Fixture(); f.messages.clear()
             for ((index, id) in listOf("a", "b", "c").withIndex()) {
-                assertTrue(f.coordinator.submitUserInput(input(id, broadcast = index % 2 == 0), mode))
+                assertTrue(f.coordinator.submitMessage(input(id, broadcast = index % 2 == 0), mode))
             }
             f.drain()
             val request = f.requests.single()
@@ -123,7 +248,7 @@ class ConversationEngineDeliveryTest {
 
     @Test fun `after turn backlog starts one new response for the entire batch`() = runBlocking {
         val f = Fixture(); val running = f.begin()
-        for (id in listOf("a", "b", "c")) f.coordinator.submitUserInput(input(id), UserMessageDeliveryMode.AFTER_CURRENT_TURN)
+        for (id in listOf("a", "b", "c")) f.coordinator.submitMessage(input(id), MessageDelivery.QUEUE)
         val outcome = f.engine.runRuntimeTask(running, executor) {}
         assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(outcome)
         assertEquals(listOf("root"), f.requests.single().messages.map { it.id.value })
@@ -135,7 +260,7 @@ class ConversationEngineDeliveryTest {
 
     @Test fun `a single safe point delivers all steer messages before one model response`() = runBlocking {
         val f = Fixture(); val running = f.begin()
-        for (id in listOf("a", "b", "c")) f.coordinator.submitUserInput(input(id, broadcast = true), UserMessageDeliveryMode.STEER)
+        for (id in listOf("a", "b", "c")) f.coordinator.submitMessage(input(id, broadcast = true), MessageDelivery.STEER)
         val outcome = assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(running, executor) {})
         assertTrue(f.requests.isEmpty())
         assertEquals(listOf("a", "b", "c"), f.messages.takeLast(3).map { it.id.value })
@@ -148,11 +273,11 @@ class ConversationEngineDeliveryTest {
     @Test fun `late after-turn input does not leak into preparation of the already claimed batch`() = runBlocking {
         for (hasFollower in listOf(false, true)) {
             val f = Fixture(); f.messages.clear()
-            f.coordinator.submitUserInput(input("a"), UserMessageDeliveryMode.AFTER_CURRENT_TURN)
-            if (hasFollower) f.coordinator.submitUserInput(input("b"), UserMessageDeliveryMode.AFTER_CURRENT_TURN)
+            f.coordinator.submitMessage(input("a"), MessageDelivery.QUEUE)
+            if (hasFollower) f.coordinator.submitMessage(input("b"), MessageDelivery.QUEUE)
             f.onAppend = { message ->
                 if (message.id.value == "a") {
-                    assertTrue(f.coordinator.submitUserInput(input("late"), UserMessageDeliveryMode.AFTER_CURRENT_TURN))
+                    assertTrue(f.coordinator.submitMessage(input("late"), MessageDelivery.QUEUE))
                 }
             }
             f.drain()
@@ -167,7 +292,7 @@ class ConversationEngineDeliveryTest {
         for (id in listOf("a", "b", "c")) {
             val task = input(id)
             val post = task.copy(payload = ConversationRuntimeTask.Payload.PostMessage(requireNotNull(task.userMessageOrNull()), setOf(otherAgentId, agentId)))
-            f.coordinator.submitUserInput(post, UserMessageDeliveryMode.AFTER_CURRENT_TURN)
+            f.coordinator.submitMessage(post, MessageDelivery.QUEUE)
         }
         f.drain()
         assertEquals(2, f.requests.size)
@@ -180,7 +305,7 @@ class ConversationEngineDeliveryTest {
     @Test fun `different actor is a batch boundary and retains its own model tool authority`() = runBlocking {
         val f = Fixture(); f.messages.clear()
         for (task in listOf(input("a"), input("b", bob), input("c", bob), input("d"))) {
-            f.coordinator.submitUserInput(task, UserMessageDeliveryMode.AFTER_CURRENT_TURN)
+            f.coordinator.submitMessage(task, MessageDelivery.QUEUE)
         }
         f.drain()
         assertEquals(listOf("user", "bob", "user"), f.requests.map { it.options.toolContext[TOOL_CONTEXT_USER_ID] })
@@ -191,7 +316,7 @@ class ConversationEngineDeliveryTest {
     @Test fun `partially appended reserved batch is recovered without duplicating messages`() = runBlocking {
         val f = Fixture(); f.messages.clear()
         val root = input("a")
-        for (task in listOf(root, input("b"), input("c"))) f.coordinator.submitUserInput(task, UserMessageDeliveryMode.AFTER_CURRENT_TURN)
+        for (task in listOf(root, input("b"), input("c"))) f.coordinator.submitMessage(task, MessageDelivery.QUEUE)
         f.claim(root)
         f.onAppend = { if (it.id.value == "b") error("synthetic interruption") }
         assertFailsWith<IllegalStateException> { f.engine.runRuntimeTask(root, executor) {} }
@@ -207,7 +332,7 @@ class ConversationEngineDeliveryTest {
 
     @Test fun `queued broadcast is delivered before a new model call and preserves human provenance`() = runBlocking {
         val f = Fixture(); val task = f.begin()
-        assertTrue(f.coordinator.submitUserInput(input("steer", bob, broadcast = true), UserMessageDeliveryMode.STEER))
+        assertTrue(f.coordinator.submitMessage(input("steer", bob, broadcast = true), MessageDelivery.STEER))
         val next = assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(task, executor) { f.emitted += it }).nextTask
         assertTrue(f.requests.isEmpty())
         assertEquals(bob, next.actorUserId)
@@ -225,7 +350,7 @@ class ConversationEngineDeliveryTest {
             f.onCall = { started.complete(Unit); finish.await(); answer() }
             val running = async { f.engine.runRuntimeTask(task, executor) { f.emitted += it } }
             started.await()
-            f.coordinator.submitUserInput(input("steer"), UserMessageDeliveryMode.STEER)
+            f.coordinator.submitMessage(input("steer"), MessageDelivery.STEER)
             yield()
             assertFalse(running.isCompleted)
             assertFalse(f.messages.any { it.id.value == "steer" })
@@ -242,7 +367,7 @@ class ConversationEngineDeliveryTest {
     @Test fun `after turn does not enter model-only continuations`() = runBlocking {
         val f = Fixture(); val task = f.begin()
         f.onCall = {
-            f.coordinator.submitUserInput(input("later"), UserMessageDeliveryMode.AFTER_CURRENT_TURN)
+            f.coordinator.submitMessage(input("later"), MessageDelivery.QUEUE)
             answer(AiStepOutcome.CONTINUE)
         }
         val next = assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(task, executor) {}).nextTask
@@ -254,7 +379,7 @@ class ConversationEngineDeliveryTest {
         assertEquals("later", f.coordinator.listPending(conversation.id).single().id.value)
     }
     @Test fun `tool results remain ahead of steer even with return direct`() = runBlocking {
-        for (mode in UserMessageDeliveryMode.entries) {
+        for (mode in MessageDelivery.entries) {
             val f = Fixture(); val model = f.begin()
             val toolResult = Conversation.Message(Conversation.Message.Id("result"), conversation.id,
                 role = Conversation.Message.Role.USER, content = listOf(ContentItem.ToolResult(
@@ -264,9 +389,9 @@ class ConversationEngineDeliveryTest {
                     Conversation.Message.Id("root"), toolResult.id, agentId, 1, returnDirect = true))
             f.advance(model, processing)
             f.messages += toolResult
-            f.coordinator.submitUserInput(input("new"), mode)
+            f.coordinator.submitMessage(input("new"), mode)
             val result = f.engine.runRuntimeTask(processing, executor) {}
-            if (mode == UserMessageDeliveryMode.STEER) {
+            if (mode == MessageDelivery.STEER) {
                 assertIs<ConversationRuntimeTaskOutcome.Continue>(result)
                 assertEquals(listOf("result", "new"), f.messages.takeLast(2).map { it.id.value })
             } else {
@@ -278,16 +403,31 @@ class ConversationEngineDeliveryTest {
     }
     @Test fun `multiple steering users do not inherit the original callers credentials`() = runBlocking {
         val f = Fixture(); val task = f.begin()
-        f.coordinator.submitUserInput(input("a", user), UserMessageDeliveryMode.STEER)
-        f.coordinator.submitUserInput(input("b", bob), UserMessageDeliveryMode.STEER)
+        f.coordinator.submitMessage(input("a", user), MessageDelivery.STEER)
+        f.coordinator.submitMessage(input("b", bob), MessageDelivery.STEER)
         val next = assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(task, executor) {}).nextTask
         assertNull(next.actorUserId)
         assertEquals(listOf("a", "b"), f.messages.takeLast(2).map { it.id.value })
     }
 
-    @Test fun `reviewed responses prepare compaction only after committing the accepted draft`() = runBlocking {
+    @Test fun `accepted review prepares compaction from the canonical final request`() = runBlocking {
+        fun tool(name: String) = object : AiToolCallback {
+            override val definition = AiToolDefinition(name, "Synthetic $name", """{"type":"object"}""")
+            override val metadata = ServerToolMetadata
+            override fun call(toolInput: String, context: ToolExecutionContext?) = error("Not executed")
+        }
         for (text in listOf("Visible final", null)) {
-            val f = Fixture(enableReview = true, proactive = true); val model = f.begin()
+            val f = Fixture(
+                enableReview = true,
+                proactive = true,
+                withEnricher = true,
+                reasoningOverride = AiReasoningConfig(effort = AiReasoningEffort.MAX),
+                maxOutputTokens = 256,
+                selectedTools = listOf(tool("inspect_state")),
+                compactionEnrichedTools = listOf(tool("grz_slot_release")),
+                assembledSystemPrompts = listOf("Actual agent instructions"),
+            )
+            val model = f.begin()
             val candidate = Conversation.Message(Conversation.Message.Id("candidate"), conversation.id, role = Conversation.Message.Role.ASSISTANT,
                 content = listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("Original answer"))), createdAt = now)
             f.draft = AgentResponseDraft("draft", AgentContextRef(conversation.id, conversation.currentThread, agentId), user,
@@ -297,19 +437,27 @@ class ConversationEngineDeliveryTest {
             val task = model.copy(id = ConversationRuntimeTask.Id("review"), parentTaskId = model.id, idempotencyKey = "review",
                 payload = ConversationRuntimeTask.Payload.ResponseReview("draft", agentId))
             f.advance(model, task)
-            f.onPrepare = {
-                assertTrue(f.emitted.any { it.providerMetadata["collaborationReviewId"] == JsonPrimitive("draft") })
-                if (text != null) assertTrue(f.emitted.any { m -> m.content.any { it is ContentItem.AssistantMessage && it.structured.fullText == text } })
-            }
             val result = f.engine.runRuntimeTask(task, executor) { f.emitted += it }
             if (text == null) assertIs<ConversationRuntimeTaskOutcome.CompleteWithoutNotification>(result)
             else assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(result)
-            assertEquals(1, f.preparations.size)
+            assertTrue(f.emitted.any { it.providerMetadata["collaborationReviewId"] == JsonPrimitive("draft") })
+            if (text != null) assertTrue(f.emitted.any { m -> m.content.any { it is ContentItem.AssistantMessage && it.structured.fullText == text } })
+            val prepared = f.preparations.single()
+            assertEquals(AiReasoningConfig(effort = AiReasoningEffort.MAX), prepared.options.reasoning)
+            assertEquals(256, prepared.options.maxOutputTokens)
+            assertEquals(listOf("inspect_state", "grz_slot_release"), prepared.tools.map { it.definition.name })
+            assertTrue("Actual agent instructions" in prepared.systemPrompts)
+            assertTrue("COMPACTION_SNAPSHOT_ENRICHER" in prepared.systemPrompts)
+            assertFalse("ENRICHER_LAST" in prepared.systemPrompts)
+            assertTrue(prepared.messages.any { it.id == candidate.id })
+            assertTrue(prepared.messages.any { it.id.value == "draft:receipt" })
+            assertEquals(2, f.applicationRequests.size)
+            assertEquals(listOf(model.turnId.value to 4), f.responseReviewContinuationChecks)
         }
     }
 
     @Test fun `steer invalidates an unpublished response review and preserves replay without stale visible answer`() = runBlocking {
-        val f = Fixture(enableReview = true); val model = f.begin()
+        val f = Fixture(enableReview = true, proactive = true, withEnricher = true); val model = f.begin()
         val stale = Conversation.Message(Conversation.Message.Id("stale"), conversation.id, role = Conversation.Message.Role.ASSISTANT,
             content = listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("Stale answer"))), createdAt = now)
         f.draft = AgentResponseDraft("draft", AgentContextRef(conversation.id, conversation.currentThread, agentId), user,
@@ -317,7 +465,7 @@ class ConversationEngineDeliveryTest {
         val task = model.copy(id = ConversationRuntimeTask.Id("review"), parentTaskId = model.id, idempotencyKey = "review",
             payload = ConversationRuntimeTask.Payload.ResponseReview("draft", agentId))
         f.advance(model, task)
-        f.coordinator.submitUserInput(input("new", bob, broadcast = true), UserMessageDeliveryMode.STEER)
+        f.coordinator.submitMessage(input("new", bob, broadcast = true), MessageDelivery.STEER)
         val next = assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(task, executor) { f.emitted += it }).nextTask
         assertEquals(bob, next.actorUserId)
         assertTrue(f.requests.isEmpty(), "Queued steer must bypass stale response checking")
@@ -325,6 +473,8 @@ class ConversationEngineDeliveryTest {
         assertTrue(f.messages.first { it.id == stale.id }.providerMetadata.isNotEmpty(), "Original provider output is retained for replay")
         assertEquals("new", f.emitted.last().id.value)
         assertTrue(Mockito.mockingDetails(f.reviewRepository).invocations.none { it.method.name.startsWith("applyDecision") })
+        assertTrue(f.preparations.isEmpty())
+        assertTrue(f.applicationRequests.isEmpty())
     }
 
     @Test fun `pin add edit delete affects next ordinary or post-tool call but never the in-flight request`() = runBlocking<Unit> {
@@ -387,38 +537,38 @@ class ConversationEngineDeliveryTest {
         assertTrue(f.suggestionRequests.isEmpty())
     }
 
-    @Test fun `full suggestions context loads actual thread history rather than the compacted model prefix`() = runBlocking {
-        for (mode in UserProfile.SuggestedRepliesSettings.ContextMode.entries) {
-            val f = Fixture()
-            f.profile = UserProfile(suggestedRepliesSettings = UserProfile.SuggestedRepliesSettings(
-                mode = UserProfile.SuggestedRepliesSettings.Mode.SEPARATE_RUNTIME,
-                separatePrompt = "CUSTOM_SEPARATE_INSTRUCTION", contextMode = mode,
-            ))
-            f.allowFullHistoryLoad = mode == UserProfile.SuggestedRepliesSettings.ContextMode.FULL_THREAD
-            val root = f.messages.single()
-            val old = root.copy(id = Conversation.Message.Id("archived"), content = listOf(ContentItem.UserMessage("ARCHIVE_VISIBLE_SENTINEL")))
-            val checkpoint = root.copy(id = Conversation.Message.Id("checkpoint"), role = Conversation.Message.Role.ASSISTANT,
-                content = listOf(ContentItem.ContextCompactionResult(
-                    ContentItem.ContextCompactionResult.Payload.ReadableSummary("summary"), ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
-                    coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
-                )))
-            val replayAnchor = old.copy(id = Conversation.Message.Id("replay-anchor"), content = listOf(ContentItem.UserMessage("REPLAY_ANCHOR")))
-            f.messages.clear(); f.messages += listOf(old, replayAnchor, checkpoint, root)
-            val task = f.begin()
-            assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(f.engine.runRuntimeTask(task, executor) {})
-            assertFalse(f.requests.single().messages.any { it.id == old.id })
-            val request = f.suggestionRequests.single()
-            val text = (request.messages.single().content.single() as ContentItem.UserMessage).text
-            assertEquals(mode == UserProfile.SuggestedRepliesSettings.ContextMode.FULL_THREAD, "ARCHIVE_VISIBLE_SENTINEL" in text)
-            assertContains(text, "CUSTOM_SEPARATE_INSTRUCTION")
-            assertContains(text, "ASSISTANT: Answer")
-            assertFalse("CUSTOM_SEPARATE_INSTRUCTION" in f.requests.single().systemPrompts.joinToString("\n"))
-            assertEquals(listOf("Next"), f.messages.last().content.filterIsInstance<ContentItem.AssistantMessage>().single().structured.suggestedReplies)
-        }
+    @Test fun `full thread suggestions use the normal compacted model context rather than the archive`() = runBlocking {
+        val f = Fixture()
+        f.profile = UserProfile(suggestedRepliesSettings = UserProfile.SuggestedRepliesSettings(
+            mode = UserProfile.SuggestedRepliesSettings.Mode.SEPARATE_RUNTIME,
+            separatePrompt = "CUSTOM_SEPARATE_INSTRUCTION",
+            contextMode = UserProfile.SuggestedRepliesSettings.ContextMode.FULL_THREAD,
+        ))
+        val root = f.messages.single()
+        val old = root.copy(id = Conversation.Message.Id("archived"), content = listOf(ContentItem.UserMessage("ARCHIVE_VISIBLE_SENTINEL")))
+        val checkpoint = root.copy(id = Conversation.Message.Id("checkpoint"), role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(ContentItem.ContextCompactionResult(
+                ContentItem.ContextCompactionResult.Payload.ReadableSummary("summary"), ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+            )))
+        val replayAnchor = old.copy(id = Conversation.Message.Id("replay-anchor"), content = listOf(ContentItem.UserMessage("REPLAY_ANCHOR")))
+        f.messages.clear(); f.messages += listOf(old, replayAnchor, checkpoint, root)
+        val task = f.begin()
+        assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(f.engine.runRuntimeTask(task, executor) {})
+        assertFalse(f.requests.single().messages.any { it.id == old.id })
+        val request = f.suggestionRequests.single()
+        val projected = request.projectedMessages("OPENAI_SUBSCRIPTION")
+        assertEquals(checkpoint.id, projected.first().id)
+        assertFalse(projected.any { message -> message.content.any { it is ContentItem.UserMessage && "ARCHIVE_VISIBLE_SENTINEL" in it.text } })
+        assertTrue(projected.any { message -> message.content.any { it is ContentItem.AssistantMessage && it.structured.fullText == "Answer" } })
+        assertContains((projected.last().content.single() as ContentItem.UserMessage).text, "CUSTOM_SEPARATE_INSTRUCTION")
+        assertFalse("CUSTOM_SEPARATE_INSTRUCTION" in f.requests.single().systemPrompts.joinToString("\n"))
+        assertEquals(listOf<String?>("OPENAI_SUBSCRIPTION", "OPENAI_SUBSCRIPTION"), f.contextReads)
+        assertEquals(listOf("Next"), f.messages.last().content.filterIsInstance<ContentItem.AssistantMessage>().single().structured.suggestedReplies)
     }
 
     @Test fun `model preparation loads checkpoint context rather than the archive`() = runBlocking {
-        val f = Fixture(); f.allowFullHistoryLoad = false
+        val f = Fixture()
         val root = f.messages.single()
         val archive = (0 until 100).map { root.copy(id = Conversation.Message.Id("old-$it")) }
         val checkpoint = root.copy(id = Conversation.Message.Id("checkpoint"), role = Conversation.Message.Role.ASSISTANT,
@@ -432,13 +582,52 @@ class ConversationEngineDeliveryTest {
         f.engine.runRuntimeTask(task, executor) {}
         assertEquals(listOf<String?>("OPENAI_SUBSCRIPTION"), f.contextReads)
         val request = f.requests.single()
-        assertEquals(3, request.messages.size)
+        assertEquals(2, request.messages.size)
         assertEquals(listOf(checkpoint.id, root.id), request.projectedMessages("OPENAI_SUBSCRIPTION").map { it.id })
         assertEquals(original, f.messages.take(original.size))
     }
 
+    @Test fun `external channel uses the bounded context including current Runtime messages`() = runBlocking {
+        val f = Fixture()
+        f.currentConversation = f.currentConversation.copy(
+            externalChannel = ExternalConversationChannel("telegram", "connection", "channel"),
+        )
+        val root = f.messages.single()
+        val archived = root.copy(id = Conversation.Message.Id("archived"), content = listOf(ContentItem.UserMessage("RAW_ARCHIVE")))
+        val oldRuntime = root.copy(
+            id = Conversation.Message.Id("old-runtime"),
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(ContentItem.RuntimeJson(JsonPrimitive("OLD_RUNTIME"))),
+        )
+        val checkpoint = root.copy(
+            id = Conversation.Message.Id("checkpoint"),
+            role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(ContentItem.ContextCompactionResult(
+                ContentItem.ContextCompactionResult.Payload.ReadableSummary("summary"),
+                ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
+                coverage = ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
+            )),
+        )
+        val currentRuntime = oldRuntime.copy(
+            id = Conversation.Message.Id("current-runtime"),
+            content = listOf(ContentItem.RuntimeJson(JsonPrimitive("CURRENT_RUNTIME"))),
+        )
+        f.messages.clear()
+        f.messages += listOf(archived, oldRuntime, checkpoint, currentRuntime, root)
+
+        val task = f.begin()
+        assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(f.engine.runRuntimeTask(task, executor) {})
+
+        assertEquals(listOf<String?>("OPENAI_SUBSCRIPTION"), f.contextReads)
+        val requestIds = f.requests.single().messages.map { it.id }
+        assertEquals(listOf(checkpoint.id, currentRuntime.id, root.id), requestIds)
+        assertFalse(archived.id in requestIds)
+        assertFalse(oldRuntime.id in requestIds)
+    }
+
     @Test fun `point append and replay never load the archive`() = runBlocking {
-        val f = Fixture(); f.allowFullHistoryLoad = false
+        val f = Fixture()
         val task = input("new-message")
         assertTrue(f.coordinator.submit(task)); f.claim(task)
         repeat(2) {
@@ -450,7 +639,7 @@ class ConversationEngineDeliveryTest {
     }
 
     @Test fun `point tool result processing never loads the archive or reapplies the result`() = runBlocking {
-        val f = Fixture(); f.allowFullHistoryLoad = false
+        val f = Fixture()
         val result = Conversation.Message(Conversation.Message.Id("tool-result"), conversation.id,
             role = Conversation.Message.Role.USER, content = listOf(ContentItem.ToolResult(
                 ContentItem.ToolCall.Id("call"), "synthetic", listOf(ContentItem.ToolResult.Data.Text("result")))), createdAt = now)
@@ -468,12 +657,13 @@ class ConversationEngineDeliveryTest {
     }
 
     @Test fun `point tool execution replays the stored result without repeating effects or loading history`() = runBlocking {
-        val f = Fixture(); f.allowFullHistoryLoad = false
+        val f = Fixture()
         val running = f.begin()
         val call = ContentItem.ToolCall(ContentItem.ToolCall.Id("synthetic-call"),
             ContentItem.ToolCall.Data("synthetic", kotlinx.serialization.json.JsonObject(emptyMap())))
         val payload = ConversationRuntimeTask.Payload.ToolExecution(Conversation.Message.Id("root"), agentId, 1,
-            listOf(call), false, mapOf(call.id.value to ConversationRuntimeTaskTarget.Server))
+            listOf(call), false, mapOf(call.id.value to ConversationRuntimeTaskTarget.Server),
+            modelVisibleToolNames = listOf("already_loaded", "synthetic"))
         val task = running.copy(id = ConversationRuntimeTask.Id("execute-tool"), parentTaskId = running.id, payload = payload)
         f.advance(running, task)
         repeat(2) {
@@ -482,6 +672,7 @@ class ConversationEngineDeliveryTest {
                 assertIs<ConversationRuntimeTask.Payload.ToolResultProcessing>(next.payload).toolResultMessageId)
         }
         assertEquals(1, f.toolEffects)
+        assertEquals(setOf("already_loaded", "synthetic"), f.toolExecutionContexts.single().modelVisibleToolNames)
         assertEquals(0, f.historyMessageReads)
         assertEquals(1, f.messages.count { it.id.value == "execute-tool:result" })
         assertEquals(listOf("execute-tool:result"), f.emitted.map { it.id.value })
@@ -489,7 +680,9 @@ class ConversationEngineDeliveryTest {
 
     @Test fun `incident recovers only the admitted async receipt and never repeats ordinary or missing async siblings`() = runBlocking {
         val operations = TestAsyncToolOperations()
-        val recovery = AsyncToolAdmissionService(operations, mock(), mock(), mock(), mock(), mock(), mock(), mock(), mock(), mock())
+        val recovery = AsyncToolAdmissionService(
+            operations, mock(), mock(), mock(), mock(), mock(), mock(), mock(), mock(), mock(), mock(),
+        )
         val f = Fixture(asyncRecovery = recovery)
         val running = f.begin()
         fun call(id: String, async: Boolean) = ContentItem.ToolCall(ContentItem.ToolCall.Id(id), ContentItem.ToolCall.Data(id,
@@ -526,7 +719,7 @@ class ConversationEngineDeliveryTest {
     }
 
     @Test fun `point tool result processing fails when the result is absent from the current thread`() = runBlocking {
-        val f = Fixture(); f.allowFullHistoryLoad = false
+        val f = Fixture()
         val running = f.begin()
         val task = running.copy(id = ConversationRuntimeTask.Id("missing-result"), parentTaskId = running.id,
             payload = ConversationRuntimeTask.Payload.ToolResultProcessing(
@@ -717,7 +910,7 @@ class ConversationEngineDeliveryTest {
     }
 
     @Test fun `background replay preserves an old call ID when only its call was stored before upgrade`() = runBlocking {
-        val f = Fixture(); f.allowFullHistoryLoad = false
+        val f = Fixture()
         val oldId = ContentItem.ToolCall.Id("cmd_legacy_long_identifier_status")
         val shortId = syntheticToolCallId(oldId.value)
         val call = f.messages.single().copy(id = Conversation.Message.Id("completion-call"), role = Conversation.Message.Role.ASSISTANT,
@@ -741,7 +934,7 @@ class ConversationEngineDeliveryTest {
 
     @Test fun `synthetic memory pairs use short IDs and retain stored legacy IDs on replay`() = runBlocking {
         for (withLegacyCall in listOf(false, true)) {
-            val f = Fixture(); f.allowFullHistoryLoad = false
+            val f = Fixture()
             val runId = MemoryRun.Id("memory-run")
             val toolName = "memory_run_status"
             val phase = "completed_async"
@@ -767,14 +960,12 @@ class ConversationEngineDeliveryTest {
         }
     }
 
-    @Test fun `COW compaction keeps the root and queued steering and consumes secrets only for inference`() = runBlocking {
+    @Test fun `COW compaction keeps the root and queued steering across continuation`() = runBlocking {
         val f = Fixture()
         val root = f.messages.single()
         val running = f.begin()
-        f.pendingSecrets.queue(conversation.id, user, mapOf("fixture" to "approved-model-only-value"))
         f.onCompact = { request ->
             assertTrue(f.requests.isEmpty())
-            assertFalse(request.messages.any { message -> message.instructions.any { it is Conversation.Message.Instruction.RevealedSecretRuntimeContext } })
             val target = Conversation.Thread.Id("compacted-thread")
             f.messages += root.copy(id = Conversation.Message.Id("checkpoint"), role = Conversation.Message.Role.ASSISTANT,
                 author = Conversation.Message.Author.Agent(agentId, "Test"),
@@ -790,22 +981,17 @@ class ConversationEngineDeliveryTest {
         }
         val outcome = assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(running, executor) { f.emitted += it })
         assertTrue(f.requests.isEmpty())
-        assertTrue(f.pendingSecrets.estimatedInputTokens(conversation.id, user) > 0)
         val continuation = assertIs<ConversationRuntimeTask.Payload.LlmCall>(outcome.nextTask.payload)
         assertTrue(continuation.afterCompaction)
         assertEquals(root.id, continuation.rootUserMessageId)
         assertEquals(running.turnId, outcome.nextTask.turnId)
         assertTrue(f.coordinator.completeActiveTask(conversation.id, running.id, executor, outcome))
-        assertTrue(f.coordinator.submitUserInput(input("late-steering"), UserMessageDeliveryMode.STEER))
+        assertTrue(f.coordinator.submitMessage(input("late-steering"), MessageDelivery.STEER))
         f.drain()
         val request = f.requests.single()
         assertEquals("compacted-thread", request.options.toolContext["threadId"])
         assertEquals(root.id.value, request.options.toolContext[com.gromozeka.domain.tool.TOOL_CONTEXT_TARGET_MESSAGE_ID])
         assertTrue(request.messages.any { it.id.value == "late-steering" })
-        val secrets = request.messages.flatMap { it.instructions }.filterIsInstance<Conversation.Message.Instruction.RevealedSecretRuntimeContext>()
-        assertEquals(1, secrets.size)
-        assertContains(secrets.single().serializeContent(), "approved-model-only-value")
-        assertEquals(0, f.pendingSecrets.estimatedInputTokens(conversation.id, user))
         assertEquals(root, f.messages.single { it.id == root.id })
         assertEquals(listOf(false, true), f.compactionChecks.map { it.second })
     }
@@ -879,11 +1065,42 @@ class ConversationEngineDeliveryTest {
         assertTrue(f.coordinator.finishIfIdle(conversation.id))
         assertEquals(completion, f.coordinator.snapshot(conversation.id).lastCompletion)
         assertTrue(f.requests.isEmpty()); assertTrue(f.preparations.isEmpty()); assertTrue(f.emitted.isEmpty())
+        assertEquals(1, f.applicationRequests.size)
+        assertEquals(listOf("readSnapshot"), f.catalogOperations)
         assertEquals(ProactiveCompaction.Status.APPLIED, f.coordinator.proactiveCompaction(conversation.id)?.status)
     }
 
-    @Test fun `ready compaction applies before tool routing while keeping the pending call and root`() = runBlocking {
+    @Test fun `idle READY application discards an unavailable snapshot without an incident`() = runBlocking {
         val f = Fixture(); val task = f.begin()
+        val preparation = ProactiveCompaction("unavailable-preparation", conversation.id, task.id, task.turnId, executor, agentId, user,
+            conversation.currentThread, 1, "a".repeat(64), "b".repeat(64), 1000, 1, 0, now)
+        assertTrue(f.coordinator.beginProactiveCompaction(preparation))
+        val checkpoint = f.messages.single().copy(id = Conversation.Message.Id(preparation.id), role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(ContentItem.ContextCompactionResult(ContentItem.ContextCompactionResult.Payload.ReadableSummary("handoff"),
+                ContentItem.ContextCompactionResult.Origin.GROMOZEKA_POLICY, sourceMessageIds = listOf(f.messages.single().id),
+                coverage = ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES)))
+        val ready = preparation.copy(status = ProactiveCompaction.Status.READY, checkpoint = checkpoint)
+        assertTrue(f.coordinator.updateProactiveCompaction(preparation, ready))
+        assertTrue(f.coordinator.completeActiveTask(conversation.id, task.id, executor, ConversationRuntimeTaskOutcome.CompleteTurn))
+        f.catalogFailure = ContextSnapshotUnavailableException("Synthetic unregistered tool contract")
+        f.onApply = { fail("An unavailable snapshot must not reach checkpoint application") }
+
+        f.drain()
+
+        assertTrue(f.coordinator.finishIfIdle(conversation.id))
+        assertEquals(ProactiveCompaction.Status.DISCARDED, f.coordinator.proactiveCompaction(conversation.id)?.status)
+        assertTrue(f.coordinator.listPending(conversation.id).isEmpty())
+        assertTrue(f.requests.isEmpty()); assertTrue(f.applicationRequests.isEmpty()); assertTrue(f.emitted.isEmpty())
+        assertEquals(listOf("readSnapshot"), f.catalogOperations)
+    }
+
+    @Test fun `ready compaction applies before tool routing while keeping the pending call and root`() = runBlocking {
+        val modelVisibleTool = object : AiToolCallback {
+            override val definition = AiToolDefinition("example", "Synthetic example", """{"type":"object"}""")
+            override val metadata = ServerToolMetadata
+            override fun call(toolInput: String, context: ToolExecutionContext?) = error("Not executed")
+        }
+        val f = Fixture(selectedTools = listOf(modelVisibleTool)); val task = f.begin()
         val call = ContentItem.ToolCall(ContentItem.ToolCall.Id("pending-call"), ContentItem.ToolCall.Data("example", JsonObject(emptyMap())))
         f.onCall = { AiRuntimeResponse(listOf(AiAssistantMessage(listOf(call))), outcome = AiStepOutcome.TOOL_CALLS) }
         var applied = false
@@ -896,68 +1113,19 @@ class ConversationEngineDeliveryTest {
         val outcome = assertIs<ConversationRuntimeTaskOutcome.Continue>(f.engine.runRuntimeTask(task, executor) {})
         val next = assertIs<ConversationRuntimeTask.Payload.ToolExecution>(outcome.nextTask.payload)
         assertEquals(listOf(call), next.toolCalls)
+        assertEquals(listOf("example"), next.modelVisibleToolNames)
         assertEquals(Conversation.Message.Id("root"), next.rootUserMessageId)
         assertEquals(task.turnId, outcome.nextTask.turnId)
         assertEquals(1, f.requests.size)
         assertTrue(f.preparations.isEmpty())
     }
 
-    @Test fun `review applies ready compaction only after accepted messages and routing receipt are committed`() = runBlocking {
-        val f = Fixture(enableReview = true, proactive = true); val model = f.begin()
-        val candidate = Conversation.Message(Conversation.Message.Id("candidate"), conversation.id, role = Conversation.Message.Role.ASSISTANT,
-            content = listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("Accepted answer"))), createdAt = now)
-        f.draft = AgentResponseDraft("draft", AgentContextRef(conversation.id, conversation.currentThread, agentId), user,
-            Conversation.Message.Id("root"), model.turnId.value, 1, listOf(candidate), emptyList(), emptyList(), emptyList(), "", listOf("root"), now,
-            decision = AgentResponseDecision("Accepted answer", AgentResponseDecision.Next.COMPLETE, emptyList(), emptyList()))
-        f.acceptReview = true
-        val task = model.copy(id = ConversationRuntimeTask.Id("review"), parentTaskId = model.id, idempotencyKey = "review",
-            payload = ConversationRuntimeTask.Payload.ResponseReview("draft", agentId))
-        f.advance(model, task)
-        f.onApply = {
-            assertEquals(conversation.currentThread, f.currentConversation.currentThread)
-            assertTrue(f.messages.any { it.id == candidate.id })
-            assertTrue(f.messages.any { it.id.value == "draft:receipt" })
-            f.onApply = { null }
-            f.currentConversation.copy(currentThread = Conversation.Thread.Id("reviewed-and-compacted")).also { f.currentConversation = it }
-        }
-        assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(f.engine.runRuntimeTask(task, executor) { f.emitted += it })
-        assertTrue(f.requests.isEmpty()); assertTrue(f.preparations.isEmpty())
-        assertEquals(Conversation.Thread.Id("reviewed-and-compacted"), f.currentConversation.currentThread)
-    }
-
-    @Test fun `running command observations reach ordinary requests without changing history or acknowledgement`() = runBlocking {
-        val f = Fixture(withCommandContext = true)
-        val running = f.begin()
-        val root = f.messages.single()
-        val command = CommandTask(CommandTask.Id("background"), conversation.id, ConversationRuntimeWorkerId("worker"), WorkspaceMount.Id("mount"),
-            agentDefinitionId = agentId, command = "PRIVATE_COMMAND", workingDirectory = "/tmp", status = CommandTask.Status.WORKING,
-            processId = 1, processStartedAt = now, outputFile = "/tmp/background", outputBytes = 0,
-            createdAt = now, updatedAt = now, completionNotificationRequestedAt = now, description = "Analyze data")
-        f.coordinator.upsertCommandTask(command)
-        val outcome = f.engine.runRuntimeTask(running, executor) { f.emitted += it }
-        assertIs<ConversationRuntimeTaskOutcome.CompleteTurn>(outcome)
-        assertEquals(JsonArray(listOf(buildJsonObject { put("task_id", "background"); put("description", "Analyze data") })), recordedCommands(f.requests.single()))
-        assertEquals(1, f.requests.single().systemPrompts.count { it == RecordedRunningCommandsRequestEnricher.INSTRUCTION })
-        assertFalse(f.requests.single().toString().contains("PRIVATE_COMMAND"))
-        assertEquals(root, f.messages.single { it.id == root.id })
-        assertTrue(f.coordinator.completeActiveTask(conversation.id, running.id, executor, outcome))
-        f.coordinator.upsertCommandTask(command.copy(status = CommandTask.Status.COMPLETED, completedAt = now, updatedAt = now))
-        assertTrue(f.coordinator.submit(input("next")))
-        f.drain()
-        assertEquals(2, f.requests.size)
-        assertTrue(recordedCommands(f.requests.last()).isEmpty())
-        assertNull(f.coordinator.findCommandTask(conversation.id, command.id)?.completionNotificationDeliveredAt)
-        assertEquals(0, f.toolEffects)
-        assertTrue(f.coordinator.listPending(conversation.id).isEmpty())
-    }
-
-    @Test fun `command observations preserve automatic batched completion and its one model continuation`() = runBlocking {
-        val f = Fixture(realBackground = true, withCommandContext = true)
+    @Test fun `automatic batched command completion keeps one model continuation`() = runBlocking {
+        val f = Fixture(realBackground = true)
         f.queueCommandCompletion("successful")
         f.queueCommandCompletion("failed", CommandTask.Status.FAILED)
         f.drain()
         val request = f.requests.single()
-        assertTrue(recordedCommands(request).isEmpty())
         for (id in listOf("successful", "failed")) {
             assertEquals(2, request.messages.count { it.providerMetadata["commandTaskId"] == JsonPrimitive(id) })
             assertNotNull(f.coordinator.findCommandTask(conversation.id, CommandTask.Id(id))?.completionNotificationDeliveredAt)
@@ -965,23 +1133,21 @@ class ConversationEngineDeliveryTest {
         assertTrue(f.coordinator.listPending(conversation.id).isEmpty())
     }
 
-    private fun recordedCommands(request: AiRuntimeRequest): JsonArray = (request.messages.flatMap { it.instructions }
-        .filterIsInstance<Conversation.Message.Instruction.RuntimeObservation>().map { it.text } + request.systemPrompts)
-        .last { it.startsWith("<runtime-command-context>") }
-        .substringAfter("<runtime-command-context>").substringBefore("</runtime-command-context>")
-        .let { Json.parseToJsonElement(it).jsonObject.getValue("recorded_running_commands").jsonArray }
-
     private inner class Fixture(enableReview: Boolean = false, withEnricher: Boolean = false, proactive: Boolean = false,
-        realBackground: Boolean = false, withCommandContext: Boolean = false, asyncRecovery: AsyncToolAdmissionService? = null) {
+        realBackground: Boolean = false, asyncRecovery: AsyncToolAdmissionService? = null,
+        reasoningOverride: AiReasoningConfig? = null, maxOutputTokens: Int? = null,
+        selectedTools: List<AiToolCallback> = emptyList(), compactionEnrichedTools: List<AiToolCallback> = emptyList(),
+        assembledSystemPrompts: List<String> = emptyList(), catalogTools: List<AiToolCallback> = emptyList(),
+        capabilityCatalogPrompt: String? = null) {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         var currentConversation = conversation
-        val pendingSecrets = PendingSecretRevealService()
         var profile = UserProfile()
         val suggestionRequests = mutableListOf<AiRuntimeRequest>()
         var onCompact: (AiRuntimeRequest) -> Conversation? = { null }
         var onApply: () -> Conversation? = { null }
         val compactionChecks = mutableListOf<Pair<AiRuntimeRequest, Boolean>>()
         val preparations = mutableListOf<AiRuntimeRequest>()
+        val applicationRequests = mutableListOf<AiRuntimeRequest>()
         var onPrepare: () -> Unit = {}
         private val compactions = responding<ConversationCompactionService> {
             if (it.method.name.startsWith("compactIfNeeded")) {
@@ -989,9 +1155,18 @@ class ConversationEngineDeliveryTest {
                 compactionChecks += request to (it.arguments[5] as Boolean)
                 onCompact(request)
             } else if (it.method.name.startsWith("applyPreparedIfReady")) {
+                applicationRequests += it.arguments[4] as AiRuntimeRequest
                 onApply()
             } else if (it.method.name.startsWith("prepareAfterResponse")) {
-                onPrepare(); preparations += it.arguments[4] as AiRuntimeRequest; Unit
+                onPrepare(); preparations += it.arguments[4] as AiRuntimeRequest; true
+            } else if (it.method.name.startsWith("discardPreparedIfCurrent")) {
+                val expected = it.arguments[0] as ProactiveCompaction
+                runBlocking {
+                    coordinator.updateProactiveCompaction(expected, expected.copy(
+                        status = ProactiveCompaction.Status.DISCARDED,
+                        checkpoint = null,
+                    ))
+                }
             } else Mockito.RETURNS_DEFAULTS.answer(it)
         }
         val pins = ReadOnlyTestPins()
@@ -1000,7 +1175,9 @@ class ConversationEngineDeliveryTest {
         val requests = mutableListOf<AiRuntimeRequest>()
         var onCall: suspend (AiRuntimeRequest) -> AiRuntimeResponse = { answer() }
         var onAppend: suspend (Conversation.Message) -> Unit = {}
-        var allowFullHistoryLoad = true
+        var historyMutationFailure: Throwable? = null
+        var captureNativeCompactRequest = false
+        var nativeCompactRequest: AiRuntimeRequest? = null
         var backgroundBatch: BackgroundActivityCompletionApplicationService.Batch? = null
         val backgroundOrigins = TestBackgroundActivityOrigins()
         private val backgroundActivities = if (realBackground) BackgroundActivityCompletionApplicationService(
@@ -1018,6 +1195,7 @@ class ConversationEngineDeliveryTest {
         }
         private val selection = AiRuntimeSelection(AiModelConfiguration.Id("config"))
         private val agent = AgentDefinition(agentId, name = "Test", prompts = emptyList(), runtimeSelection = selection,
+            runtimeOverrides = AiRuntimeOverrides(maxOutputTokens, reasoningOverride),
             type = AgentDefinition.Type.Global, createdAt = now, updatedAt = now)
         private val connection = AiConnection.OpenAiSubscription(AiConnection.Id("test"), "Test", enabled = true)
         private val resolved = ResolvedAiRuntime(connection,
@@ -1034,14 +1212,24 @@ class ConversationEngineDeliveryTest {
                 ConversationRuntimeToolRoutingResult.Accepted(calls.associate { call -> call.id.value to ConversationRuntimeTaskTarget.Server }, false)
             } else Mockito.RETURNS_DEFAULTS.answer(it)
         }
-        private val catalog = DistributedAiToolCatalogSnapshot(emptyList(), emptyMap(), emptyList(), "revision", "environment")
+        private val catalog = DistributedAiToolCatalogSnapshot(catalogTools, emptyMap(), emptyList(), "revision", "environment")
+        val catalogOperations = mutableListOf<String>()
+        var catalogFailure: ContextSnapshotUnavailableException? = null
+        private val distributedCatalog = responding<DistributedAiToolCatalog> {
+            val operation = it.method.name.substringBefore('-').also(catalogOperations::add)
+            if (operation == "readSnapshot") catalogFailure?.let { failure -> throw failure }
+            catalog
+        }
+        val capabilityCatalogOperations = mutableListOf<String>()
+        private val capabilityCatalog = responding<AiToolCapabilityCatalogService> {
+            when (val operation = it.method.name.substringBefore('-').also(capabilityCatalogOperations::add)) {
+                "promptFor", "readOnlyPromptFor", "cachedPromptFor" -> capabilityCatalogPrompt
+                else -> error("Unexpected capability catalog operation: $operation")
+            }
+        }
         private val conversations = responding<ConversationDomainService> {
             when (it.method.name.substringBefore('-')) {
                 "findById" -> currentConversation; "getProject" -> project
-                "loadCurrentMessages" -> {
-                    check(allowFullHistoryLoad) { "Point operation must not load the archive" }
-                    messages.toList()
-                }
                 else -> Mockito.RETURNS_DEFAULTS.answer(it)
             }
         }
@@ -1058,7 +1246,7 @@ class ConversationEngineDeliveryTest {
         }
         private val artifacts = responding<ConversationArtifactApplicationService> {
             when (it.method.name.substringBefore('-')) {
-                "materialize" -> it.arguments[1]
+                "materialize", "materializeSnapshot" -> it.arguments[1]
                 "persistAndCommitMessageOutputs" -> it.arguments[2]
                 "persistAndCommitToolResults" -> {
                     @Suppress("UNCHECKED_CAST")
@@ -1074,16 +1262,40 @@ class ConversationEngineDeliveryTest {
             }
         }
         val contextReads = mutableListOf<String?>()
+        val responseReviewContinuationChecks = mutableListOf<Pair<String, Int>>()
         private val contextHistory = responding<com.gromozeka.domain.repository.ThreadMessageRepository> {
-            check(it.method.name.substringBefore('-') == "getContextMessagesByThread")
             assertEquals(currentConversation.currentThread.value, it.arguments[0])
-            val provider = it.arguments[1] as String?
-            contextReads += provider
-            val selected = selectModelHistoryMessageIds(
-                messages.map { message -> MessageContextHeader(message.id, MessageContextMetadata.from(message)) },
-                messages.filter { message -> MessageContextMetadata.from(message).hasCompaction }, provider,
-            )
-            messages.filter { message -> message.id in selected }
+            when (it.method.name.substringBefore('-')) {
+                "getContextMessagesByThread" -> {
+                    val provider = it.arguments[1] as String?
+                    contextReads += provider
+                    val fullCheckpoint = messages.indexOfLast(Conversation.Message::isFullContextCompaction)
+                    val window = if (fullCheckpoint < 0) messages.toList() else messages.drop(fullCheckpoint)
+                    val selected = selectModelHistoryMessageIds(
+                        window.map { message -> MessageContextHeader(message.id, MessageContextMetadata.from(message)) },
+                        window.filter { message -> MessageContextMetadata.from(message).hasCompaction }, provider,
+                    )
+                    com.gromozeka.domain.repository.ThreadContextMessages(
+                        messages = window.filter { message -> message.id in selected },
+                        sourceMessageCount = messages.size,
+                        continuationState = window.firstOrNull()
+                            ?.compactions()
+                            ?.lastOrNull { checkpoint -> checkpoint.coversAllPrevious }
+                            ?.continuationState
+                            ?: ContentItem.ContextCompactionResult.ContinuationState(),
+                    )
+                }
+                "hasAtLeastResponseReviewContinuations" -> {
+                    val turnId = it.arguments[1] as String
+                    val requiredCount = it.arguments[2] as Int
+                    responseReviewContinuationChecks += turnId to requiredCount
+                    messages.count { message ->
+                        message.id.value.startsWith("$turnId:") &&
+                            message.providerMetadata["collaborationNext"] == JsonPrimitive("CONTINUE")
+                    } >= requiredCount
+                }
+                else -> error("Unexpected context history operation: ${it.method.name}")
+            }
         }
         var historyMessageReads = 0
         private val history = ConversationHistoryReadService(
@@ -1104,12 +1316,14 @@ class ConversationEngineDeliveryTest {
             }, coordinator,
         )
         var toolEffects = 0
+        val toolExecutionContexts = mutableListOf<ToolExecutionContext>()
         val toolTasks = ConversationToolExecutionTaskService(
             conversationService = conversations, conversationHistory = history, conversationMessageAppender = appender,
             workspaceService = mock(), runtimeCoordinator = coordinator, runtimeStateSyncService = mock(),
             parallelToolExecutor = responding {
                 check(it.method.name.substringBefore('-') == "executeParallel")
                 toolEffects++
+                toolExecutionContexts += it.arguments[1] as ToolExecutionContext
                 @Suppress("UNCHECKED_CAST")
                 val calls = it.arguments[0] as List<ContentItem.ToolCall>
                 ToolExecutionResult(calls.map { call -> ContentItem.ToolResult(call.id, call.call.name,
@@ -1134,23 +1348,37 @@ class ConversationEngineDeliveryTest {
                 else -> Mockito.RETURNS_DEFAULTS.answer(it)
             }
         }
+        private val historyMutationExecutor = responding<ConversationRuntimeHistoryMutationExecutor> {
+            when (it.method.name.substringBefore('-')) {
+                "execute" -> {
+                    historyMutationFailure?.let { failure -> throw failure }
+                    if (captureNativeCompactRequest) {
+                        @Suppress("UNCHECKED_CAST")
+                        val assemble = it.arguments[4] as suspend (Conversation, AgentDefinition) -> AiRuntimeRequest?
+                        nativeCompactRequest = runBlocking { assemble(currentConversation, agent) }
+                    }
+                    currentConversation
+                }
+                else -> Mockito.RETURNS_DEFAULTS.answer(it)
+            }
+        }
         val engine = ConversationEngineService(
             aiRuntimeProvider = responding { runtime }, aiToolProvider = responding { emptyList<Any>() },
             agentDomainService = responding { invocation ->
                 if (invocation.arguments.firstOrNull() in listOf(otherAgentId, otherAgentId.value)) agent.copy(id = otherAgentId) else agent
-            }, agentPromptAssemblyService = responding { emptyList<String>() },
+            }, agentPromptAssemblyService = responding { assembledSystemPrompts },
             toolApprovalService = mock(), toolExecutionTaskService = mock(), conversationService = conversations, conversationHistory = history, contextHistory = contextHistory,
-            conversationMessageAppender = appender, historyMutationExecutor = mock(), compactions = compactions, memoryApplicationService = mock(), memoryToolApplicationService = responding {
+            conversationMessageAppender = appender, historyMutationExecutor = historyMutationExecutor, compactions = compactions, memoryApplicationService = mock(), memoryToolApplicationService = responding {
                 if (it.method.name.substringBefore('-') == "memoryRunStatus") "{}" else Mockito.RETURNS_DEFAULTS.answer(it)
             },
             backgroundActivityCompletionApplicationService = backgroundActivities, memoryMessageRoutingApplicationService = mock(),
             toolCallSequenceFixerService = responding { ToolCallSequenceFixerService.FixResult(false, 0, 0, 0) }, settingsProvider = responding { profile },
             aiConfigurationProvider = responding { resolved }, runtimeCoordinator = coordinator, runtimeStateSyncService = mock(),
-            distributedToolCatalog = responding { catalog }, agentSkillRuntimeCatalogService = responding { AgentSkillRuntimeCatalog(catalog, null) },
-            aiToolRuntimeCatalogService = responding { AiToolRuntimeSelection(emptyList(), emptyList()) },
-            aiToolCapabilityCatalogService = mock(), toolRoutingService = routing,
+            distributedToolCatalog = distributedCatalog, agentSkillRuntimeCatalogService = responding { AgentSkillRuntimeCatalog(catalog, null) },
+            aiToolRuntimeCatalogService = responding { AiToolRuntimeSelection(selectedTools, emptyList()) },
+            aiToolCapabilityCatalogService = capabilityCatalog, toolRoutingService = routing,
             artifactService = artifacts, activeGenerationPublisher = mock(), messageTemporalContextService = MessageTemporalContextService(),
-            stickyMessageInstructionService = StickyMessageInstructionService(), pendingSecretRevealService = pendingSecrets,
+            stickyMessageInstructionService = StickyMessageInstructionService(),
             suggestedRepliesGenerationService = SuggestedRepliesGenerationService(
                 responding { object : AiRuntime {
                     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
@@ -1160,7 +1388,13 @@ class ConversationEngineDeliveryTest {
                         )))))
                     }
                     override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = error("Unexpected suggestions stream")
-                } }, ConversationPinnedPrompt(pins), responding { agent.runtimeSelection },
+                } }, ConversationPinnedPrompt(pins), responding { invocation ->
+                    when (invocation.method.name.substringBefore('-')) {
+                        "requireAvailableRuntimeSelectionFor" -> agent.runtimeSelection
+                        "resolveAiRuntime" -> resolved
+                        else -> Mockito.RETURNS_DEFAULTS.answer(invocation)
+                    }
+                },
             ),
             conversationPins = ConversationPinnedPrompt(pins),
             requestEnrichers = buildList {
@@ -1168,8 +1402,16 @@ class ConversationEngineDeliveryTest {
                     override suspend fun enrich(conversationId: Conversation.Id, rootUserMessageId: Conversation.Message.Id,
                         turnId: ConversationRuntimeTurnId, model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest =
                         request.copy(systemPrompts = request.systemPrompts + "ENRICHER_LAST")
+                    override suspend fun enrichSnapshot(conversationId: Conversation.Id, rootUserMessageId: Conversation.Message.Id,
+                        turnId: ConversationRuntimeTurnId, model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest =
+                        request.copy(systemPrompts = request.systemPrompts + "SNAPSHOT_ENRICHER")
+                    override suspend fun enrichCompactionSnapshot(conversationId: Conversation.Id,
+                        rootUserMessageId: Conversation.Message.Id, turnId: ConversationRuntimeTurnId,
+                        model: AiModelSpec, request: AiRuntimeRequest): AiRuntimeRequest = request.copy(
+                        systemPrompts = request.systemPrompts + "COMPACTION_SNAPSHOT_ENRICHER",
+                        tools = request.tools + compactionEnrichedTools,
+                    )
                 })
-                if (withCommandContext) add(RecordedRunningCommandsRequestEnricher(coordinator))
             },
             asyncAdmission = asyncRecovery,
             collaboration = collaboration.takeIf { enableReview },
@@ -1193,7 +1435,7 @@ class ConversationEngineDeliveryTest {
         }
 
         suspend fun begin(): ConversationRuntimeTask {
-            val root = input("root")
+            val root = input("root").copy(externalChannel = currentConversation.externalChannel)
             coordinator.submit(root)
             claim(root)
             val task = root.copy(id = ConversationRuntimeTask.Id("root:llm:1"), parentTaskId = root.id,

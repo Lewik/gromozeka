@@ -39,7 +39,12 @@ class VisualProtocolTest {
         val event = Conversation.Message.ContentItem.VisualInteraction("visual-1", "Panel", 2, "event-12345", "go", "Go", state)
         val message = Conversation.Message(Conversation.Message.Id("click"), conversation,
             role = Conversation.Message.Role.USER, content = listOf(event), createdAt = Instant.fromEpochMilliseconds(0))
-        val envelope = GromozekaServerEnvelope("message-1", MessagesResponse(listOf(message)))
+        val envelope = GromozekaServerEnvelope("message-1", MessageUpsertedEvent(
+            subscriptionId = "subscription-1",
+            conversationId = conversation,
+            taskId = null,
+            message = message,
+        ))
         assertEquals(envelope, RemoteProtocolCodec.decodeServerBinary(RemoteProtocolCodec.encodeServerBinary(envelope)))
         assertEquals(envelope, RemoteProtocolCodec.decodeServerText(RemoteProtocolCodec.encodeServerText(envelope)))
     }

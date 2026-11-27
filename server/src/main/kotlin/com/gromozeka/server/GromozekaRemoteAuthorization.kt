@@ -265,7 +265,6 @@ class GromozekaRemoteAuthorization(
             is OpenConversationTabRequest,
             is CloseConversationTabRequest,
             is MarkConversationReadRequest,
-            is LoadCurrentMessagesRequest,
             is GetTokenStatsRequest,
             is GetMemoryActionItemsRequest,
             is ListVisualsRequest,
@@ -294,9 +293,7 @@ class GromozekaRemoteAuthorization(
             is UpdateConversationDisplayNameRequest,
             is UpdateConversationParticipantsRequest,
             is ForkConversationRequest,
-            is PostMessageRequest,
-            is InvokeAgentRequest,
-            is EnqueueAgentInvocationRequest,
+            is SubmitMessageRequest,
             is CancelQueuedMessageRequest,
             is ControlConversationRuntimeRequest,
             is CancelCommandTaskRequest,
@@ -496,7 +493,6 @@ private fun ClientRequest.conversationId(): Conversation.Id = when (this) {
     is UpdateConversationParticipantsRequest -> conversationId
     is UpdateConversationAutoRespondersRequest -> conversationId
     is ForkConversationRequest -> conversationId
-    is LoadCurrentMessagesRequest -> conversationId
     is RegenerateSuggestedRepliesRequest -> conversationId
     is GetTokenStatsRequest -> conversationId
     is EditMessageRequest -> conversationId
@@ -504,9 +500,7 @@ private fun ClientRequest.conversationId(): Conversation.Id = when (this) {
     is CompactMessagesRequest -> conversationId
     is MemoryActionRequest -> conversationId
     is GetMemoryActionItemsRequest -> conversationId
-    is PostMessageRequest -> conversationId
-    is InvokeAgentRequest -> conversationId
-    is EnqueueAgentInvocationRequest -> conversationId
+    is SubmitMessageRequest -> conversationId
     is CancelQueuedMessageRequest -> conversationId
     is ControlConversationRuntimeRequest -> conversationId
     is CancelCommandTaskRequest -> conversationId

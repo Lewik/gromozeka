@@ -60,6 +60,34 @@ class OpenAiSubscriptionResponseEventCollectorTest {
     }
 
     @Test
+    fun reportsReasoningRemovalWithoutRetainingProviderPayloadOrUnsafeReasons() {
+        collector.accept(
+            """
+            {
+              "type": "response.completed",
+              "response": {
+                "id": "resp_transformed",
+                "status": "completed",
+                "output": [],
+                "input_transformations": [
+                  {"id":"secret-reasoning-id","action":"removed","type":"reasoning","reason":"prefix_mismatch"},
+                  {"action":"removed","type":"reasoning","reason":"unsafe reason with private text"},
+                  {"action":"retained","type":"reasoning","reason":"unchanged"}
+                ]
+              }
+            }
+            """.trimIndent()
+        )
+
+        val transformations = collector.toParsedResponse().completed!!.inputTransformations
+        assertEquals(3, transformations.size)
+        val summary = transformations.removedReasoningLogSummary()
+        assertEquals("count=2 reasons=prefix_mismatch:1,unknown:1", summary)
+        assertFalse(summary.orEmpty().contains("secret-reasoning-id"))
+        assertFalse(summary.orEmpty().contains("private text"))
+    }
+
+    @Test
     fun recoversToolCallFromFinalOutputAfterReasoningOnlyStream() {
         acceptItem(reasoning)
         acceptFinal(listOf(reasoning, toolCall))

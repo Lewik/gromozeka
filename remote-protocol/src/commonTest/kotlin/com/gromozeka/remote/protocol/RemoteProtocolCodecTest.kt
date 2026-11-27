@@ -29,6 +29,7 @@ import com.gromozeka.domain.model.mcp.McpServerSnapshot
 import com.gromozeka.domain.model.mcp.McpServerTransport
 import com.gromozeka.domain.model.mcp.McpToolNamespace
 import com.gromozeka.domain.model.mcp.McpToolSnapshot
+import com.gromozeka.domain.model.MessageDelivery
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.ActiveGenerationSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeTask
@@ -37,7 +38,6 @@ import com.gromozeka.domain.service.ConversationHistoryMutationKind
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import com.gromozeka.domain.service.CommandTask
-import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.domain.service.WorkerCatalogEntry
 import com.gromozeka.domain.service.WorkerEnvironmentProfile
 import com.gromozeka.domain.service.WorkerNativeShell
@@ -665,30 +665,31 @@ class RemoteProtocolCodecTest {
     fun cborRoundTripSupportsConversationMessageJsonFields() {
         val envelope = GromozekaServerEnvelope(
             id = "response-1",
-            payload = MessagesResponse(
-                messages = listOf(
-                    Conversation.Message(
-                        id = Conversation.Message.Id("message-1"),
-                        conversationId = Conversation.Id("conversation-1"),
-                        role = Conversation.Message.Role.ASSISTANT,
-                        content = listOf(
-                            Conversation.Message.ContentItem.ToolCall(
-                                id = Conversation.Message.ContentItem.ToolCall.Id("tool-1"),
-                                call = Conversation.Message.ContentItem.ToolCall.Data(
-                                    name = "debug_tool",
-                                    input = JsonObject(mapOf("query" to JsonPrimitive("toyota")))
-                                )
+            payload = MessageUpsertedEvent(
+                subscriptionId = "subscription-1",
+                conversationId = Conversation.Id("conversation-1"),
+                taskId = null,
+                message = Conversation.Message(
+                    id = Conversation.Message.Id("message-1"),
+                    conversationId = Conversation.Id("conversation-1"),
+                    role = Conversation.Message.Role.ASSISTANT,
+                    content = listOf(
+                        Conversation.Message.ContentItem.ToolCall(
+                            id = Conversation.Message.ContentItem.ToolCall.Id("tool-1"),
+                            call = Conversation.Message.ContentItem.ToolCall.Data(
+                                name = "debug_tool",
+                                input = JsonObject(mapOf("query" to JsonPrimitive("toyota")))
                             )
-                        ),
-                        providerMetadata = JsonObject(mapOf("provider" to JsonPrimitive("test"))),
-                        createdAt = Instant.parse("2026-05-11T00:00:00Z"),
-                    )
-                )
+                        )
+                    ),
+                    providerMetadata = JsonObject(mapOf("provider" to JsonPrimitive("test"))),
+                    createdAt = Instant.parse("2026-05-11T00:00:00Z"),
+                ),
             )
         )
 
         val decoded = RemoteProtocolCodec.decodeServerBinary(RemoteProtocolCodec.encodeServerBinary(envelope))
-        val message = ((decoded.payload as MessagesResponse).messages.single())
+        val message = (decoded.payload as MessageUpsertedEvent).message
         val toolCall = message.content.single() as Conversation.Message.ContentItem.ToolCall
 
         assertEquals(JsonPrimitive("test"), message.providerMetadata["provider"])
@@ -696,7 +697,7 @@ class RemoteProtocolCodecTest {
     }
 
     @Test
-    fun cborRoundTripSupportsQueuedAgentInvocationRequests() {
+    fun cborRoundTripSupportsSteeredMessageRequests() {
         val userMessage = Conversation.Message(
             id = Conversation.Message.Id("message-queued-1"),
             conversationId = Conversation.Id("conversation-queued-1"),
@@ -706,22 +707,22 @@ class RemoteProtocolCodecTest {
         )
         val agentDefinitionId = AgentDefinition.Id("agent-queued-1")
 
-        val enqueueEnvelope = GromozekaClientEnvelope(
-            id = "enqueue-1",
-            payload = EnqueueAgentInvocationRequest(
+        val submitEnvelope = GromozekaClientEnvelope(
+            id = "submit-1",
+            payload = SubmitMessageRequest(
                 conversationId = Conversation.Id("conversation-queued-1"),
-                userMessage = userMessage,
+                message = userMessage,
                 agentDefinitionId = agentDefinitionId,
-                placement = QueuedMessagePlacement.AFTER_TOOL_RESULT,
+                delivery = MessageDelivery.STEER,
             )
         )
-        val decodedEnqueue = RemoteProtocolCodec.decodeClientBinary(
-            RemoteProtocolCodec.encodeClientBinary(enqueueEnvelope)
-        ).payload as EnqueueAgentInvocationRequest
+        val decodedSubmit = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(submitEnvelope)
+        ).payload as SubmitMessageRequest
 
-        assertEquals(QueuedMessagePlacement.AFTER_TOOL_RESULT, decodedEnqueue.placement)
-        assertEquals("message-queued-1", decodedEnqueue.userMessage.id.value)
-        assertEquals(agentDefinitionId, decodedEnqueue.agentDefinitionId)
+        assertEquals(MessageDelivery.STEER, decodedSubmit.delivery)
+        assertEquals("message-queued-1", decodedSubmit.message.id.value)
+        assertEquals(agentDefinitionId, decodedSubmit.agentDefinitionId)
 
         val cancelEnvelope = GromozekaClientEnvelope(
             id = "cancel-queued-1",
@@ -786,7 +787,7 @@ class RemoteProtocolCodecTest {
     }
 
     @Test
-    fun cborRoundTripSupportsMessagePostAgentInvocationAndObservation() {
+    fun cborRoundTripSupportsMessageSubmissionAndObservation() {
         val userMessage = Conversation.Message(
             id = Conversation.Message.Id("message-submit-1"),
             conversationId = Conversation.Id("conversation-submit-1"),
@@ -807,34 +808,59 @@ class RemoteProtocolCodecTest {
 
         val postEnvelope = GromozekaClientEnvelope(
             id = "post-1",
-            payload = PostMessageRequest(
+            payload = SubmitMessageRequest(
                 conversationId = Conversation.Id("conversation-submit-1"),
-                userMessage = userMessage,
+                message = userMessage,
+                agentDefinitionId = null,
+                delivery = MessageDelivery.QUEUE,
             )
         )
         val decodedPost = RemoteProtocolCodec.decodeClientBinary(
             RemoteProtocolCodec.encodeClientBinary(postEnvelope)
-        ).payload as PostMessageRequest
+        ).payload as SubmitMessageRequest
 
         assertEquals("conversation-submit-1", decodedPost.conversationId.value)
-        assertEquals(userMessage, decodedPost.userMessage)
+        assertEquals(userMessage, decodedPost.message)
+        assertEquals(null, decodedPost.agentDefinitionId)
+        assertEquals(MessageDelivery.QUEUE, decodedPost.delivery)
 
         val submitEnvelope = GromozekaClientEnvelope(
             id = "submit-1",
-            payload = InvokeAgentRequest(
+            payload = SubmitMessageRequest(
                 conversationId = Conversation.Id("conversation-submit-1"),
-                userMessage = userMessage,
+                message = userMessage,
                 agentDefinitionId = agentDefinitionId,
+                delivery = MessageDelivery.STEER,
             )
         )
         val decodedSubmit = RemoteProtocolCodec.decodeClientBinary(
             RemoteProtocolCodec.encodeClientBinary(submitEnvelope)
-        ).payload as InvokeAgentRequest
+        ).payload as SubmitMessageRequest
 
         assertEquals("conversation-submit-1", decodedSubmit.conversationId.value)
-        assertEquals("message-submit-1", decodedSubmit.userMessage.id.value)
-        assertEquals(userMessage.author, decodedSubmit.userMessage.author)
+        assertEquals("message-submit-1", decodedSubmit.message.id.value)
+        assertEquals(userMessage.author, decodedSubmit.message.author)
         assertEquals(agentDefinitionId, decodedSubmit.agentDefinitionId)
+        assertEquals(MessageDelivery.STEER, decodedSubmit.delivery)
+
+        val runtimeMessage = userMessage.copy(
+            id = Conversation.Message.Id("runtime-submit-1"),
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(
+                JsonObject(mapOf("kind" to JsonPrimitive("panel_state"))),
+            )),
+        )
+        val decodedRuntime = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(GromozekaClientEnvelope(
+                "runtime-submit-1",
+                SubmitMessageRequest(userMessage.conversationId, runtimeMessage, agentDefinitionId, MessageDelivery.QUEUE),
+            ))
+        ).payload as SubmitMessageRequest
+
+        assertEquals(runtimeMessage, decodedRuntime.message)
+        assertEquals(agentDefinitionId, decodedRuntime.agentDefinitionId)
+        assertEquals(MessageDelivery.QUEUE, decodedRuntime.delivery)
 
         val observeEnvelope = GromozekaClientEnvelope(
             id = "observe-1",

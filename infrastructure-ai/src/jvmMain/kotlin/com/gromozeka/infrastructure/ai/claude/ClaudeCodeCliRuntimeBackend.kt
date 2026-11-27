@@ -125,7 +125,13 @@ internal class ClaudeCodeCliRuntime(
 
     override suspend fun inspectContext(request: AiRuntimeRequest, allowProviderCount: Boolean): AiContextInspection {
         val key = sessionStateKey(request)
-        val projected = request.copy(messages = ConversationContext(request.messages).messagesForProvider(AiConnection.Kind.CLAUDE_CODE.name))
+        val projected = request.copy(messages = ConversationContext(request.messages)
+            .messagesForProvider(Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(
+                provider = AiConnection.Kind.CLAUDE_CODE.name,
+                connectionId = connectionId,
+                modelConfigurationId = modelConfigurationId,
+                modelName = modelName,
+            )))
         if (key == null) return AiContextInspection(AiRequestTokenEstimate.input(projected), AiContextInspection.Precision.ESTIMATE)
         return sessionLocks.computeIfAbsent(key.lockKey()) { Mutex() }.withLock {
             val plan = planSession(key, request.messages)
@@ -546,7 +552,8 @@ internal class ClaudeCodeCliRuntime(
             )
         }
 
-        val deltaMessages = messages.drop(generatedTailOffset + generatedTailSize)
+        val deltaOffset = generatedTailOffset + generatedTailSize
+        val deltaMessages = messages.drop(deltaOffset)
         return if (deltaMessages.isEmpty()) {
             ClaudeCodeSessionPlan(
                 messagesToSend = messages,
@@ -636,7 +643,12 @@ internal class ClaudeCodeCliRuntime(
         }
         val attachments = ClaudeCodeAttachmentCollector()
         val replayMessages = ConversationContext(plan.messagesToSend)
-            .messagesForProvider(AiConnection.Kind.CLAUDE_CODE.name)
+            .messagesForProvider(Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(
+                provider = AiConnection.Kind.CLAUDE_CODE.name,
+                connectionId = connectionId,
+                modelConfigurationId = modelConfigurationId,
+                modelName = modelName,
+            ))
         val prompt = listOf(
             "$header\n\n${messagesToTranscript(replayMessages, attachments)}",
             contract?.reminder(),
@@ -698,7 +710,7 @@ internal class ClaudeCodeCliRuntime(
                         else Conversation.Message.ContentItem.ContextCompactionResult.Origin.PROVIDER_AUTO,
                         strategy = Conversation.Message.ContentItem.ContextCompactionResult.Strategy.PROVIDER_MANAGED,
                         coverage = Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS,
-                        sourceMessageIds = request.messages.map { it.id },
+                        sourceBoundaryMessageId = request.messages.last().id,
                         providerScope = Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(
                             provider = AiConnection.Kind.CLAUDE_CODE.name,
                             connectionId = connectionId,
@@ -777,7 +789,7 @@ internal class ClaudeCodeCliRuntime(
         messages.joinToString("\n\n") { message ->
             buildString {
                 append("<message role=\"")
-                append(message.role.name.lowercase())
+                append(message.providerTranscriptRole())
                 append("\" id=\"")
                 append(xmlEscape(message.id.value))
                 append("\">\n")
@@ -826,6 +838,7 @@ internal class ClaudeCodeCliRuntime(
             is Conversation.Message.ContentItem.ArtifactItem ->
                 error("Claude Code received an unmaterialized artifact: ${item.artifact.id.value}")
             is Conversation.Message.ContentItem.ContextCompactionResult -> compactionResultToTranscript(item, attachments)
+            is Conversation.Message.ContentItem.RuntimeJson -> xmlBlock("runtime_json", item.json.toString())
             is Conversation.Message.ContentItem.UnknownJson -> xmlBlock("json", item.json.toString())
         }
 
@@ -906,11 +919,21 @@ internal class ClaudeCodeCliRuntime(
 
     private fun messageSignature(message: Conversation.Message): String =
         buildString {
-            append(message.role.name)
+            append(message.providerTranscriptRole().uppercase())
             append('\u001F')
             append(message.instructions.joinToString("\u001D") { it.toXmlLine() })
             append('\u001F')
             append(message.content.joinToString("\u001D", transform = ::contentSignature))
+        }
+
+    private fun Conversation.Message.providerTranscriptRole(): String =
+        when (role) {
+            Conversation.Message.Role.USER,
+            Conversation.Message.Role.RUNTIME,
+            -> "user"
+
+            Conversation.Message.Role.ASSISTANT -> "assistant"
+            Conversation.Message.Role.SYSTEM -> "system"
         }
 
     private fun assistantMessageSignature(message: AiAssistantMessage): String =
@@ -938,6 +961,7 @@ internal class ClaudeCodeCliRuntime(
             is Conversation.Message.ContentItem.DocumentItem -> "document:${documentSourceSignature(item.source)}"
             is Conversation.Message.ContentItem.ArtifactItem -> "artifact:${item.artifact}"
             is Conversation.Message.ContentItem.ContextCompactionResult -> "compaction:${compactionSignature(item)}"
+            is Conversation.Message.ContentItem.RuntimeJson -> "runtime_json:${item.json}"
             is Conversation.Message.ContentItem.UnknownJson -> "json:${item.json}"
         }
 

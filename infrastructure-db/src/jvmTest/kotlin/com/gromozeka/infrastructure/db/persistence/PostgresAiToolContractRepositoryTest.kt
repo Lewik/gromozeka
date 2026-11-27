@@ -13,11 +13,17 @@ import com.gromozeka.domain.tool.PreloadedWorkspaceToolMetadata
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.filesystem.ExecuteCommandRequest
 import com.gromozeka.domain.tool.filesystem.GrzExecuteCommandTool
+import com.gromozeka.infrastructure.db.config.RepositoryConfiguration
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.put
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.postgresql.ds.PGSimpleDataSource
 import java.util.UUID
@@ -25,6 +31,7 @@ import javax.sql.DataSource
 import org.junit.Assume.assumeTrue
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
 
 class PostgresAiToolContractRepositoryTest {
@@ -109,6 +116,105 @@ class PostgresAiToolContractRepositoryTest {
                 connection.createStatement().use { statement ->
                     statement.execute("DROP SCHEMA $schema CASCADE")
                 }
+            }
+        }
+    }
+
+    @Test
+    fun `removed reveal-secret contracts are deleted before registry decoding`() = runBlocking<Unit> {
+        assumeTrue(System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") == "true")
+
+        val schema = "ai_tool_contract_test_${UUID.randomUUID().toString().replace("-", "")}"
+        val admin = dataSource()
+        admin.connection.use { connection ->
+            connection.createStatement().use { it.execute("CREATE SCHEMA $schema") }
+        }
+        try {
+            val source = dataSource(schema)
+            applyMigration(source)
+            Database.connect(source)
+            val json = RepositoryConfiguration().repositoryJson()
+            val repository = ExposedAiToolContractRepository(json)
+
+            val legacyFingerprint = "839e9bc411b22bfc98104a83c7de9203a44f49ccfd8f048207348c5fa9a78374"
+            val revealDescriptor = AiToolDescriptor(
+                definition = AiToolDefinition(
+                    name = "grz_reveal_secret",
+                    description = "Reveal one named secret to the model for the next model request only. " +
+                        "Ask the user for explicit confirmation immediately before calling this tool. " +
+                        "Never call it merely to pass a secret to another tool; use secret:// references for that.",
+                    inputSchema = """
+                        {
+                          "type":"object",
+                          "additionalProperties":false,
+                          "properties":{
+                            "name":{"type":"string","description":"Named secret name or exact secret:// reference."},
+                            "user_confirmed":{"type":"boolean","description":"True only after the user explicitly confirmed revealing this secret to the model."},
+                            "_grz":{
+                              "type":"object",
+                              "additionalProperties":false,
+                              "description":"Gromozeka invocation context. Authenticated identity is supplied by the transport, never by arguments.",
+                              "properties":{
+                                "async":{
+                                  "type":"boolean",
+                                  "default":false,
+                                  "description":"Cannot be detached: Secret revelation is bound to the immediate next model request."
+                                }
+                              }
+                            }
+                          },
+                          "required":["name","user_confirmed"]
+                        }
+                    """.trimIndent(),
+                ),
+                metadata = AiToolMetadata(
+                    executionScope = AiToolExecutionScope.SERVER,
+                    loadingPolicy = AiToolLoadingPolicy.PRELOAD_WHEN_AVAILABLE,
+                ).withContextRequirements(USER, CONVERSATION),
+            )
+            assertEquals(
+                "15e09f647af9810cc209e3cc3984956ba577e07b87bebf3f817b3584bffd41b0",
+                revealDescriptor.contractFingerprint(),
+            )
+            val survivor = repository.resolveAll(listOf(revealDescriptor.copy(
+                definition = revealDescriptor.definition.copy(
+                    source = "custom",
+                    description = "Unrelated custom contract using the same logical name.",
+                ),
+            ))).single()
+            val encodedDescriptor = json.encodeToJsonElement(AiToolDescriptor.serializer(), revealDescriptor).jsonObject
+            val legacyMetadata = JsonObject(
+                encodedDescriptor.getValue("metadata").jsonObject +
+                    ("inlineOnlyReason" to JsonPrimitive(
+                        "Secret revelation is bound to the immediate next model request."
+                    ))
+            )
+            val legacyPayload = buildJsonObject {
+                put("fingerprint", legacyFingerprint)
+                put("logicalName", "grz_reveal_secret")
+                put("modelName", "grz_reveal_secret__v2")
+                put("variant", 2)
+                put("descriptor", JsonObject(encodedDescriptor + ("metadata" to legacyMetadata)))
+                put("createdAt", "2026-11-19T09:28:27.110522093Z")
+            }.toString()
+            source.connection.use { connection ->
+                connection.prepareStatement(
+                    "INSERT INTO ai_tool_contracts " +
+                        "(fingerprint, logical_name, model_name, variant, source_id, payload_json, created_at) " +
+                        "VALUES (?, 'grz_reveal_secret', 'grz_reveal_secret__v2', 2, 'gromozeka', ?, CURRENT_TIMESTAMP)"
+                ).use { statement ->
+                    statement.setString(1, legacyFingerprint)
+                    statement.setString(2, legacyPayload)
+                    assertEquals(1, statement.executeUpdate())
+                }
+            }
+
+            assertFailsWith<IllegalArgumentException> { repository.findAll() }
+            applyMigration(source, "V94__remove_reveal_secret_contracts.sql")
+            assertEquals(listOf(survivor), ExposedAiToolContractRepository(json).findAll())
+        } finally {
+            admin.connection.use { connection ->
+                connection.createStatement().use { it.execute("DROP SCHEMA $schema CASCADE") }
             }
         }
     }

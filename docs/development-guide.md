@@ -346,7 +346,7 @@ so transcripts arriving out of order retain their original destinations.
 ## Personal Message Delivery
 
 The authenticated User owns one delivery preference across conversations and clients:
-`STEER` (default when unset) or `AFTER_CURRENT_TURN`. It is stored separately in
+`STEER` (default when unset) or `QUEUE`. It is stored separately in
 `user_message_delivery_preferences`, not in the legacy Server-wide `UserProfile`.
 Get/set requests have no client-supplied user ID; StateSync invalidations use the
 same authenticated user's scope. The setting applies only to newly submitted
@@ -465,13 +465,15 @@ The existing `grz_user_profile_get` and `grz_user_profile_update` tools expose t
 settings; updates still replace the complete shared profile, not a partial patch.
 
 `contextMode` selects `RECENT_MESSAGES` (the last ten nonblank readable messages,
-up to 4000 characters each) or `FULL_THREAD` (all readable user/assistant content
-in the current thread, without those limits). Initial full-thread generation loads
-actual thread history rather than the main model's compacted context projection,
-and includes the newly generated answer. Manual regeneration ends at the selected
-source answer. Full-thread mode does not silently shorten history to fit the model;
-provider context limits and the existing generation-failure behavior still apply.
-It does not change provider caching settings or guarantee a cache hit.
+up to 4000 characters each) or `FULL_THREAD`. Despite the user-facing name,
+`FULL_THREAD` uses the same provider-aware compacted history window as an ordinary
+turn: the latest effective checkpoint plus its current tail, not every archived
+message body. Text and stored tool previews retain their normal message structure,
+while media is replaced with bounded textual placeholders before any artifact bytes
+are read so an independently configured text-only suggestions runtime remains usable.
+The suggestion instruction is appended as one request message. Initial generation
+includes the newly generated answer; manual regeneration ends at the selected source
+answer.
 
 The Settings editor keeps both instructions adjacent and offers the context choice
 for separate calls. Blank local drafts show validation and are not persisted.
@@ -631,36 +633,51 @@ including provider metadata and current author projection, not the bounded UI
 preview. Append membership checks use the thread-message repository, and append
 positions use a database `MAX` aggregate.
 
-Normal API-backed agent turns also select message bodies before loading the archive.
-V81 adds generated, compact context metadata to each canonical message, backfilling
-existing rows once. A repeatable-read transaction loads ordered headers and checkpoints,
-uses the shared coverage/recovery index, then reads only selected bodies in bounded
-batches. Checkpoints and a small set of covered anchors preserve transitive coverage,
-provider replay invalidation, sticky winners, exact human-message time intervals,
-one-use secret placement and OpenAI context-usage observations. The final provider
-projection is unchanged; there is no last-N cutoff or mutable transcript cache.
+Conversation history is an unbounded archive, while one normal model/compaction read is
+a bounded effective window. A repeatable-read transaction starts at the latest full
+checkpoint at or before its captured end (inclusive), or at position zero when no full
+checkpoint exists. It loads compact ordered headers for that window, applies selective
+coverage, and hydrates only selected bodies in bounded batches. Raw archive traversal is
+available only as ordered pages; point reads handle exact messages. There is no public
+thread-message repository operation that materializes every message body or link at once.
 
-Native CLI sessions (Claude Code and Copilot), external-channel filtering, timeline
-reads, explicit history mutations and isolated snapshot assembly retain their existing
-raw-history contracts. They are not silently redirected to the sparse read. Switching
-away from an opaque checkpoint's owner can legitimately require the original archive;
-missing recovery sources remain an explicit error.
+V81 introduced generated context metadata. V99 adds full-checkpoint continuation state:
+the latest candidate for every user-instruction ID and the exact preceding human-message
+timestamp. New full checkpoints capture that state; the migration reconstructs it in
+pages and rewrites compact headers. Sticky-instruction and temporal enrichment can
+therefore begin at the checkpoint without reopening older windows.
+
+API and native-CLI turns, external-channel generation, isolated snapshots, proactive and
+blocking compaction all use the same effective-window boundary. Explicit edit/delete
+operations read active headers plus requested bodies and copy unchanged branch rows in
+SQL. Fork is the intentional archive-wide operation, but traverses bodies in pages and
+keeps only ID/artifact remapping metadata between pages.
+
+An opaque checkpoint is replayed only when every recorded provider-scope component is
+compatible; new checkpoints record provider, connection, model configuration and model.
+Otherwise its provider-only payload is skipped rather than recovering an older archive
+window; portable tail messages remain, and an incompatible provider-managed tool
+call/result pair is removed atomically. A future model-compatibility policy may improve
+degraded cross-model context, but ordinary turns must remain bounded.
 
 PostgreSQL can reject escaped Unicode such as NUL while inspecting otherwise valid
-stored JSON. V81 represents only this `22P05` case as absent derived metadata; the
-reader derives exact metadata from that individual body using the existing Kotlin
-serializer. It never substitutes guessed metadata, rewrites payload strings or suppresses
-other SQL/JSON failures. Derived metadata cannot be edited independently of its message.
+stored JSON. V81 represents only this `22P05` case as absent derived metadata; readers
+derive exact metadata from that individual body using the existing Kotlin serializer.
+Mode resolution normally uses body-free instruction and author metadata, while only
+these exceptional rows are hydrated; agent-authored instructions cannot override the
+user's mode. The fallback never substitutes guessed metadata, rewrites payload strings
+or suppresses other SQL/JSON failures. Derived metadata cannot be edited independently
+of its message.
 
 `PostgresRuntimeMessageReadTest` checks thread isolation, bounded rows/body reads,
 full-message preservation and SQL aggregation against disposable PostgreSQL. Its
 normal long-history fixture contains 256 messages including a compaction result.
 For local measurements, `GROMOZEKA_HISTORY_BENCHMARK=true` expands it to 25,720
 synthetic messages (roughly 250 MiB of JSON); give `:infrastructure-db:jvmTest` a
-2 GiB heap via a local Gradle init script. It compares full-history and point reads
-on the same data, including full versus sparse context preparation, prints warmed
-median timings and asserts read counts rather than machine-dependent timing thresholds. It does not call a model or measure deployed
-turn latency.
+2 GiB heap via a local Gradle init script. Test-only code may assemble the raw archive
+from pages for comparison with point and effective-window reads. It prints warmed median
+timings and asserts read counts rather than machine-dependent timing thresholds. It does
+not call a model or measure deployed turn latency.
 
 Run the storage and migration checks against the checkout's PostgreSQL slot:
 
@@ -1030,8 +1047,9 @@ the owner Conversation row. This is **not** a new all-or-nothing guarantee for t
 rest of the pre-existing fork/history/artifact-file pipeline.
 
 Fork keeps independent message and artifact identities, including archived compaction
-sources. Message inserts, artifact metadata cloning, artifact commitment and thread links
-use bounded database batches rather than one transaction per item. Managed files are
+sources. It allocates the ID map in a first paged pass and copies message bodies in a
+second paged pass; message inserts, artifact metadata cloning, artifact commitment and
+thread links use bounded database batches rather than one transaction per item. Managed files are
 copied byte-for-byte to new files; the existing digest and searchable text are reused,
 without sharing file ownership or downloading external artifacts. Copy failure or cancellation
 cleans up the attempt's drafts; committed artifacts are never removed as speculative cleanup.
@@ -1128,7 +1146,7 @@ during assembly are not a globally atomic distributed snapshot.
 
 The invoker makes one application-level model call, with a temporary question at
 the end, no tools or native capabilities, no automatic compaction and no model or
-Worker fallback. Pending one-use secret reveals are not consumed. Claude native
+Worker fallback. Claude native
 cache/resume/session persistence are disabled; OpenAI Subscription transport
 state uses an independent namespace. Copilot is initially unsupported for this
 strict zero-tool contract. A Worker target must advertise
@@ -1270,39 +1288,32 @@ and client reload clears them. Neither snapshots, handler input, `get`, reminder
 nor dismissal acknowledgements carry highlight state. Dirty-form dots remain
 separate noninteractive indicators.
 
-`include_state_in_context` is an optional boolean on `grz_visual create/update`.
-It defaults to true on create; omission on update preserves the saved setting.
-It can be changed alone, without replacing the document, state or handler, and
-without resetting client drafts. Compact receipts and list summaries return
-`include_state_in_context`; the full `get.visual` exposes `includeStateInContext`.
-The persisted/read model requires this field explicitly. V88 fills missing fields
-on existing panels with true and enforces a boolean storage constraint. There is
-no reader fallback for old records; the default belongs only to new-panel creation.
+Automatic Visual and command-state injection is disabled. The core conversation
+engine does not read Visual storage, synthesize inventories, compare revisions, or
+append unchanged/baseline markers before a model call. `include_state_in_context`
+remains in the persisted Visual record for the later Runtime-based panel design,
+but currently has no effect on model context. Button submissions still carry their
+typed full snapshot, and `grz_visual get` remains the explicit way to inspect saved
+document/state.
 
-Before each conversation LLM request, `VisualRequestEnricher` adds saved
-`form + data` observations only for Visuals with this setting enabled. Disabled
-Visuals remain in the inventory as `state-status=disabled`, with metadata but no
-state or snapshot ID; they are not reported as closed. Opting out also discards
-cached snapshot replay, so earlier automatic state is not re-injected. Other
-Visuals receive fresh full baselines where needed, and reenabling a Visual can
-resume normal state snapshots. This is not a privacy/permission boundary: it does
-not erase previously delivered model context or chat history. Explicit `get` and
-button submissions still carry full state, and handler output cannot change the
-setting through `form/data` updates.
+`RUNTIME` is a generic Harness-authored protocol role, not a Visual-specific
+encoding. Runtime messages are persisted, selected, compacted, replayed to clients,
+and projected into provider requests through the same ordinary history path as
+user-side content. Provider adapters serialize their content as user-side model
+input. The engine has no keyed Runtime revisions, replay boundary, generation
+pruning, compact shell, or Runtime-specific sparse-body read. Ordinary history
+preview limits still apply at the UI boundary. Runtime messages do not mark a
+conversation unread and are excluded from user-authored memory claims.
 
-Updates coalesce between requests and do not trigger model work. Full snapshots are sent when state changes;
-short unchanged markers refer to full snapshots reconstructed earlier in the same
-request. Canonical JSON hashing ignores object-key order and transport revisions.
-The request-only replay cache is bounded and isolated by conversation, thread,
-agent, actor and model. It anchors observations to retained USER/tool-result
-messages without changing persisted history or introducing synthetic message IDs.
-Compacted, truncated or edited anchors invalidate dependent short markers. Cache
-loss, branch changes and Server restarts safely produce fresh full snapshots.
-Assistant-only continuations get a full live block instead of modifying signed
-assistant content. Channel history filtering precedes this late enrichment.
-JSON values are untrusted data and XML delimiters are escaped; neither reminders
-nor client drafts implicitly submit forms. `get` remains useful for autonomous
-fresh reads, markup and diagnostics.
+Runtime JSON is trusted Harness input and may intentionally contain instructions
+or permissions; its authority comes from Runtime authorship, not from treating the
+JSON as inert text. Authenticated submission selects Runtime explicitly through
+the message role; the Server normalizes its author to `Author.Runtime` while
+retaining the authenticated user as the runtime-task actor. A future panel
+implementation should publish state through normal Runtime messages rather than
+adding Visual knowledge back to the engine. V95 only adds generic body-free context
+metadata needed by the existing sparse history selection; it does not backfill
+Runtime messages.
 
 `create` requires both complete state sections, `form` and `data`. `update.state`
 contains one or both complete sections: omitted roots remain unchanged, supplied
@@ -1312,7 +1323,7 @@ bindings permit; an empty `update.state` object is rejected. The same rules
 apply to handler output. The resulting full state is validated atomically before
 publication. Send `document` only for structural/control/schema changes, not for
 ordinary content updates. Model-facing create/update results contain compact
-acknowledgements (ID, revisions, status, context setting, handler task and diagnostics), never HTML
+acknowledgements (ID, revisions, status, handler task and diagnostics), never HTML
 or state. Only `get` returns the full document and saved state; `list` is compact.
 Schema or rendering errors leave the last valid state intact. Runtime diagnostics
 are shown in host-owned panel chrome outside the document and are available via
@@ -1700,28 +1711,19 @@ Kotlin/Flyway migration, not a runtime compatibility path.
 Worker Gateway protocol **33** requires the updated Server, Workers and clients;
 drain in-flight calls before the coordinated upgrade.
 
-Model requests also receive a request-only `recorded_running_commands` inventory
-from the Server's saved command state. Each entry contains only `task_id` and an
-optional nonblank `description`, limited to 160 Unicode code points. Missing
-labels never fall back to the shell command. Only recorded `WORKING` commands in
-the authorized conversation are included; an empty list replaces a previous list.
-This is not a Worker liveness check, does not enumerate detached external services,
-and does not request action or status polling. It does not wake the model, append
-history, or acknowledge automatic completion delivery.
-
-The shared system-prompt assembler supplies the static interpretation contract.
-Dynamic blocks contain only JSON in `<runtime-command-context>`. Observations use
-the distinct request-only `Instruction.RuntimeObservation` type, not user text;
-semantic consumers such as pending WebSearch and recent human-input selection do
-not mistake them for a new human turn. Authenticated submissions reject this type.
-Bounded replay keeps observations on retained canonical USER anchors without
-synthetic message IDs. Branch, actor, Agent and provider/model changes isolate
-replay. Native continuations ending in signed assistant state, and changed views
-on an already-sent USER anchor, receive the current block in system instructions
-without rewriting that anchor; the current block takes precedence over older
-observations. Isolated snapshots never seed or mutate the live observation cache.
-Worker Gateway protocol **32** carries the new instruction variant; update Server
-and Workers together.
+Model requests do not receive an automatically synthesized inventory of running
+commands. Command/monitor completion still uses its typed synthetic messages and
+normal continuation scheduling. `Instruction.RuntimeObservation` remains a small
+assistant-message annotation for existing synthetic async-completion provenance;
+it has no key, revision, removal marker, or history-boundary behavior, and
+authenticated user submissions cannot forge it. Worker Gateway protocol **37** is
+the coordinated Server/Worker contract for the current proactive-compaction and
+runtime task payloads. Its upgrade is a clean cutover: stop accepting new inputs,
+wait until there is no active, continuation, insertion or queued runtime work and
+no proactive compaction is running, then stop the Server and all Workers and update
+them together. Stopping processes does not drain durable queued work. Protocol 36
+Workers are rejected during the handshake. Migration V101 also fails closed if an
+executable legacy history mutation remains despite this precondition.
 
 Managed shell commands accept an optional `description`: a short user-facing
 purpose in the user's language, preferably **at most 50 characters including
@@ -1776,8 +1778,9 @@ The consumer must read its environment directly (for example `gh` reads
 variable into a child program's arguments still exposes the value in process
 listings and audit/EDR logs. Environment injection is not isolation from code
 that can read the environment, and does not redact command output. Do not print
-credentials or enable shell tracing. Explicit secret revelation remains a
-separate, confirmed, one-request operation.
+credentials or enable shell tracing. Models receive only `secret://` references;
+plaintext values are resolved at tool execution and are not exposed through a
+model-facing reveal tool.
 
 ## CI and Release Workflow
 
@@ -1886,17 +1889,21 @@ Live assistant-progress checks are opt-in. Claude Code uses its existing CLI log
 GROMOZEKA_CLAUDE_CODE_REAL=true GROMOZEKA_CLAUDE_CODE_MODEL=haiku ./gradlew :infrastructure-ai:jvmTest --tests '*ClaudeCodeCliRuntimeTest.realClaudeCodeReturnsWrapperToolCallWhenEnabled' --rerun -q
 ```
 
-The subscription check covers a remark, an external tool result, a structured
-final answer, and history replay on a fresh connection. It reads an explicitly
-selected Codex auth file without refreshing or modifying credentials. Run it
-separately for `gpt-5.6-luna` and `gpt-6-astra`; both use low reasoning effort:
+The subscription checks cover a remark, an external tool result, a structured
+final answer, history replay on a fresh connection, and detached compaction
+committed ahead of a concurrently generated reasoning tail. They read an
+explicitly selected Codex auth file without refreshing or modifying credentials.
+Run them separately for the relevant GPT-5 and GPT-6 subscription models. The
+progress check uses low reasoning effort; the detached-compaction check uses the
+maximum supported effort so that it can assert exact encrypted-reasoning replay:
 
 ```bash
-GROMOZEKA_OPENAI_SUBSCRIPTION_REAL=true GROMOZEKA_OPENAI_SUBSCRIPTION_AUTH_FILE=/path/to/codex/auth.json GROMOZEKA_OPENAI_SUBSCRIPTION_MODEL=gpt-5.6-luna ./gradlew :infrastructure-ai:openai-subscription:jvmTest --tests '*OpenAiSubscriptionProgressRealTest' --rerun -q
+GROMOZEKA_OPENAI_SUBSCRIPTION_REAL=true GROMOZEKA_OPENAI_SUBSCRIPTION_AUTH_FILE=/path/to/codex/auth.json GROMOZEKA_OPENAI_SUBSCRIPTION_MODEL=gpt-5.6-sol ./gradlew :infrastructure-ai:openai-subscription:jvmTest --tests '*OpenAiSubscriptionProgressRealTest' --rerun -q
 ```
 
 This also checks automatic Lite compaction, persisted checkpoint replay on fresh
-connections, and retention of a random marker known only through a tool result.
+connections, retention of a random marker known only through a tool result, and
+the absence of provider-reported reasoning removal after the detached COW commit.
 
 Use `--rerun` to bypass the test task cache when changing live-test environment
 variables; it does not force recompilation of every dependency.

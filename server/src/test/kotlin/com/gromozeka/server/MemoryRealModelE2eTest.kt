@@ -17,6 +17,7 @@ import com.gromozeka.application.service.memory.NoOpMemoryEmbeddingIndexer
 import com.gromozeka.application.service.memory.forMemoryPipeline
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.MessageDelivery
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.toRuntimeContext
@@ -1478,10 +1479,11 @@ class MemoryRealModelE2eTest {
                 observerReady.await()
             }
             assertTrue(
-                conversationEngineService.invokeAgent(
+                conversationEngineService.submitMessage(
                     conversationId = conversation.id,
-                    userMessage = userMessage,
+                    message = userMessage,
                     agentDefinitionId = agent.id,
+                    delivery = MessageDelivery.QUEUE,
                 ),
                 "Runtime rejected submitted E2E message ${userMessage.id.value}",
             )

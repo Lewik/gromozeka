@@ -76,7 +76,11 @@ class ConversationHistoryReadService(
     }
 
     suspend fun message(conversationId: Conversation.Id, messageId: Conversation.Message.Id): Conversation.Message =
-        requireNotNull(findMessage(conversationId, messageId)) { "Message is not in the current conversation thread" }
+        ConversationMessageProjection.projectEvent(
+            requireNotNull(messages.clientMessage(currentThread(conversationId), messageId)) {
+                "Message is not in the current conversation thread"
+            }.message,
+        )
 
     /** Full persisted message, not the timeline projection; absent outside the current thread. */
     suspend fun findMessage(conversationId: Conversation.Id, messageId: Conversation.Message.Id): Conversation.Message? =

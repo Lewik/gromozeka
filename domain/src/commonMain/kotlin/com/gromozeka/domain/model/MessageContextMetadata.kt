@@ -11,6 +11,7 @@ data class MessageContextMetadata(
     val humanInput: Boolean,
     val userText: Boolean,
     val userInstructionIds: List<String>,
+    val agentAuthored: Boolean = false,
     val nativeUsage: JsonObject?,
 ) {
     companion object {
@@ -22,6 +23,7 @@ data class MessageContextMetadata(
                 message.instructions.none { it is Message.Instruction.Source.Agent },
             userText = message.role == Message.Role.USER && message.content.any { it is Message.ContentItem.UserMessage },
             userInstructionIds = message.instructions.filterIsInstance<Message.Instruction.UserInstruction>().map { it.id },
+            agentAuthored = message.author is Message.Author.Agent,
             nativeUsage = if (message.providerMetadata["provider"] == JsonPrimitive("OPENAI_SUBSCRIPTION")) buildJsonObject {
                 put("connectionId", message.providerMetadata["connectionId"] ?: JsonNull)
                 put("model", message.providerMetadata["model"] ?: JsonNull)
@@ -37,7 +39,7 @@ data class MessageContextHeader(val id: Message.Id, val metadata: MessageContext
 /**
  * A sufficient sparse raw history, not an already projected provider request.
  * Checkpoints retain coverage/replay provenance. Extra covered anchors preserve the existing
- * sticky-instruction, temporal-context and one-use secret placement before provider projection.
+ * sticky-instruction and temporal-context placement before provider projection.
  */
 fun selectModelHistoryMessageIds(
     headers: List<MessageContextHeader>,
@@ -53,7 +55,7 @@ fun selectModelHistoryMessageIds(
     val originalIndex = ConversationCompactionIndex(headers.map {
         CompactionNode(it.id, byId[it.id]?.originalCollaborationMessage()?.compactions().orEmpty().map(::CompactionCoverage))
     })
-    val required = originalIndex.requiredHistoryIds(nativeProvider).toMutableSet()
+    val required = originalIndex.requiredHistoryIds().toMutableSet()
     // Tool discovery projects the displayed history, while provider replay restores original content.
     rawIndex.project().mapTo(required) { it.id }
     required += checkpointIds

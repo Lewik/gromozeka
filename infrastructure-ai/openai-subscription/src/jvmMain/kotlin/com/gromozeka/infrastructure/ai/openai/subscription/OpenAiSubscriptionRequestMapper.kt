@@ -199,7 +199,9 @@ class OpenAiSubscriptionRequestMapper {
         replayReasoning: Boolean = false,
     ): List<JsonObject> {
         return when (message.role) {
-            Conversation.Message.Role.USER -> message.toUserInputItems()
+            Conversation.Message.Role.USER,
+            Conversation.Message.Role.RUNTIME,
+            -> message.toUserInputItems()
             Conversation.Message.Role.ASSISTANT -> message.toAssistantInputItems(replayCompactionOnly, replayReasoning)
             Conversation.Message.Role.SYSTEM -> message.toSystemInputItems()
         }

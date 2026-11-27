@@ -28,6 +28,7 @@ class PostgresConversationHistoryRepository(
                             SELECT m.created_at
                             FROM thread_messages tm JOIN messages m ON m.id = tm.message_id
                             WHERE tm.thread_id = t.id
+                              AND m.role <> 'RUNTIME'
                             ORDER BY tm.position DESC LIMIT 1
                         ) last_message ON TRUE
                         WHERE t.id = ANY (?)
@@ -54,9 +55,19 @@ class PostgresConversationHistoryRepository(
         require(before == null || after == null)
         val boundary = when { before != null -> "AND tm.position < ?"; after != null -> "AND tm.position > ?"; else -> "" }
         val direction = if (after != null) "ASC" else "DESC"
-        return query("$JOIN WHERE tm.thread_id = ? $boundary ORDER BY tm.position $direction LIMIT ?",
-            listOfNotNull(threadId.value, before ?: after, limit)).sortedBy { it.position }
+        return query(
+            "$JOIN WHERE tm.thread_id = ? $boundary ORDER BY tm.position $direction LIMIT ?",
+            listOfNotNull(threadId.value, before ?: after, limit),
+        ).sortedBy { it.position }
     }
+
+    override suspend fun clientMessage(
+        threadId: Conversation.Thread.Id,
+        messageId: Conversation.Message.Id,
+    ): PositionedConversationMessage? = query(
+        "$JOIN WHERE tm.thread_id = ? AND tm.message_id = ?",
+        listOf(threadId.value, messageId.value),
+    ).singleOrNull()
 
     override suspend fun position(threadId: Conversation.Thread.Id, messageId: Conversation.Message.Id): Int? = withContext(Dispatchers.IO) {
         dataSource.connection.use { connection ->
@@ -74,7 +85,7 @@ class PostgresConversationHistoryRepository(
     override suspend fun toolResults(threadId: Conversation.Thread.Id, callIds: Set<String>): List<PositionedConversationMessage> {
         if (callIds.isEmpty()) return emptyList()
         val placeholders = callIds.joinToString(",") { "?" }
-        return query("""$JOIN WHERE tm.thread_id = ? AND EXISTS (
+        return query("""$JOIN WHERE tm.thread_id = ? AND m.role <> 'RUNTIME' AND EXISTS (
             SELECT 1 FROM jsonb_array_elements(m.message_json::jsonb -> 'content') item
             WHERE item ->> 'type' = '$TOOL_RESULT_TYPE' AND item ->> 'toolUseId' IN ($placeholders)
         ) ORDER BY tm.position""", listOf(threadId.value) + callIds)
@@ -88,9 +99,9 @@ class PostgresConversationHistoryRepository(
             ConversationMessageSelection.ALL -> "TRUE"
             ConversationMessageSelection.USER -> "m.role = 'USER' AND $visible"
             ConversationMessageSelection.ASSISTANT -> "m.role = 'ASSISTANT' AND $visible"
-            ConversationMessageSelection.THINKING -> thinking
-            ConversationMessageSelection.TOOL -> "$tool OR EXISTS (SELECT 1 FROM jsonb_array_elements(m.message_json::jsonb -> 'content') item WHERE item ->> 'type' = '$TOOL_RESULT_TYPE')"
-            ConversationMessageSelection.PLAIN -> "NOT $thinking AND NOT $tool AND $visible AND m.role <> 'SYSTEM'"
+            ConversationMessageSelection.THINKING -> "m.role <> 'RUNTIME' AND $thinking"
+            ConversationMessageSelection.TOOL -> "m.role <> 'RUNTIME' AND ($tool OR EXISTS (SELECT 1 FROM jsonb_array_elements(m.message_json::jsonb -> 'content') item WHERE item ->> 'type' = '$TOOL_RESULT_TYPE'))"
+            ConversationMessageSelection.PLAIN -> "m.role <> 'RUNTIME' AND m.role <> 'SYSTEM' AND NOT $thinking AND NOT $tool AND $visible"
         }
         dataSource.connection.use { connection ->
             connection.prepareStatement("SELECT tm.message_id FROM thread_messages tm JOIN messages m ON m.id = tm.message_id WHERE tm.thread_id = ? AND ($predicate) ORDER BY tm.position").use { statement ->
@@ -124,6 +135,40 @@ class PostgresConversationHistoryRepository(
                         val at = rows.getTimestamp(2).toInstant()
                         com.gromozeka.domain.model.ConversationUserActivity(rows.getInt(1),
                             kotlin.time.Instant.fromEpochSeconds(at.epochSecond, at.nano.toLong()))
+                    }
+                }
+            }
+        }
+    }
+
+    override suspend fun latestUserInstructionId(
+        threadId: Conversation.Thread.Id,
+        instructionIds: Set<String>,
+    ): String? {
+        if (instructionIds.isEmpty()) return null
+        val placeholders = instructionIds.joinToString(",") { "?" }
+        return withContext(Dispatchers.IO) {
+            dataSource.connection.use { connection ->
+                connection.prepareStatement("""
+                    SELECT item.instruction_id
+                    FROM thread_messages tm
+                    JOIN messages m ON m.id = tm.message_id
+                    CROSS JOIN LATERAL jsonb_array_elements_text(
+                        m.context_metadata_json::jsonb -> 'userInstructionIds'
+                    ) WITH ORDINALITY AS item(instruction_id, ordinal)
+                    WHERE tm.thread_id = ?
+                      AND NOT COALESCE(
+                          (m.context_metadata_json::jsonb ->> 'agentAuthored')::boolean,
+                          false
+                      )
+                      AND item.instruction_id IN ($placeholders)
+                    ORDER BY tm.position DESC, item.ordinal DESC
+                    LIMIT 1
+                """.trimIndent()).use { statement ->
+                    statement.setString(1, threadId.value)
+                    instructionIds.forEachIndexed { index, id -> statement.setString(index + 2, id) }
+                    statement.executeQuery().use { rows ->
+                        if (rows.next()) rows.getString(1) else null
                     }
                 }
             }

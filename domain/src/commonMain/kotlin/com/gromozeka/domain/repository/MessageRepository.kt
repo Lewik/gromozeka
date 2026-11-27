@@ -55,19 +55,6 @@ interface MessageRepository {
     suspend fun findByIds(ids: List<Conversation.Message.Id>): List<Conversation.Message>
 
     /**
-     * Finds all messages in conversation, ordered by creation time (oldest first).
-     *
-     * Returns messages from ALL threads in conversation.
-     * For messages in specific thread, use ThreadMessageRepository.getMessagesByThread().
-     *
-     * Returns empty list if conversation has no messages or conversation doesn't exist.
-     *
-     * @param conversationId conversation to query
-     * @return all conversation messages in chronological order
-     */
-    suspend fun findByConversation(conversationId: Conversation.Id): List<Conversation.Message>
-
-    /**
      * Finds all derived versions of a message (by originalIds).
      *
      * Returns all messages where originalIds contains specified ID.

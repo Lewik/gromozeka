@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.MessageDelivery
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.ai.AiCatalog
 import com.gromozeka.domain.model.ai.AiConnection
@@ -51,7 +52,6 @@ import com.gromozeka.domain.service.AiSubscriptionQuotaService
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
-import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.presentation.services.translation.data.Translation
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.TokenStatisticsTable
@@ -120,6 +120,8 @@ internal fun ConversationRuntimePanel(
     val translation = LocalTranslation.current.runtime
     val aiCatalogSnapshot by aiConfigurationProvider.snapshotFlow.collectAsState()
     val visibleRuntime = runtimeSnapshot?.takeIf { it.conversationId == conversationId }
+    val activeAgentDefinitionId = (visibleRuntime?.activeTask ?: visibleRuntime?.continuationTask)
+        ?.primaryAgentDefinitionIdOrNull()
     val tasksScroll = rememberScrollState()
     LaunchedEffect(inspectionRequest?.sequence) {
         if (inspectionRequest?.conversationId == conversationId && inspectionRequest.section == RuntimeInspectionSection.QUEUED_MESSAGES) {
@@ -150,7 +152,8 @@ internal fun ConversationRuntimePanel(
                 when (view) {
                     RuntimePanelView.TASKS -> Column(Modifier.weight(1f).fillMaxWidth().testTag("conversation-tasks-panel")
                         .verticalScroll(tasksScroll)) {
-                        PendingMessagesSection(isWaitingForResponse, pendingMessages, onSendInCurrentTurn, onEditPendingMessage, onCancelPendingMessage)
+                        PendingMessagesSection(isWaitingForResponse, activeAgentDefinitionId, pendingMessages,
+                            onSendInCurrentTurn, onEditPendingMessage, onCancelPendingMessage)
                         RuntimeTasksSection(visibleRuntime, onCancelCommandTask, onCancelCommandMonitor,
                             inspectionRequest?.takeIf { it.conversationId == conversationId }, standalone = true)
                     }
@@ -901,6 +904,7 @@ private fun RuntimeTaskRow(kind: String, text: String) {
 @Composable
 private fun PendingMessagesSection(
     isWaitingForResponse: Boolean,
+    activeAgentDefinitionId: AgentDefinition.Id?,
     pendingMessages: List<PendingUserMessage>,
     onSendInCurrentTurn: (String) -> Unit,
     onEdit: (String) -> Unit,
@@ -911,8 +915,8 @@ private fun PendingMessagesSection(
 
     val translation = LocalTranslation.current.runtime
     val orderedMessages = pendingMessages.orderedForDisplay()
-    val steeringMessages = orderedMessages.filter { it.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT }
-    val queuedMessages = orderedMessages.filter { it.placement == QueuedMessagePlacement.END_OF_TURN }
+    val steeringMessages = orderedMessages.filter { it.delivery == MessageDelivery.STEER }
+    val queuedMessages = orderedMessages.filter { it.delivery == MessageDelivery.QUEUE }
 
     Spacer(modifier = Modifier.height(12.dp))
     Card(
@@ -937,6 +941,7 @@ private fun PendingMessagesSection(
                     title = translation.currentTurnLabel,
                     messages = steeringMessages,
                     isWaitingForResponse = isWaitingForResponse,
+                    activeAgentDefinitionId = activeAgentDefinitionId,
                     onSendInCurrentTurn = onSendInCurrentTurn,
                     onEdit = onEdit,
                     onCancel = onCancel,
@@ -945,6 +950,7 @@ private fun PendingMessagesSection(
                     title = translation.afterResponseLabel,
                     messages = queuedMessages,
                     isWaitingForResponse = isWaitingForResponse,
+                    activeAgentDefinitionId = activeAgentDefinitionId,
                     onSendInCurrentTurn = onSendInCurrentTurn,
                     onEdit = onEdit,
                     onCancel = onCancel,
@@ -959,6 +965,7 @@ private fun PendingMessageGroup(
     title: String,
     messages: List<PendingUserMessage>,
     isWaitingForResponse: Boolean,
+    activeAgentDefinitionId: AgentDefinition.Id?,
     onSendInCurrentTurn: (String) -> Unit,
     onEdit: (String) -> Unit,
     onCancel: (String) -> Unit,
@@ -971,15 +978,17 @@ private fun PendingMessageGroup(
     messages.forEach { message ->
         Column {
             Text(
-                text = message.text.ifBlank {
-                    message.artifacts.joinToString { it.fileName }
+                text = if (message.isRuntime) {
+                    translation.text("client.instructions.runtimeObservation")
+                } else {
+                    message.text.ifBlank { message.artifacts.joinToString { it.fileName } }
                 },
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodySmall,
             )
             Text(
-                text = queuePlacementDescription(message.placement, translation.runtime),
+                text = messageDeliveryDescription(message.delivery, translation.runtime),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.labelSmall,
@@ -989,8 +998,10 @@ private fun PendingMessageGroup(
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     if (
                         isWaitingForResponse &&
-                        message.steeringAgentId != null &&
-                        message.placement == QueuedMessagePlacement.END_OF_TURN
+                        !message.isRuntime &&
+                        activeAgentDefinitionId != null &&
+                        message.steeringAgentId == activeAgentDefinitionId &&
+                        message.delivery == MessageDelivery.QUEUE
                     ) {
                         TextButton(onClick = { onSendInCurrentTurn(message.id) }) {
                             Text(translation.runtime.currentTurnLabel)
@@ -1102,19 +1113,19 @@ private fun ConversationRuntimeTraceEntry.runtimeTraceText(localization: Transla
     } ?: label
 }
 
-internal fun queuePlacementDescription(
-    placement: QueuedMessagePlacement,
+internal fun messageDeliveryDescription(
+    delivery: MessageDelivery,
     translation: Translation.RuntimeTranslation,
-): String = when (placement) {
-    QueuedMessagePlacement.AFTER_TOOL_RESULT -> translation.nearestToolResultPlacement
-    QueuedMessagePlacement.END_OF_TURN -> translation.currentResponsePlacement
+): String = when (delivery) {
+    MessageDelivery.STEER -> translation.nearestToolResultPlacement
+    MessageDelivery.QUEUE -> translation.currentResponsePlacement
 }
 
 internal fun List<PendingUserMessage>.orderedForDisplay(): List<PendingUserMessage> =
     withIndex()
         .sortedWith(
             compareBy(
-                { if (it.value.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT) 0 else 1 },
+                { if (it.value.delivery == MessageDelivery.STEER) 0 else 1 },
                 { it.index },
             )
         )

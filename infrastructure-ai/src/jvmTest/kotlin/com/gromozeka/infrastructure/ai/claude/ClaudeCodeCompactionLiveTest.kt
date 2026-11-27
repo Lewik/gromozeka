@@ -124,7 +124,8 @@ class ClaudeCodeCompactionLiveTest {
                     thread = "cow-${UUID.randomUUID()}"
                     saved = saved.copy(content = listOf(checkpoint.copy(historyTransition =
                         Conversation.Message.ContentItem.ContextCompactionResult.HistoryTransition(source, Conversation.Thread.Id(thread)))))
-                    val boundary = messages.indexOfLast { it.id == checkpoint.sourceMessageIds.last() }
+                    val boundaryId = requireNotNull(checkpoint.sourceBoundaryMessageId)
+                    val boundary = messages.indexOfLast { it.id == boundaryId }
                     check(boundary >= 0)
                     messages.add(boundary + 1, saved)
                 } else messages += saved
@@ -139,8 +140,10 @@ class ClaudeCodeCompactionLiveTest {
                 val compacted = runtime.compact(prepared.copy(options = prepared.options.copy(usagePurpose = "CONTEXT_COMPACTION")))
                 assertEquals(1, compacted.messages.size)
                 assertEquals(AiStepOutcome.CONTINUE, compacted.outcome)
-                assertFalse((compacted.messages.single().content.single() as Conversation.Message.ContentItem.ContextCompactionResult)
-                    .sourceMessageIds.contains(messages.last().id), "Unsent user input must remain outside native coverage")
+                val checkpoint = compacted.messages.single().content.single() as Conversation.Message.ContentItem.ContextCompactionResult
+                assertTrue(checkpoint.sourceMessageIds.isEmpty())
+                assertNotEquals(messages.last().id, checkpoint.sourceBoundaryMessageId,
+                    "Unsent user input must remain outside native coverage")
                 persist(compacted)
             }
             val response = runtime.call(currentRequest())

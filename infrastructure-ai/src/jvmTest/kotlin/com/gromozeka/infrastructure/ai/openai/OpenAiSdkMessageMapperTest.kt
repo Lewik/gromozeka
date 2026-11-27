@@ -11,9 +11,40 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 class OpenAiSdkMessageMapperTest {
+    @Test
+    fun `runtime role maps to user content and instructions`() {
+        val runtimeMessage = Conversation.Message(
+            id = Conversation.Message.Id("runtime-observation"),
+            conversationId = Conversation.Id("conversation"),
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(JsonObject(mapOf(
+                "kind" to kotlinx.serialization.json.JsonPrimitive("runtime_state"),
+                "value" to kotlinx.serialization.json.JsonPrimitive("RUNTIME_CONTENT"),
+            )))),
+            instructions = listOf(Conversation.Message.Instruction.RuntimeObservation("CURRENT_RUNTIME_STATE")),
+            createdAt = Instant.fromEpochMilliseconds(0),
+        )
+
+        for (kind in listOf(AiConnection.Kind.OPENAI_COMPATIBLE, AiConnection.Kind.OPENAI_API)) {
+            val params = OpenAiSdkMessageMapper(kind).toCreateParams(
+                "gateway/model",
+                AiRuntimeRequest(systemPrompts = emptyList(), messages = listOf(runtimeMessage)),
+            )
+            val message = Json.parseToJsonElement(
+                com.openai.core.jsonMapper().writeValueAsString(params._body()),
+            ).jsonObject.getValue("messages").jsonArray.single().jsonObject
+
+            assertEquals("user", message.getValue("role").jsonPrimitive.content)
+            assertTrue(message.toString().contains("CURRENT_RUNTIME_STATE"))
+            assertTrue(message.toString().contains("RUNTIME_CONTENT"))
+        }
+    }
+
     @Test
     fun `serialized request keeps system prompt before unchanged history`() {
         for ((kind, role) in listOf(

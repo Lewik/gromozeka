@@ -582,7 +582,7 @@ private class GitHubCopilotRequestMapper {
 
     private fun messageToTranscript(message: Conversation.Message): String = buildString {
         append("<message role=\"")
-        append(message.role.name.lowercase())
+        append(message.providerTranscriptRole())
         append("\" id=\"")
         append(xmlEscape(message.id.value))
         appendLine("\">")
@@ -593,6 +593,16 @@ private class GitHubCopilotRequestMapper {
         message.content.forEach { item -> appendLine(contentToTranscript(item)) }
         append("</message>")
     }
+
+    private fun Conversation.Message.providerTranscriptRole(): String =
+        when (role) {
+            Conversation.Message.Role.USER,
+            Conversation.Message.Role.RUNTIME,
+            -> "user"
+
+            Conversation.Message.Role.ASSISTANT -> "assistant"
+            Conversation.Message.Role.SYSTEM -> "system"
+        }
 
     private fun contentToTranscript(item: Conversation.Message.ContentItem): String =
         when (item) {
@@ -620,6 +630,7 @@ private class GitHubCopilotRequestMapper {
                 is Conversation.Message.ContentItem.ContextCompactionResult.Payload.OpaqueProviderState ->
                     error("GitHub Copilot cannot replay opaque provider compaction state")
             }
+            is Conversation.Message.ContentItem.RuntimeJson -> xmlBlock("runtime_json", item.json.toString())
             is Conversation.Message.ContentItem.UnknownJson -> xmlBlock("json", item.json.toString())
         }
 

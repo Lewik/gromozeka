@@ -1,7 +1,7 @@
 package com.gromozeka.client
 
 import com.gromozeka.domain.model.User
-import com.gromozeka.domain.model.UserMessageDeliveryMode
+import com.gromozeka.domain.model.MessageDelivery
 import com.gromozeka.domain.service.CurrentUserMessageDeliveryPreferenceService
 import com.gromozeka.remote.protocol.GetMessageDeliveryModeRequest
 import com.gromozeka.remote.protocol.MessageDeliveryModeResponse
@@ -18,11 +18,11 @@ internal class RemoteMessageDeliveryPreferenceService(
     private val currentUserId: User.Id,
     private val scope: CoroutineScope,
 ) : CurrentUserMessageDeliveryPreferenceService {
-    private val current = MutableStateFlow(UserMessageDeliveryMode.STEER)
+    private val current = MutableStateFlow(MessageDelivery.STEER)
     override val mode = current.asStateFlow()
     private var syncJob: Job? = null
 
-    private suspend fun read(): UserMessageDeliveryMode =
+    private suspend fun read(): MessageDelivery =
         client.requestTyped<GetMessageDeliveryModeRequest, MessageDeliveryModeResponse>(GetMessageDeliveryModeRequest).mode
 
     suspend fun initialize() {
@@ -33,7 +33,7 @@ internal class RemoteMessageDeliveryPreferenceService(
         }
     }
 
-    override suspend fun setMode(mode: UserMessageDeliveryMode) {
+    override suspend fun setMode(mode: MessageDelivery) {
         client.requestTyped<SetMessageDeliveryModeRequest, MessageDeliveryModeResponse>(SetMessageDeliveryModeRequest(mode))
         current.value = read()
     }

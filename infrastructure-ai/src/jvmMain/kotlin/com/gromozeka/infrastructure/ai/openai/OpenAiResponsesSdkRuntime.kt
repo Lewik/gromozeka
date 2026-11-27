@@ -152,7 +152,7 @@ internal class OpenAiResponsesSdkRuntime(
                 val plan = prepared ?: continuations.plan(
                     if (connection.responsesStoredContinuationEnabled) continuations.scope(connection, modelConfigurationId,
                         modelName, request, checkNotNull(session.identity) { "Responses client has no call identity" }) else null,
-                    request, fullInput, connection.responsesStoredContinuationEnabled,
+                    fullInput, connection.responsesStoredContinuationEnabled,
                 ).also { prepared = it }
                 val params = fullParams.toBuilder().store(plan.store).inputOfResponse(plan.input)
                     .apply { plan.previousResponseId?.let(::previousResponseId) }.build()
@@ -359,7 +359,7 @@ internal class OpenAiResponsesMessageMapper(
                 origin = ContextCompactionResult.Origin.GROMOZEKA_POLICY,
                 strategy = ContextCompactionResult.Strategy.PROVIDER_MANAGED,
                 coverage = ContextCompactionResult.Coverage.ALL_PREVIOUS,
-                sourceMessageIds = request.messages.map { it.id },
+                sourceBoundaryMessageId = request.messages.last().id,
                 providerScope = ContextCompactionResult.ProviderScope("OPENAI_API", connectionId, modelConfigurationId, modelName),
             )))),
             usage = response.usage().toAiUsage(), outcome = AiStepOutcome.CONTINUE, finishReason = "compaction",
@@ -397,7 +397,9 @@ internal class OpenAiResponsesMessageMapper(
             return@buildList
         }
         when (message.role) {
-            Conversation.Message.Role.USER -> {
+            Conversation.Message.Role.USER,
+            Conversation.Message.Role.RUNTIME,
+            -> {
                 val content = buildList {
                     userText(message).takeIf(String::isNotBlank)?.let { text ->
                         add(
