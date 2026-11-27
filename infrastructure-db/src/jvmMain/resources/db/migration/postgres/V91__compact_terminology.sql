@@ -15,13 +15,19 @@ WHERE (payload_json::jsonb -> 'compaction') ? 'summaryModelConfigurationId';
 UPDATE runtime_catalog_configuration SET revision = revision + 1;
 
 UPDATE messages
-SET message_json = replace(
-    replace(message_json::jsonb::text, '"strategy": "SUMMARIZE"', '"strategy": "COMPACT"'),
-    '"id": "gromozeka.message-compaction.summarize"',
-    '"id": "gromozeka.message-compaction.compact"'
+SET message_json = regexp_replace(
+    regexp_replace(
+        message_json,
+        '"strategy"[[:space:]]*:[[:space:]]*"SUMMARIZE"',
+        '"strategy":"COMPACT"',
+        'g'
+    ),
+    '"id"[[:space:]]*:[[:space:]]*"gromozeka.message-compaction.summarize"',
+    '"id":"gromozeka.message-compaction.compact"',
+    'g'
 )
-WHERE message_json::jsonb::text LIKE '%"strategy": "SUMMARIZE"%'
-   OR message_json::jsonb::text LIKE '%"id": "gromozeka.message-compaction.summarize"%';
+WHERE message_json ~ '"strategy"[[:space:]]*:[[:space:]]*"SUMMARIZE"'
+   OR message_json ~ '"id"[[:space:]]*:[[:space:]]*"gromozeka.message-compaction.summarize"';
 
 UPDATE conversation_runtime_records
 SET scheduling = replace(

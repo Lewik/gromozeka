@@ -60,6 +60,7 @@ class PostgresCompactTerminologyMigrationTest {
                             )),
                             providerMetadata = buildJsonObject {
                                 put("literal", """{"strategy":"SUMMARIZE","id":"gromozeka.message-compaction.summarize"}""")
+                                put("nul", "escaped\u0000payload")
                             },
                             createdAt = Instant.fromEpochMilliseconds(1),
                         )
@@ -120,6 +121,7 @@ class PostgresCompactTerminologyMigrationTest {
                                     """{"strategy":"SUMMARIZE","id":"gromozeka.message-compaction.summarize"}""",
                                     message.providerMetadata.getValue("literal").jsonPrimitive.content,
                                 )
+                                assertEquals("escaped\u0000payload", message.providerMetadata.getValue("nul").jsonPrimitive.content)
                             }
                             assertEquals(2, count)
                         }
