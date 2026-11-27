@@ -63,21 +63,27 @@ class AppViewModelConversationSyncTest {
         runCurrent()
         assertEquals(1, fixture.activeObservers[first.projectId])
         assertEquals(1, fixture.startedObservers[first.projectId])
+        assertEquals(1, fixture.activeAgentObservers[first.projectId])
+        assertEquals(1, fixture.startedAgentObservers[first.projectId])
 
         fixture.app.closeTab(0)
         runCurrent()
         assertEquals(1, fixture.activeObservers[first.projectId])
         assertEquals(1, fixture.startedObservers[first.projectId])
+        assertEquals(1, fixture.activeAgentObservers[first.projectId])
+        assertEquals(1, fixture.startedAgentObservers[first.projectId])
 
         fixture.app.closeTab(0)
         runCurrent()
         assertEquals(0, fixture.activeObservers[first.projectId])
+        assertEquals(0, fixture.activeAgentObservers[first.projectId])
 
         fixture.open(first)
         runCurrent()
         fixture.app.cleanup()
         runCurrent()
         assertEquals(0, fixture.activeObservers[first.projectId])
+        assertEquals(0, fixture.activeAgentObservers[first.projectId])
     }
 
     @Test
@@ -249,6 +255,8 @@ class AppViewModelConversationSyncTest {
         private val projects = mutableMapOf<Project.Id, MutableStateFlow<List<Conversation>>>()
         val activeObservers = mutableMapOf<Project.Id, Int>()
         val startedObservers = mutableMapOf<Project.Id, Int>()
+        val activeAgentObservers = mutableMapOf<Project.Id, Int>()
+        val startedAgentObservers = mutableMapOf<Project.Id, Int>()
         private val settings = TestSettingsService()
         val copiedSources = mutableListOf<Conversation.Id>()
         val copiedParticipants = mutableListOf<Set<Conversation.Participant>>()
@@ -297,9 +305,20 @@ class AppViewModelConversationSyncTest {
         }
         val app = AppViewModel(
             currentUserAuthor = Conversation.Message.Author.User(User.Id("user"), "User"),
-            agentService = stub { name, _ ->
+            agentService = stub { name, args ->
                 when {
-                    name.startsWith("observeByProject") -> emptyFlow<Nothing>()
+                    name.startsWith("observeByProject") -> {
+                        val projectId = Project.Id(args.first().toString())
+                        flow {
+                            activeAgentObservers[projectId] = activeAgentObservers.getOrDefault(projectId, 0) + 1
+                            startedAgentObservers[projectId] = startedAgentObservers.getOrDefault(projectId, 0) + 1
+                            try {
+                                emitAll(MutableStateFlow(listOf(defaultAgent)))
+                            } finally {
+                                activeAgentObservers[projectId] = activeAgentObservers.getValue(projectId) - 1
+                            }
+                        }
+                    }
                     name.startsWith("findByProject") -> emptyList<AgentDefinition>()
                     else -> error(name)
                 }

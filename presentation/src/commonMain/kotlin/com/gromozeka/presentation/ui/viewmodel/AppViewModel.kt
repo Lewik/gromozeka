@@ -52,6 +52,7 @@ open class AppViewModel(
 
     private val _conversations = MutableStateFlow<Map<Conversation.Id, Conversation>>(emptyMap())
     val conversations: StateFlow<Map<Conversation.Id, Conversation>> = _conversations.asStateFlow()
+    private val sharedProjectAgents = mutableMapOf<Project.Id, StateFlow<List<AgentDefinition>>>()
 
     private val _currentTabIndex = MutableStateFlow<Int?>(null)
     val currentTabIndex: StateFlow<Int?> = _currentTabIndex.asStateFlow()
@@ -324,6 +325,8 @@ open class AppViewModel(
         val synchronizedTabs = layout.conversationIds.mapNotNull { conversationId ->
             existingTabs[conversationId] ?: restoreTab(conversationId, savedTabs[conversationId])
         }
+        val synchronizedIds = synchronizedTabs.mapTo(mutableSetOf(), TabViewModel::conversationId)
+        existingTabs.values.filterNot { it.conversationId in synchronizedIds }.forEach(TabViewModel::cleanup)
 
         _tabs.value = synchronizedTabs
         _currentTabIndex.value = currentSystemTab ?: currentConversationId?.let { conversationId ->
@@ -380,8 +383,12 @@ open class AppViewModel(
         conversationRuntimeService = conversationRuntimeService,
         conversationService = conversationService,
         conversationHistoryService = conversationHistoryService,
+        projectAgents = sharedAgents(conversation.projectId),
+        projectConversations = conversations.map { snapshots ->
+            snapshots.values.filter { it.projectId == conversation.projectId }
+        }.distinctUntilChanged(),
         settingsService = settingsService,
-        scope = scope,
+        parentScope = scope,
         initialTabUiState = initialTabUiState,
         attachmentAcquisitionController = attachmentAcquisitionController,
         artifactTransferService = artifactTransferService,
@@ -391,6 +398,13 @@ open class AppViewModel(
         conversationTitle = { _conversations.value.getValue(conversation.id).effectiveDisplayName(currentTranslation()) },
         messageDeliveryMode = messageDeliveryMode,
     )
+
+    private fun sharedAgents(projectId: Project.Id): StateFlow<List<AgentDefinition>> =
+        sharedProjectAgents.getOrPut(projectId) {
+            agentService.observeByProject(projectId)
+                .catch { error -> log.warn(error) { "Failed to observe agents for project ${projectId.value}" } }
+                .stateIn(scope, SharingStarted.WhileSubscribed(), emptyList())
+        }
 
     private suspend fun TabViewModel.sendInitialMessage(
         message: Conversation.Message,
@@ -423,6 +437,7 @@ open class AppViewModel(
         val tabList = _tabs.value
         val index = tabList.indexOfFirst { it.conversationId == conversationId }
         if (index < 0) return
+        tabList[index].cleanup()
         val currentIndex = _currentTabIndex.value
         _tabs.value = tabList.filterIndexed { tabIndex, _ -> tabIndex != index }
         _currentTabIndex.value = when {
@@ -464,6 +479,7 @@ open class AppViewModel(
 
     suspend fun cleanup() {
         mutex.withLock {
+            _tabs.value.forEach(TabViewModel::cleanup)
             _tabs.value = emptyList()
             _conversations.value = emptyMap()
             _currentTabIndex.value = null

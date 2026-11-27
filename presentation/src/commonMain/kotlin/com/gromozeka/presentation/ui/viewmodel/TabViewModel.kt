@@ -25,7 +25,6 @@ import com.gromozeka.domain.model.ConversationHistoryPageRequest
 import com.gromozeka.domain.model.ConversationHistoryCursor
 import com.gromozeka.domain.model.ConversationMessageSelection
 import com.gromozeka.domain.model.ConversationContext
-import kotlinx.coroutines.Job
 import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.domain.model.MessageInstructionTextShortcut
 import com.gromozeka.domain.model.MessageInputContext
@@ -56,6 +55,8 @@ import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -71,8 +72,10 @@ class TabViewModel(
     private val conversationRuntimeService: ConversationRuntimeService,
     private val conversationService: ConversationDomainService,
     private val conversationHistoryService: ConversationHistoryService,
+    projectAgents: Flow<List<AgentDefinition>> = agentService.observeByProject(projectId),
+    projectConversations: Flow<List<Conversation>> = conversationService.observeByProject(projectId),
     private val settingsService: SettingsService,
-    private val scope: CoroutineScope,
+    parentScope: CoroutineScope,
     initialTabUiState: UIState.Tab,
     internal val attachmentAcquisitionController: AttachmentAcquisitionController,
     private val artifactTransferService: ArtifactTransferService,
@@ -83,6 +86,8 @@ class TabViewModel(
     val messageDeliveryMode: StateFlow<com.gromozeka.domain.model.MessageDelivery> = MutableStateFlow(com.gromozeka.domain.model.MessageDelivery.STEER),
 ) {
     private val log = KLoggers.logger(this)
+    private val lifecycleJob = SupervisorJob(parentScope.coroutineContext[Job])
+    private val scope = CoroutineScope(parentScope.coroutineContext + lifecycleJob)
     private val settingsFlow: StateFlow<Settings> = settingsService.settingsFlow
     private val artifactUploadMutex = Mutex()
     private val composerSubmissionMutex = Mutex()
@@ -173,6 +178,10 @@ class TabViewModel(
 
     fun rememberHistoryAnchor(messageId: Conversation.Message.Id?) { historyAnchor.value = messageId }
 
+    internal fun cleanup() {
+        lifecycleJob.cancel()
+    }
+
     fun loadNewerHistory() { loadAdjacentHistory(null, older = false) }
 
     fun loadOlderHistory(expectedFirstMessageId: Conversation.Message.Id) {
@@ -258,13 +267,13 @@ class TabViewModel(
             } catch (error: Exception) { _historyError.value = error.message }
         }
     }
-    val externalChannel = conversationService.observeByProject(projectId).map { conversations ->
+    val externalChannel = projectConversations.map { conversations ->
         conversations.firstOrNull { it.id == conversationId }?.externalChannel
     }.stateIn(scope, SharingStarted.WhileSubscribed(5000), null)
 
     val agentMentionCandidates: StateFlow<List<AgentMentionCandidate>> = combine(
-        agentService.observeByProject(projectId),
-        conversationService.observeByProject(projectId),
+        projectAgents,
+        projectConversations,
     ) { agents, conversations ->
         val conversation = conversations.firstOrNull { it.id == conversationId }
         buildAgentMentionCandidates(

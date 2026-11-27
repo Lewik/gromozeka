@@ -855,7 +855,7 @@ class TabViewModelRuntimeReplayTest {
                     fullSelection: Boolean, strategy: SquashType): Conversation = error("Unused")
             },
             settingsService = settingsService,
-            scope = scope,
+            parentScope = scope,
             initialTabUiState = UIState.Tab(
                 projectId = projectId,
                 conversationId = conversationId,

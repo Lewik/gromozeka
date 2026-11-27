@@ -255,7 +255,7 @@ class TabViewModelSubmissionTest {
                 override suspend fun loadPage(conversationId: Conversation.Id, request: ConversationHistoryPageRequest) =
                     ConversationHistoryPage(conversation.currentThread, emptyList())
             },
-            settingsService = settings, scope = scope,
+            settingsService = settings, parentScope = scope,
             initialTabUiState = UIState.Tab(projectId = projectId, conversationId = conversationId, tabId = "tab-1"),
             attachmentAcquisitionController = NoOpAttachmentAcquisitionController,
             artifactTransferService = stub<ArtifactTransferService>(),
