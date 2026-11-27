@@ -49,7 +49,7 @@ class OpenAiResponsesSdkRuntimeTest {
     }
 
     @Test
-    fun `both OpenAI APIs project selective and foreign opaque compactions`() {
+    fun `both OpenAI APIs project selective compactions and skip foreign opaque checkpoints`() {
         val earlier = userMessage().copy(id = Conversation.Message.Id("a"), content = listOf(Conversation.Message.ContentItem.UserMessage("Earlier instruction")))
         val source = earlier.copy(id = Conversation.Message.Id("b"), content = listOf(Conversation.Message.ContentItem.UserMessage("Covered original")))
         val selective = earlier.copy(id = Conversation.Message.Id("s"), role = Conversation.Message.Role.ASSISTANT, content = listOf(
@@ -69,17 +69,26 @@ class OpenAiResponsesSdkRuntimeTest {
                 providerScope = Conversation.Message.ContentItem.ContextCompactionResult.ProviderScope(provider = "OPENAI_SUBSCRIPTION"),
             ),
         ))
-        for (messages in listOf(listOf(earlier, source, selective), listOf(earlier, source, selective, opaque))) {
+        val tail = earlier.copy(id = Conversation.Message.Id("tail"), content = listOf(
+            Conversation.Message.ContentItem.UserMessage("Current question"),
+        ))
+        fun payloads(messages: List<Conversation.Message>): List<String> {
             val input = request(messages = messages)
-            val payloads = listOf(
+            return listOf(
                 com.openai.core.jsonMapper().writeValueAsString(mapper.toCreateParams("gpt-5", false, input).input()),
                 com.openai.core.jsonMapper().writeValueAsString(OpenAiSdkMessageMapper(AiConnection.Kind.OPENAI_API).toCreateParams("gpt-5", input).messages()),
             )
-            payloads.forEach { payload ->
-                assertTrue(payload.contains("Earlier instruction"))
-                assertTrue(payload.contains("Selective summary"))
-                assertFalse(payload.contains("Covered original"))
-                assertFalse(payload.contains("encrypted_content"))
+        }
+
+        payloads(listOf(earlier, source, selective)).forEach { payload ->
+            assertTrue(payload.contains("Earlier instruction"))
+            assertTrue(payload.contains("Selective summary"))
+            assertFalse(payload.contains("Covered original"))
+        }
+        payloads(listOf(earlier, source, selective, opaque, tail)).forEach { payload ->
+            assertTrue(payload.contains("Current question"))
+            listOf("Earlier instruction", "Covered original", "Selective summary", "encrypted_content").forEach { discarded ->
+                assertFalse(payload.contains(discarded))
             }
         }
     }
