@@ -138,12 +138,34 @@ class OpenAiSubscriptionWebSearch(private val client: OpenAiSubscriptionResponse
             messages[index].role == Conversation.Message.Role.USER && messages[index].isUserSideInput()
         }
         val firstInputIndex = previousUserIndex ?: rootIndex
+        val userSideIndices = (firstInputIndex..lastInputIndex).filter { messages[it].isUserSideInput() }
+        val prioritizedUserSideIndices = buildList {
+            if (rootIndex in userSideIndices) add(rootIndex)
+            addAll(userSideIndices.asReversed().filter {
+                it != rootIndex && messages[it].role == Conversation.Message.Role.USER
+            })
+            addAll(userSideIndices.asReversed().filter {
+                it != rootIndex && messages[it].role == Conversation.Message.Role.RUNTIME
+            })
+        }
+        var userSideCharactersLeft = MAX_USER_SIDE_INPUT_CHARACTERS
+        val userSideText = buildMap {
+            for (index in prioritizedUserSideIndices) {
+                if (userSideCharactersLeft == 0) break
+                val text = messages[index].content.mapNotNull { it.userInputTextOrNull() }.joinToString("\n")
+                if (text.isBlank()) continue
+                val bounded = text.truncateForWebSearch(userSideCharactersLeft)
+                put(index, bounded)
+                userSideCharactersLeft -= bounded.length
+            }
+        }
         var assistantCharactersLeft = 4000
-        return messages.subList(firstInputIndex, lastInputIndex + 1).mapNotNull { message ->
+        return messages.subList(firstInputIndex, lastInputIndex + 1).mapIndexedNotNull { offset, message ->
+            val index = firstInputIndex + offset
             val text = when (message.role) {
                 Conversation.Message.Role.USER,
                 Conversation.Message.Role.RUNTIME,
-                -> message.content.mapNotNull { it.userInputTextOrNull() }.joinToString("\n")
+                -> userSideText[index].orEmpty()
 
                 Conversation.Message.Role.ASSISTANT -> message.content.filterIsInstance<ContentItem.AssistantMessage>()
                     .joinToString("\n") { it.structured.fullText }.take(assistantCharactersLeft).also { assistantCharactersLeft -= it.length }
@@ -168,6 +190,13 @@ class OpenAiSubscriptionWebSearch(private val client: OpenAiSubscriptionResponse
             }.bufferedReader().use { it.readText() }
         ).jsonObject
     }
+}
+
+private fun String.truncateForWebSearch(maxCharacters: Int): String {
+    require(maxCharacters >= 0)
+    if (length <= maxCharacters) return this
+    if (maxCharacters <= WEB_SEARCH_TRUNCATION_MARKER.length) return WEB_SEARCH_TRUNCATION_MARKER.take(maxCharacters)
+    return take(maxCharacters - WEB_SEARCH_TRUNCATION_MARKER.length) + WEB_SEARCH_TRUNCATION_MARKER
 }
 
 private fun List<Conversation.Message>.turnRootIndex(rootMessageId: Conversation.Message.Id): Int {
@@ -195,3 +224,6 @@ private fun Conversation.Message.isUserSideInput(): Boolean = when (role) {
     Conversation.Message.Role.SYSTEM,
     -> false
 }
+
+private const val MAX_USER_SIDE_INPUT_CHARACTERS = 16_000
+private const val WEB_SEARCH_TRUNCATION_MARKER = "\n[truncated]"

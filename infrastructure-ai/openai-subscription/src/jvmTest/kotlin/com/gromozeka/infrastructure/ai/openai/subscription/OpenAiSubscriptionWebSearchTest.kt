@@ -196,6 +196,33 @@ class OpenAiSubscriptionWebSearchTest {
     }
 
     @Test
+    fun `search input bounds runtime updates without dropping the human query`() {
+        val search = OpenAiSubscriptionWebSearch(client("http://127.0.0.1:1"))
+        val query = userMessage("Find the current release notes")
+        val olderUpdates = List(100) { revision ->
+            message(Conversation.Message.Role.RUNTIME, listOf(
+                ContentItem.RuntimeJson(JsonPrimitive("old-state-$revision-${"x".repeat(200)}")),
+            ))
+        }
+        val oversizedLatest = message(Conversation.Message.Role.RUNTIME, listOf(
+            ContentItem.RuntimeJson(JsonPrimitive("latest-state-${"y".repeat(100_000)}")),
+        ))
+
+        val input = search.recentInput(listOf(query) + olderUpdates + oversizedLatest, query.id)
+        val inputTexts = input.filter { it.getValue("role").jsonPrimitive.content == "user" }.map {
+            it.getValue("content").jsonArray.single().jsonObject.getValue("text").jsonPrimitive.content
+        }
+        val combined = inputTexts.joinToString("\n")
+
+        assertEquals(16_000, inputTexts.sumOf(String::length))
+        assertContains(combined, "Find the current release notes")
+        assertContains(combined, "latest-state")
+        assertContains(combined, "[truncated]")
+        assertFalse(combined.contains("old-state-0"))
+        assertTrue(input.toString().length < 20_000)
+    }
+
+    @Test
     fun `runtime rooted turn does not execute an interrupted web call from an earlier turn`() = runBlocking {
         val search = OpenAiSubscriptionWebSearch(client("http://127.0.0.1:1"))
         val earlier = userMessage("Search the old topic")
