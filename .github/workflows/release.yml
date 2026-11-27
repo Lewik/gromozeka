@@ -902,7 +902,7 @@ jobs:
           context: .
           file: deploy/docker/server.Dockerfile
           build-args: |
-            JAVA_RUNTIME_IMAGE=mirror.gcr.io/library/eclipse-temurin:21-jre-noble@sha256:ca397720325ceefe39ce397f186759fc87d9efafb2dc4ce53315980844c2f4f2
+            JAVA_RUNTIME_IMAGE=mirror.gcr.io/library/eclipse-temurin:21-jre-noble@sha256:54999a956a8bf8be9af0052790a6a832bf91a62fad3199fd194c3cc28057fc62
           platforms: linux/amd64
           push: false
           tags: ghcr.io/lewik/gromozeka-server:${{ needs.metadata.outputs.version }}

@@ -1,4 +1,4 @@
-ARG JAVA_RUNTIME_IMAGE=eclipse-temurin:21-jre-noble@sha256:ca397720325ceefe39ce397f186759fc87d9efafb2dc4ce53315980844c2f4f2
+ARG JAVA_RUNTIME_IMAGE=eclipse-temurin:21-jre-noble@sha256:54999a956a8bf8be9af0052790a6a832bf91a62fad3199fd194c3cc28057fc62
 FROM ${JAVA_RUNTIME_IMAGE} AS web-assets
 
 RUN apt-get update \

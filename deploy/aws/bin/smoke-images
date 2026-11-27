@@ -12,7 +12,7 @@ platform="${GROMOZEKA_CLOUD_PLATFORM:-linux/amd64}"
 server_image="${GROMOZEKA_SERVER_IMAGE:-gromozeka/server:local}"
 # Exercise the standalone Worker JAR in a disposable JRE, not a product image.
 worker_jar="$root_dir/worker/build/libs/gromozeka-worker.jar"
-worker_runtime_image="${GROMOZEKA_WORKER_TEST_RUNTIME_IMAGE:-eclipse-temurin:21-jre-noble@sha256:ca397720325ceefe39ce397f186759fc87d9efafb2dc4ce53315980844c2f4f2}"
+worker_runtime_image="${GROMOZEKA_WORKER_TEST_RUNTIME_IMAGE:-eclipse-temurin:21-jre-noble@sha256:54999a956a8bf8be9af0052790a6a832bf91a62fad3199fd194c3cc28057fc62}"
 test -f "$worker_jar" || {
   echo "Build the standalone Worker JAR first with deploy/aws/bin/build-images." >&2
   exit 1
