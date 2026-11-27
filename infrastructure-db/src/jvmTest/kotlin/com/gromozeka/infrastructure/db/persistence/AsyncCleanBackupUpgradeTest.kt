@@ -40,9 +40,9 @@ class AsyncCleanBackupUpgradeTest {
         }
         val before = messages(source, validateTypedMetadata = false)
         val migration = flyway.migrate()
-        assertEquals(listOf("89", "90", "91", "92", "93", "94", "95", "96", "97", "98", "99", "100"), migration.migrations.map { it.version })
+        assertEquals((89..105).map(Int::toString), migration.migrations.map { it.version })
         flyway.validate()
-        assertEquals("100", assertNotNull(flyway.info().current()).version.toString())
+        assertEquals("105", assertNotNull(flyway.info().current()).version.toString())
         val after = messages(source, validateTypedMetadata = true)
         assertEquals(before, after, "Upgrade may normalize typed metadata and compact terminology, but must preserve history semantics and opaque replay payloads")
         assertTrue(after.count > 0, "The restored backup must contain actual history")
@@ -71,7 +71,7 @@ class AsyncCleanBackupUpgradeTest {
                 }
             }
         }
-        println("ASYNC_BACKUP_UPGRADE_VERIFIED messages=${after.count} referencedManagedArtifacts=$verified flyway=88->100")
+        println("ASYNC_BACKUP_UPGRADE_VERIFIED messages=${after.count} referencedManagedArtifacts=$verified flyway=88->105")
     }
 
     @Test fun `empty database receives the same final schema without the old async upgrade step`() {
@@ -82,7 +82,7 @@ class AsyncCleanBackupUpgradeTest {
             val flyway = Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema)
                 .locations("classpath:db/migration/postgres").load()
             flyway.migrate(); flyway.validate()
-            assertEquals("100", assertNotNull(flyway.info().current()).version.toString())
+            assertEquals("105", assertNotNull(flyway.info().current()).version.toString())
             source.connection.use { connection -> connection.createStatement().use { statement ->
                 statement.executeQuery("SELECT count(*) FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace WHERE n.nspname=current_schema() AND t.relname='async_tool_operations' AND conname IN ('async_tool_claim_generation_nonnegative','async_tool_claim_generation_owner')").use { rows ->
                     assertTrue(rows.next()); assertEquals(2, rows.getInt(1))

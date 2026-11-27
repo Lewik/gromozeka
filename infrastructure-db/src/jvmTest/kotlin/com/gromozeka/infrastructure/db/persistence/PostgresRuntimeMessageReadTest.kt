@@ -1585,6 +1585,47 @@ class PostgresRuntimeMessageReadTest {
     }
 
     @Test
+    fun `V105 repairs stale metadata for pretty printed agent messages`() = runBlocking {
+        withFixture(target = "94") { f ->
+            val message = f.message("pretty-agent").copy(
+                role = Conversation.Message.Role.ASSISTANT,
+                author = Conversation.Message.Author.Agent(
+                    com.gromozeka.domain.model.AgentDefinition.Id("agent"),
+                    "Agent",
+                ),
+                content = listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("answer"))),
+            )
+            f.insertRaw(message, 0)
+            val prettyJson = Json { prettyPrint = true }.encodeToString(message)
+            f.source.connection.use { connection ->
+                connection.prepareStatement(
+                    "UPDATE messages SET message_json = ? WHERE id = ?",
+                ).use { update ->
+                    update.setString(1, prettyJson)
+                    update.setString(2, message.id.value)
+                    assertEquals(1, update.executeUpdate())
+                }
+            }
+            assertFalse(prettyJson.contains("\"type\":\"agent\""))
+            assertFalse(checkNotNull(f.metadata(message.id)).agentAuthored)
+
+            f.migrate()
+
+            assertEquals(message, ExposedMessageRepository(Json).findById(message.id))
+            assertEquals(com.gromozeka.domain.model.MessageContextMetadata.from(message), f.metadata(message.id))
+            f.source.connection.use { connection ->
+                connection.prepareStatement("SELECT message_json FROM messages WHERE id = ?").use { select ->
+                    select.setString(1, message.id.value)
+                    select.executeQuery().use { rows ->
+                        assertTrue(rows.next())
+                        assertEquals(prettyJson, rows.getString(1))
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     fun `context reads preserve branch membership and skip foreign opaque checkpoints`() = runBlocking {
         withFixture { f ->
             val thread = f.conversation.currentThread
