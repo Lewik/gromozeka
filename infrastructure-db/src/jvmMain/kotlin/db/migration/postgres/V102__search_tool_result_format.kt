@@ -2,6 +2,8 @@ package db.migration.postgres
 
 import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.infrastructure.db.persistence.referencedArtifactIds
+import com.gromozeka.infrastructure.db.persistence.searchText
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -30,7 +32,10 @@ class V102__search_tool_result_format : BaseJavaMigration() {
             val page = readPage(connection, cursor)
             if (page.isEmpty()) break
             val updates = page.mapNotNull(::migrateStoredMessage)
-            if (updates.isNotEmpty()) writeBatch(connection, updates)
+            if (updates.isNotEmpty()) {
+                val artifactText = readArtifactText(connection, updates.flatMap { it.message.referencedArtifactIds() }.toSet())
+                writeBatch(connection, updates, artifactText)
+            }
             cursor = page.last().id
         }
         verifyCanonicalResults(connection)
@@ -95,6 +100,7 @@ class V102__search_tool_result_format : BaseJavaMigration() {
             originalHeader = stored.header,
             migratedMessage = migrated.toString(),
             migratedHeader = JSON.encodeToString(CompactionMessageHeader.from(message)),
+            message = message,
         )
     }
 
@@ -141,22 +147,27 @@ class V102__search_tool_result_format : BaseJavaMigration() {
         return messages
     }
 
-    private fun writeBatch(connection: Connection, batch: List<MessageUpdate>) {
+    private fun writeBatch(
+        connection: Connection,
+        batch: List<MessageUpdate>,
+        artifactText: Map<String, String?>,
+    ) {
         connection.autoCommit = false
         try {
             val counts = connection.prepareStatement(
                 """
                 UPDATE messages
-                SET message_json = ?, compaction_header = ?
+                SET message_json = ?, compaction_header = ?, search_text = ?
                 WHERE id = ? AND message_json = ? AND compaction_header = ?
                 """.trimIndent(),
             ).use { update ->
                 batch.forEach { item ->
                     update.setString(1, item.migratedMessage)
                     update.setString(2, item.migratedHeader)
-                    update.setString(3, item.id)
-                    update.setString(4, item.originalMessage)
-                    update.setString(5, item.originalHeader)
+                    update.setString(3, item.message.searchText(artifactText))
+                    update.setString(4, item.id)
+                    update.setString(5, item.originalMessage)
+                    update.setString(6, item.originalHeader)
                     update.addBatch()
                 }
                 update.executeBatch()
@@ -188,6 +199,19 @@ class V102__search_tool_result_format : BaseJavaMigration() {
         }
     }
 
+    private fun readArtifactText(connection: Connection, ids: Set<String>): Map<String, String?> {
+        if (ids.isEmpty()) return emptyMap()
+        val placeholders = ids.joinToString(",") { "?" }
+        return connection.prepareStatement("SELECT id, search_text FROM artifacts WHERE id IN ($placeholders)").use { select ->
+            ids.forEachIndexed { index, id -> select.setString(index + 1, id) }
+            select.executeQuery().use { rows ->
+                buildMap {
+                    while (rows.next()) put(rows.getString(1), rows.getString(2))
+                }
+            }
+        }
+    }
+
     private fun List<SizedId>.byteBoundedPrefix(): List<SizedId> {
         val selected = mutableListOf<SizedId>()
         var bytes = 0L
@@ -208,6 +232,7 @@ class V102__search_tool_result_format : BaseJavaMigration() {
         val originalHeader: String,
         val migratedMessage: String,
         val migratedHeader: String,
+        val message: Conversation.Message,
     )
 
     @OptIn(ExperimentalSerializationApi::class)

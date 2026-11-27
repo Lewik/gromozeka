@@ -1,7 +1,9 @@
 package com.gromozeka.infrastructure.db.persistence
 
+import com.gromozeka.domain.model.Artifact
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
+import com.gromozeka.domain.model.ConversationSearchRequest
 import com.gromozeka.domain.model.ConversationMessageSelection
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ToolSequenceFacts
@@ -1085,27 +1087,57 @@ class PostgresRuntimeMessageReadTest {
     @Test
     fun `V102 upgrades legacy search tool results and their compaction headers`() = runBlocking {
         withFixture(target = "101") { f ->
+            val legacySearchTerm = "legacy-calendar-description-marker"
+            val artifactSearchTerm = "preserved-calendar-artifact-marker"
             val legacyResult = """
                 {"query":"calendar","catalog_revision":"revision","loaded_for_current_context":true,"count":1,
-                 "tools":[{"name":"calendar_create_event","description":"Create an event.","source":"calendar",
+                 "tools":[{"name":"calendar_create_event","description":"$legacySearchTerm","source":"calendar",
                  "input_schema":{"type":"object","properties":{}}}]}
             """.trimIndent().replace("\n", "")
+            val artifact = ExposedArtifactRepository().save(
+                Artifact(
+                    id = Artifact.Id("legacy-search-artifact"),
+                    projectId = f.conversation.projectId,
+                    conversationId = f.conversation.id,
+                    createdByUserId = f.owner.id,
+                    fileName = "calendar.txt",
+                    mediaType = "text/plain",
+                    sizeBytes = artifactSearchTerm.length.toLong(),
+                    source = Artifact.ContentSource.Managed("a".repeat(64)),
+                    purpose = Artifact.Purpose.TOOL_OUTPUT,
+                    state = Artifact.State.COMMITTED,
+                    createdAt = f.now,
+                    committedAt = f.now,
+                ),
+                artifactSearchTerm,
+            )
             val resultMessage = f.message("legacy-search-result").copy(
                 content = listOf(ContentItem.ToolResult(
                     toolUseId = ContentItem.ToolCall.Id("search-call"),
                     toolName = "search_tools",
-                    result = listOf(ContentItem.ToolResult.Data.Text(legacyResult)),
+                    result = listOf(
+                        ContentItem.ToolResult.Data.Text(legacyResult),
+                        ContentItem.ToolResult.Data.ArtifactData(artifact.reference()),
+                    ),
                 )),
             )
             f.save(resultMessage, f.conversation.currentThread, position = 0)
+            val search = PostgresConversationSearchRepository(f.source)
+            suspend fun searchIds(query: String) = search.search(
+                ConversationSearchRequest(query, includeMetadataMatches = false),
+                setOf(f.conversation.projectId),
+                f.owner.id,
+            ).hits.mapNotNull { it.messageId }
+            assertEquals(listOf(resultMessage.id), searchIds(legacySearchTerm))
+            assertEquals(listOf(resultMessage.id), searchIds(artifactSearchTerm))
 
             f.migrate("102")
 
             val migrated = assertNotNull(f.links.findMessage(f.conversation.currentThread, resultMessage.id))
             val result = migrated.content.single() as ContentItem.ToolResult
             assertEquals(
-                """{"tools":["calendar_create_event"]}""",
-                (result.result.single() as ContentItem.ToolResult.Data.Text).content,
+                listOf("""{"tools":["calendar_create_event"]}"""),
+                result.result.filterIsInstance<ContentItem.ToolResult.Data.Text>().map { it.content },
             )
             f.source.connection.use { connection ->
                 connection.prepareStatement(
@@ -1121,6 +1153,9 @@ class PostgresRuntimeMessageReadTest {
                     }
                 }
             }
+            assertTrue(searchIds(legacySearchTerm).isEmpty())
+            assertEquals(listOf(resultMessage.id), searchIds("calendar_create_event"))
+            assertEquals(listOf(resultMessage.id), searchIds(artifactSearchTerm))
         }
     }
 

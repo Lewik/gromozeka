@@ -36,18 +36,11 @@ class ExposedMessageRepository(
 
     internal fun insertBatch(messages: List<Conversation.Message>) {
         messages.chunked(BATCH_SIZE).forEach { batch ->
-            val artifactIdsByMessage = batch.associate { message ->
-                message.id to message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
-                    .flatMap { it.result }
-                    .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>()
-                    .map { it.artifact.id.value }.distinct()
-            }
-            val artifactText = artifactIdsByMessage.values.flatten().distinct().chunked(BATCH_SIZE)
+            val artifactText = batch.flatMap { it.referencedArtifactIds() }.distinct().chunked(BATCH_SIZE)
                 .flatMap { ids -> Artifacts.select(Artifacts.id, Artifacts.searchText)
                     .where { Artifacts.id inList ids }
                     .map { it[Artifacts.id] to it[Artifacts.searchText] } }.toMap()
             Messages.batchInsert(batch, shouldReturnGeneratedValues = false) { message ->
-                val toolText = artifactIdsByMessage.getValue(message.id).mapNotNull(artifactText::get).joinToString("\n")
                 val toolSequence = ToolSequenceFacts.from(message)
                 this[Messages.id] = message.id.value
                 this[Messages.conversationId] = message.conversationId.value
@@ -55,7 +48,7 @@ class ExposedMessageRepository(
                 this[Messages.replyToId] = message.replyTo?.value
                 this[Messages.role] = message.role.name
                 this[Messages.createdAt] = message.createdAt
-                this[Messages.searchText] = listOf(message.searchText(), toolText).filter(String::isNotBlank).joinToString("\n")
+                this[Messages.searchText] = message.searchText(artifactText)
                 this[Messages.messageText] = message.searchText(includeToolResults = false)
                 this[Messages.compactionHeader] = Json.encodeToString(CompactionMessageHeader.from(message))
                 this[Messages.toolCallIds] = toolSequence.callIds
@@ -113,3 +106,15 @@ internal fun Conversation.Message.searchText(includeToolResults: Boolean = true)
         else -> null
     }
 }.joinToString("\n").safeToolOutputText().trim()
+
+internal fun Conversation.Message.referencedArtifactIds(): List<String> = content
+    .filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
+    .flatMap { it.result }
+    .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.ArtifactData>()
+    .map { it.artifact.id.value }
+    .distinct()
+
+internal fun Conversation.Message.searchText(artifactTextById: Map<String, String?>): String {
+    val artifactText = referencedArtifactIds().mapNotNull(artifactTextById::get).joinToString("\n")
+    return listOf(searchText(), artifactText).filter(String::isNotBlank).joinToString("\n")
+}
