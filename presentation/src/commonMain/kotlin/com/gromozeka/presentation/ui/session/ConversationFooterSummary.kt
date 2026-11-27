@@ -81,7 +81,8 @@ internal fun ConversationFooterSummary(
     val pendingHint = if (runtime == null) unknown else buildString {
         append(translation.text("chat.footer.queued", "count" to pending.size))
         pending.orderedForDisplay().take(3).forEachIndexed { index, message ->
-            val text = message.text.ifBlank { message.artifacts.joinToString { it.fileName } }
+            val text = if (message.isRuntime) translation.text("client.instructions.runtimeObservation")
+                else message.text.ifBlank { message.artifacts.joinToString { it.fileName } }
             append("\n${index + 1}. ${messageDeliveryDescription(message.delivery, translation.runtime)}: ${footerPreview(text)}")
         }
         if (pending.size > 3) append("\n" + translation.text("chat.activity.more", "count" to pending.size - 3))
