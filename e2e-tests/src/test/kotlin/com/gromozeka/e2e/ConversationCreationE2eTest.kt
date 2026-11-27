@@ -112,6 +112,7 @@ class ConversationCreationE2eTest {
                 }
                 waitForTag(UiTestTag.MessageInput)
                 onNodeWithTag("side-panel-toggle").performClick()
+                waitForTag("side-panel-tab-runtime")
                 onNodeWithTag("side-panel-tab-runtime").performClick()
                 waitUntil(timeoutMillis = 30_000) {
                     onAllNodesWithText("Replies: Alpha").fetchSemanticsNodes().isNotEmpty()
