@@ -32,11 +32,22 @@ class ExposedConversationCompactionRepository(
 ) : ConversationCompactionRepository {
     override suspend fun commitIfCurrent(
         expectedThreadId: Conversation.Thread.Id,
-        compactionMessage: Conversation.Message,
+        compactionMessages: List<Conversation.Message>,
         newThread: Conversation.Thread,
         insertionAnchorId: Conversation.Message.Id,
         preparedCompactionId: String?,
     ): Boolean = dbQuery {
+        require(compactionMessages.isNotEmpty()) { "Compaction commit requires a checkpoint" }
+        val compactionMessage = compactionMessages.first()
+        require(compactionMessages.map { it.id }.distinct().size == compactionMessages.size) {
+            "Compaction commit contains duplicate message IDs"
+        }
+        require(compactionMessages.all { it.conversationId == compactionMessage.conversationId }) {
+            "Compaction commit messages belong to different conversations"
+        }
+        require(compactionMessages.drop(1).all { it.role == Conversation.Message.Role.RUNTIME }) {
+            "Only Runtime continuation messages may follow a compaction checkpoint"
+        }
         // Lock Runtime before Conversation, matching collaboration's admission order.
         // Stop and COW publication have one linearization point, not a check-then-write race.
         val preparedState = if (preparedCompactionId != null) {
@@ -83,24 +94,25 @@ class ExposedConversationCompactionRepository(
         val lastTurnNumber = Threads.selectAll().where { Threads.id eq expectedThreadId.value }
             .single()[Threads.lastTurnNumber]
 
-        val toolSequence = ToolSequenceFacts.from(compactionMessage)
-        Messages.insert {
-            it[id] = compactionMessage.id.value
-            it[conversationId] = compactionMessage.conversationId.value
-            it[originalIdsJson] = json.encodeToString(compactionMessage.originalIds.map { id -> id.value })
-            it[replyToId] = compactionMessage.replyTo?.value
-            it[role] = compactionMessage.role.name
-            it[createdAt] = compactionMessage.createdAt
-            it[searchText] = compactionMessage.searchText()
-            it[compactionHeader] = Json.encodeToString(CompactionMessageHeader.from(compactionMessage))
-            it[toolCallIds] = toolSequence.callIds
-            it[toolResultIds] = toolSequence.resultIds
-            it[providerManagedTool] = toolSequence.providerManaged
-            it[toolResultsOnly] = toolSequence.toolResultsOnly
-            it[fullCompactionAnchor] = toolSequence.fullCompactionAnchor
-            it[responseReviewContinuation] = compactionMessage.isResponseReviewContinuation()
-            it[contextMetadataJson] = compactionMessage.contextMetadataJson(json)
-            it[messageJson] = json.encodeToString(compactionMessage)
+        Messages.batchInsert(compactionMessages, shouldReturnGeneratedValues = false) { message ->
+            val toolSequence = ToolSequenceFacts.from(message)
+            this[Messages.id] = message.id.value
+            this[Messages.conversationId] = message.conversationId.value
+            this[Messages.originalIdsJson] = json.encodeToString(message.originalIds.map { id -> id.value })
+            this[Messages.replyToId] = message.replyTo?.value
+            this[Messages.role] = message.role.name
+            this[Messages.createdAt] = message.createdAt
+            this[Messages.searchText] = message.searchText()
+            this[Messages.messageText] = message.searchText(includeToolResults = false)
+            this[Messages.compactionHeader] = Json.encodeToString(CompactionMessageHeader.from(message))
+            this[Messages.toolCallIds] = toolSequence.callIds
+            this[Messages.toolResultIds] = toolSequence.resultIds
+            this[Messages.providerManagedTool] = toolSequence.providerManaged
+            this[Messages.toolResultsOnly] = toolSequence.toolResultsOnly
+            this[Messages.fullCompactionAnchor] = toolSequence.fullCompactionAnchor
+            this[Messages.responseReviewContinuation] = message.isResponseReviewContinuation()
+            this[Messages.contextMetadataJson] = message.contextMetadataJson(json)
+            this[Messages.messageJson] = json.encodeToString(message)
         }
         Threads.insert {
             it[id] = newThread.id.value
@@ -113,7 +125,7 @@ class ExposedConversationCompactionRepository(
         TransactionManager.current().exec(
             """
             INSERT INTO thread_messages(thread_id, message_id, position)
-            SELECT ?, message_id, CASE WHEN position <= ? THEN position ELSE position + 1 END
+            SELECT ?, message_id, CASE WHEN position <= ? THEN position ELSE position + ? END
             FROM thread_messages
             WHERE thread_id = ?
             ORDER BY position
@@ -121,13 +133,14 @@ class ExposedConversationCompactionRepository(
             listOf(
                 TextColumnType() to newThread.id.value,
                 org.jetbrains.exposed.v1.core.IntegerColumnType() to anchor,
+                org.jetbrains.exposed.v1.core.IntegerColumnType() to compactionMessages.size,
                 TextColumnType() to expectedThreadId.value,
             ),
         )
-        ThreadMessages.insert {
-            it[threadId] = newThread.id.value
-            it[messageId] = compactionMessage.id.value
-            it[position] = anchor + 1
+        ThreadMessages.batchInsert(compactionMessages.withIndex(), shouldReturnGeneratedValues = false) { indexed ->
+            this[ThreadMessages.threadId] = newThread.id.value
+            this[ThreadMessages.messageId] = indexed.value.id.value
+            this[ThreadMessages.position] = anchor + indexed.index + 1
         }
         if (preparedState != null) {
             val prepared = requireNotNull(preparedState.proactiveCompaction)

@@ -1361,7 +1361,6 @@ class ConversationEngineService(
                 previousHumanMessageAt = historyWindow.continuationState.previousHumanMessageAt,
             ),
             groups = settingsProvider.userProfile.messageInstructionGroups,
-            continuationState = historyWindow.continuationState,
         )
         val targetMessageId = rootUserMessageId
             ?: currentMessages.lastOrNull { it.role == Conversation.Message.Role.USER }?.id

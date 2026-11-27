@@ -595,14 +595,9 @@ data class Conversation(
                     val modelName: String? = null,
                 )
 
-                /**
-                 * A full checkpoint is the first message of the next model window. Sticky candidates retain
-                 * their last-occurrence order so the current instruction-group configuration can choose one
-                 * winner per group without loading messages before the checkpoint.
-                 */
+                /** Runtime state that cannot be reconstructed from the bounded post-checkpoint window. */
                 @Serializable
                 data class ContinuationState(
-                    val stickyInstructionCandidates: List<Instruction.UserInstruction> = emptyList(),
                     val previousHumanMessageAt: Instant? = null,
                 )
 

@@ -109,14 +109,10 @@ class ConversationContextSnapshotService(
                 selectedHistory.continuationState.previousHumanMessageAt,
             ),
             profile.messageInstructionGroups,
-            selectedHistory.continuationState,
         )
         val materializedPrefix = projectionRequest.copy(messages = runtimeMessages).projectedMessages(resolved.connection.kind)
-        val prefixIds = prefix.mapTo(linkedSetOf()) { it.id }
-        if (materializedPrefix.mapNotNull { it.id.takeIf(prefixIds::contains) } != prefix.map { it.id }) {
-            throw ContextSnapshotUnavailableException(
-                "Incomplete history checkpoint prevents a stable projected context prefix")
-        }
+        if (materializedPrefix.map { it.id } != prefix.map { it.id }) throw ContextSnapshotUnavailableException(
+            "Incomplete history checkpoint prevents a stable projected context prefix")
         val baseCatalog = toolCatalog.readSnapshot(project, agent.toolAccess, conversation)
         val skillContext = skills.prepare(agent, project.id, baseCatalog)
         val catalog = skillContext.toolCatalog

@@ -6,6 +6,8 @@ import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationPin
 import com.gromozeka.domain.model.ConversationContext
+import com.gromozeka.domain.model.MessageInstructionGroup
+import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.compactions
 import com.gromozeka.domain.model.isFullContextCompaction
 import com.gromozeka.domain.model.withoutProviderReplay
@@ -46,6 +48,7 @@ import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.NoOpDeclarativeStateChangePublisher
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.domain.service.ResolvedAiRuntime
+import com.gromozeka.domain.service.SettingsProvider
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -610,6 +613,49 @@ class ManualCompactionServiceTest {
         }
     }
 
+    @Test fun `full compaction persists one sticky continuation runtime message`() = runBlocking {
+        val readonly = Conversation.Message.Instruction.UserInstruction(
+            id = "readonly",
+            title = "Readonly",
+            description = "Do not modify files",
+        )
+        val writable = Conversation.Message.Instruction.UserInstruction(
+            id = "writable",
+            title = "Writable",
+            description = "File changes are allowed",
+        )
+        val group = MessageInstructionGroup(
+            id = "access",
+            title = "Access",
+            controls = listOf(
+                MessageInstructionGroup.Control(readonly, "R"),
+                MessageInstructionGroup.Control(writable, "W"),
+            ),
+            retentionMode = MessageInstructionGroup.RetentionMode.STICKY_LATEST,
+        )
+        val fixture = Fixture(messageInstructionGroups = listOf(group))
+        fixture.append(fixture.third.copy(
+            id = Conversation.Message.Id("readonly-selection"),
+            instructions = listOf(readonly),
+        ))
+
+        val updated = fixture.service().compactRuntimeHistory(
+            fixture.conversation.id,
+            emptyList(),
+            true,
+            SquashType.DISTILL,
+        )
+
+        val active = ConversationContext(fixture.threadMessages.messages(updated.currentThread)).messages()
+        assertEquals(listOf(Conversation.Message.Role.ASSISTANT, Conversation.Message.Role.RUNTIME), active.map { it.role })
+        val carrier = active.last()
+        assertEquals(listOf(readonly), carrier.instructions)
+        assertTrue(carrier.author is Conversation.Message.Author.Runtime)
+        assertTrue(carrier.content.single() is Conversation.Message.ContentItem.RuntimeJson)
+        assertEquals(carrier, fixture.messages.values[carrier.id])
+        assertEquals(active, StickyMessageInstructionService().materialize(active, listOf(group)))
+    }
+
     @Test fun `queued history mutation is stale after an earlier copy-on-write change`() = runBlocking {
         val f = Fixture()
         val history = f.historyService()
@@ -681,6 +727,7 @@ class ManualCompactionServiceTest {
     private class Fixture(
         runtimeFailure: Throwable? = null,
         commitConflict: Boolean = false,
+        messageInstructionGroups: List<MessageInstructionGroup> = emptyList(),
     ) {
         val initialThread = Conversation.Thread(
             id = Conversation.Thread.Id("thread-initial"),
@@ -755,8 +802,19 @@ class ManualCompactionServiceTest {
         private val configurationProvider = FixedConfigurationProvider()
 
         private val pairingService = ToolCallPairingService()
+        private val settingsProvider = Mockito.mock(SettingsProvider::class.java).also { settings ->
+            Mockito.`when`(settings.userProfile).thenReturn(UserProfile(
+                messageInstructionGroups = messageInstructionGroups,
+            ))
+        }
         val committer = ContextCompactionCommitService(
-            conversations, compactions, threadMessages, pairingService, NoOpDeclarativeStateChangePublisher,
+            conversations,
+            compactions,
+            threadMessages,
+            pairingService,
+            NoOpDeclarativeStateChangePublisher,
+            settingsProvider,
+            StickyMessageInstructionService(),
         )
 
         fun service(): ManualCompactionService {
@@ -1135,20 +1193,22 @@ private class InMemoryConversationCompactionRepository(
 ) : ConversationCompactionRepository {
     override suspend fun commitIfCurrent(
         expectedThreadId: Conversation.Thread.Id,
-        compactionMessage: Conversation.Message,
+        compactionMessages: List<Conversation.Message>,
         newThread: Conversation.Thread,
         insertionAnchorId: Conversation.Message.Id,
         preparedCompactionId: String?,
     ): Boolean {
         require(preparedCompactionId == null) { "This fixture is for manual compaction" }
+        val compactionMessage = compactionMessages.first()
         if (forceConflict) return false
         val conversation = conversations.values[compactionMessage.conversationId] ?: return false
         if (conversation.currentThread != expectedThreadId) return false
         val links = threadMessages.links[expectedThreadId].orEmpty().sortedBy(ThreadMessageLink::position)
         val anchor = links.indexOfFirst { it.messageId == insertionAnchorId }
         check(anchor >= 0)
-        val ids = links.take(anchor + 1).map { it.messageId } + compactionMessage.id + links.drop(anchor + 1).map { it.messageId }
-        messages.save(compactionMessage)
+        val ids = links.take(anchor + 1).map { it.messageId } + compactionMessages.map { it.id } +
+            links.drop(anchor + 1).map { it.messageId }
+        compactionMessages.forEach { messages.save(it) }
         threads.save(newThread.copy(lastTurnNumber = requireNotNull(threads.findById(expectedThreadId)).lastTurnNumber))
         threadMessages.addBatch(ids.mapIndexed { index, id -> ThreadMessageLink(newThread.id, id, index) })
         conversations.updateCurrentThread(conversation.id, newThread.id)

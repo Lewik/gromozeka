@@ -982,18 +982,13 @@ class PostgresRuntimeMessageReadTest {
     }
 
     @Test
-    fun `V99 carries sticky candidates and previous human time across the bounded checkpoint window`() = runBlocking {
+    fun `V99 carries previous human time across the bounded checkpoint window`() = runBlocking {
         withFixture(target = "98") { f ->
             val thread = f.conversation.currentThread
-            val oldMode = Conversation.Message.Instruction.UserInstruction("mode", "Old mode", "old")
-            val pinned = Conversation.Message.Instruction.UserInstruction("pinned", "Pinned", "keep")
-            val newMode = Conversation.Message.Instruction.UserInstruction("mode", "New mode", "new")
             val first = f.message("first").copy(
-                instructions = listOf(oldMode, pinned),
                 createdAt = f.now,
             )
             val boundary = f.message("boundary").copy(
-                instructions = listOf(newMode),
                 createdAt = f.now + 1.seconds,
             )
             val checkpoint = f.message("checkpoint-v99").copy(
@@ -1015,7 +1010,6 @@ class PostgresRuntimeMessageReadTest {
 
             val migrated = assertNotNull(f.links.findMessage(thread, checkpoint.id))
             val state = migrated.content.filterIsInstance<ContentItem.ContextCompactionResult>().single().continuationState
-            assertEquals(mapOf("pinned" to pinned, "mode" to newMode), state.stickyInstructionCandidates.associateBy { it.id })
             assertEquals(boundary.createdAt, state.previousHumanMessageAt)
             val headers = f.links.compactionWindowHeaders(thread)
             assertEquals(listOf(checkpoint.id, tail.id), headers.map { it.id })
@@ -1030,16 +1024,9 @@ class PostgresRuntimeMessageReadTest {
     fun `V99 carries continuation state across byte bounded message pages`() = runBlocking {
         withFixture(target = "98") { f ->
             val thread = f.conversation.currentThread
-            val early = Conversation.Message.Instruction.UserInstruction("early", "Early", "keep early")
-            val late = Conversation.Message.Instruction.UserInstruction("late", "Late", "keep late")
             val messages = List(65) { index ->
                 f.message("v99-large-${index.toString().padStart(2, '0')}").copy(
                     content = listOf(ContentItem.UserMessage("$index:${"x".repeat(70_000)}")),
-                    instructions = when (index) {
-                        0 -> listOf(early)
-                        64 -> listOf(late)
-                        else -> emptyList()
-                    },
                     createdAt = f.now + index.seconds,
                 )
             }
@@ -1071,7 +1058,6 @@ class PostgresRuntimeMessageReadTest {
 
             val migrated = assertNotNull(f.links.findMessage(thread, checkpoint.id))
             val state = migrated.content.filterIsInstance<ContentItem.ContextCompactionResult>().single().continuationState
-            assertEquals(listOf(early, late), state.stickyInstructionCandidates)
             assertEquals(boundary.createdAt, state.previousHumanMessageAt)
             f.source.connection.use { connection ->
                 connection.createStatement().use { statement ->
@@ -1579,8 +1565,6 @@ class PostgresRuntimeMessageReadTest {
                     (summary.content.single() as ContentItem.ContextCompactionResult).copy(
                         sourceMessageIds = emptyList(), sourceBoundaryMessageId = prefix.last().id,
                         continuationState = ContentItem.ContextCompactionResult.ContinuationState(
-                            stickyInstructionCandidates = prefix.first().instructions
-                                .filterIsInstance<Conversation.Message.Instruction.UserInstruction>(),
                             previousHumanMessageAt = prefix.last().createdAt,
                         ),
                     )

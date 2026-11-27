@@ -9,6 +9,7 @@ import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.service.DeclarativeStateChangePublisher
 import com.gromozeka.domain.service.DeclarativeStateKey
+import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.shared.uuid.uuid7
 import kotlin.time.Clock
 import org.springframework.stereotype.Service
@@ -29,6 +30,8 @@ internal class ContextCompactionCommitService(
     private val threadMessageRepository: ThreadMessageRepository,
     private val toolCallPairingService: ToolCallPairingService,
     private val stateChanges: DeclarativeStateChangePublisher,
+    private val settings: SettingsProvider,
+    private val stickyInstructions: StickyMessageInstructionService,
 ) : ContextCompactionCommitter {
     override suspend fun commit(
         expectedThreadId: Conversation.Thread.Id,
@@ -119,11 +122,19 @@ internal class ContextCompactionCommitService(
             historyTransition = ContextCompactionResult.HistoryTransition(expectedThreadId, newThread.id),
         )))
         compactionMessage = compactionMessage.recordRetainedOpenAiReplay(previous, suffix)
+        val compactionMessages = buildList {
+            add(compactionMessage)
+            if (result.coversAllPrevious) stickyInstructions.createContinuationCarrier(
+                checkpoint = compactionMessage,
+                groups = settings.userProfile.messageInstructionGroups,
+                sourceHeaders = selected,
+            )?.let(::add)
+        }
         // A selective checkpoint must remain after any existing full checkpoint, otherwise
         // it would disappear behind that checkpoint or split its protected prefix.
         val insertionAnchorId = messages[maxOf(sourceEnd, lastFullCheckpoint)].id
         check(conversationCompactionRepository.commitIfCurrent(
-            expectedThreadId = expectedThreadId, compactionMessage = compactionMessage,
+            expectedThreadId = expectedThreadId, compactionMessages = compactionMessages,
             newThread = newThread, insertionAnchorId = insertionAnchorId, preparedCompactionId = preparedCompactionId,
         )) { "Conversation changed or preparation was cancelled while compaction was committed" }
 

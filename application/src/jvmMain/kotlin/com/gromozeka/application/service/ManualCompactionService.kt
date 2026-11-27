@@ -22,7 +22,6 @@ class ManualCompactionService internal constructor(
     private val fullCompactions: ConversationCompactionService,
     private val compactionCommitter: ContextCompactionCommitter,
     private val continuationStates: ConversationContinuationStateService = ConversationContinuationStateService(
-        StickyMessageInstructionService(),
         MessageTemporalContextService(),
     ),
 ) {

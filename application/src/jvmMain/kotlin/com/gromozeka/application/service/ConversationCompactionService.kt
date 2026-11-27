@@ -31,7 +31,6 @@ class ConversationCompactionService internal constructor(
     private val preparationScope: CompactionPreparationScope,
     private val toolPairs: ToolCallPairingService,
     private val continuationStates: ConversationContinuationStateService = ConversationContinuationStateService(
-        StickyMessageInstructionService(),
         MessageTemporalContextService(),
     ),
 ) {

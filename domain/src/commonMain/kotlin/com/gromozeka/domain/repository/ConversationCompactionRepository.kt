@@ -5,7 +5,7 @@ import com.gromozeka.domain.model.Conversation
 interface ConversationCompactionRepository {
     suspend fun commitIfCurrent(
         expectedThreadId: Conversation.Thread.Id,
-        compactionMessage: Conversation.Message,
+        compactionMessages: List<Conversation.Message>,
         newThread: Conversation.Thread,
         insertionAnchorId: Conversation.Message.Id,
         preparedCompactionId: String? = null,

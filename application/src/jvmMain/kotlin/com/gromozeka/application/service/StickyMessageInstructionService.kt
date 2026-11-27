@@ -1,7 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.Conversation.Message.ContentItem.ContextCompactionResult
+import com.gromozeka.domain.model.CompactionMessageHeader
 import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.domain.model.isFullContextCompaction
 import kotlinx.serialization.json.JsonObject
@@ -11,50 +11,42 @@ import java.util.UUID
 
 @Service
 class StickyMessageInstructionService {
-    private val toolCallPairs = ToolCallPairingService()
-
     fun materialize(
         messages: List<Conversation.Message>,
         groups: List<MessageInstructionGroup>,
-        continuationState: ContextCompactionResult.ContinuationState = ContextCompactionResult.ContinuationState(),
     ): List<Conversation.Message> {
-        val stickyGroupByInstructionId = groups
-            .asSequence()
-            .filter { it.retentionMode == MessageInstructionGroup.RetentionMode.STICKY_LATEST }
-            .flatMap { group -> group.controls.asSequence().map { it.data.id to group.id } }
-            .toMap()
+        val stickyGroupByInstructionId = stickyGroupByInstructionId(groups)
         if (stickyGroupByInstructionId.isEmpty()) return messages
 
-        val winnerIndexes = buildSet {
-            val seenGroups = mutableSetOf<String>()
-            continuationState.stickyInstructionCandidates.indices.reversed().forEach { index ->
-                val instruction = continuationState.stickyInstructionCandidates[index]
-                stickyGroupByInstructionId[instruction.id]?.let { groupId ->
-                    if (seenGroups.add(groupId)) add(index)
-                }
-            }
-        }
-        val inheritedWinners = continuationState.stickyInstructionCandidates
-            .filterIndexed { index, _ -> index in winnerIndexes }
-        val seededMessages = seedInheritedWinners(messages, inheritedWinners)
-
-        val latestMessageIndexByGroup = buildMap {
-            seededMessages.forEachIndexed { messageIndex, message ->
-                message.instructions.forEach { instruction ->
-                    if (instruction is Conversation.Message.Instruction.UserInstruction) {
-                        stickyGroupByInstructionId[instruction.id]?.let { groupId ->
-                            put(groupId, messageIndex)
-                        }
+        val occurrencesByGroup = mutableMapOf<String, MutableList<StickyOccurrence>>()
+        messages.forEachIndexed { messageIndex, message ->
+            message.instructions.forEachIndexed { instructionIndex, instruction ->
+                if (instruction is Conversation.Message.Instruction.UserInstruction) {
+                    stickyGroupByInstructionId[instruction.id]?.let { groupId ->
+                        occurrencesByGroup.getOrPut(groupId, ::mutableListOf).add(
+                            StickyOccurrence(messageIndex, instructionIndex, instruction),
+                        )
                     }
                 }
             }
         }
+        val retainedOccurrences = buildSet {
+            occurrencesByGroup.values.forEach { occurrences ->
+                val current = occurrences.last().instruction
+                // Repeated composer selections are semantically unchanged. Keep the first copy of the
+                // current value run so they do not move an otherwise cacheable conversation prefix.
+                var firstCurrent = occurrences.lastIndex
+                while (firstCurrent > 0 && occurrences[firstCurrent - 1].instruction == current) firstCurrent--
+                val retained = occurrences[firstCurrent]
+                add(retained.messageIndex to retained.instructionIndex)
+            }
+        }
 
-        return seededMessages.mapIndexed { messageIndex, message ->
-            val materializedInstructions = message.instructions.filterNot { instruction ->
-                if (instruction !is Conversation.Message.Instruction.UserInstruction) return@filterNot false
-                val groupId = stickyGroupByInstructionId[instruction.id] ?: return@filterNot false
-                latestMessageIndexByGroup[groupId] != messageIndex
+        return messages.mapIndexed { messageIndex, message ->
+            val materializedInstructions = message.instructions.filterIndexed { instructionIndex, instruction ->
+                instruction !is Conversation.Message.Instruction.UserInstruction ||
+                    stickyGroupByInstructionId[instruction.id] == null ||
+                    (messageIndex to instructionIndex) in retainedOccurrences
             }
             if (materializedInstructions.size == message.instructions.size) {
                 message
@@ -64,61 +56,62 @@ class StickyMessageInstructionService {
         }
     }
 
-    private fun seedInheritedWinners(
-        messages: List<Conversation.Message>,
-        inheritedWinners: List<Conversation.Message.Instruction.UserInstruction>,
-    ): List<Conversation.Message> {
-        if (inheritedWinners.isEmpty() || messages.isEmpty()) return messages
-
-        val existingCarrier = messages.indexOfFirst(Conversation.Message::isStickyContinuationCarrier)
-        if (existingCarrier >= 0) return messages.mapIndexed { index, message ->
-            if (index == existingCarrier) message.copy(instructions = inheritedWinners) else message
+    internal fun createContinuationCarrier(
+        checkpoint: Conversation.Message,
+        groups: List<MessageInstructionGroup>,
+        sourceHeaders: List<CompactionMessageHeader>,
+    ): Conversation.Message? {
+        require(checkpoint.role == Conversation.Message.Role.ASSISTANT && checkpoint.isFullContextCompaction()) {
+            "Sticky continuation carrier requires a full assistant checkpoint"
         }
-
-        val checkpointIndex = messages.indexOfLast(Conversation.Message::isFullContextCompaction)
-        val anchor = messages[checkpointIndex.takeIf { it >= 0 } ?: 0]
-        val insertionIndex = if (checkpointIndex < 0) 0 else {
-            val checkpointGroup = toolCallPairs.includePairedToolMessages(messages, listOf(anchor.id))
-            messages.indexOfLast { it.id in checkpointGroup } + 1
-        }
-        val carrier = Conversation.Message(
+        val inheritedWinners = currentWinners(
+            sourceHeaders.flatMap(CompactionMessageHeader::userInstructions),
+            stickyGroupByInstructionId(groups),
+        )
+        if (inheritedWinners.isEmpty()) return null
+        return Conversation.Message(
             id = Conversation.Message.Id(UUID.nameUUIDFromBytes(
-                "$STICKY_CONTINUATION_ID_NAMESPACE:${anchor.id.value}".encodeToByteArray(),
+                "$STICKY_CONTINUATION_ID_NAMESPACE:${checkpoint.id.value}".encodeToByteArray(),
             ).toString()),
-            conversationId = anchor.conversationId,
+            conversationId = checkpoint.conversationId,
             role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
             content = listOf(Conversation.Message.ContentItem.RuntimeJson(JsonObject(mapOf(
                 STICKY_CONTINUATION_KIND_KEY to JsonPrimitive(STICKY_CONTINUATION_KIND),
             )))),
             instructions = inheritedWinners,
-            createdAt = anchor.createdAt,
+            createdAt = checkpoint.createdAt,
         )
-        return messages.toMutableList().apply { add(insertionIndex, carrier) }
     }
 
-    /** Keep only the latest occurrence of each candidate ID, preserving those occurrence positions. */
-    fun captureCandidates(
-        messages: List<Conversation.Message>,
-        inherited: List<Conversation.Message.Instruction.UserInstruction> = emptyList(),
+    private fun stickyGroupByInstructionId(groups: List<MessageInstructionGroup>): Map<String, String> = groups
+        .asSequence()
+        .filter { it.retentionMode == MessageInstructionGroup.RetentionMode.STICKY_LATEST }
+        .flatMap { group -> group.controls.asSequence().map { it.data.id to group.id } }
+        .toMap()
+
+    private fun currentWinners(
+        candidates: List<Conversation.Message.Instruction.UserInstruction>,
+        stickyGroupByInstructionId: Map<String, String>,
     ): List<Conversation.Message.Instruction.UserInstruction> {
-        val latest = linkedMapOf<String, Conversation.Message.Instruction.UserInstruction>()
-        fun record(instruction: Conversation.Message.Instruction.UserInstruction) {
-            latest.remove(instruction.id)
-            latest[instruction.id] = instruction
+        val winnerIndexes = buildSet {
+            val seenGroups = mutableSetOf<String>()
+            candidates.indices.reversed().forEach { index ->
+                stickyGroupByInstructionId[candidates[index].id]?.let { groupId ->
+                    if (seenGroups.add(groupId)) add(index)
+                }
+            }
         }
-        inherited.forEach(::record)
-        messages.asSequence().flatMap { it.instructions.asSequence() }
-            .filterIsInstance<Conversation.Message.Instruction.UserInstruction>()
-            .forEach(::record)
-        return latest.values.toList()
+        return candidates.filterIndexed { index, _ -> index in winnerIndexes }
     }
 }
+
+private data class StickyOccurrence(
+    val messageIndex: Int,
+    val instructionIndex: Int,
+    val instruction: Conversation.Message.Instruction.UserInstruction,
+)
 
 private const val STICKY_CONTINUATION_ID_NAMESPACE = "gromozeka:sticky-continuation"
 private const val STICKY_CONTINUATION_KIND_KEY = "kind"
 private const val STICKY_CONTINUATION_KIND = "sticky_instruction_continuation"
-
-private fun Conversation.Message.isStickyContinuationCarrier(): Boolean =
-    role == Conversation.Message.Role.RUNTIME &&
-        (content.singleOrNull() as? Conversation.Message.ContentItem.RuntimeJson)
-            ?.json == JsonObject(mapOf(STICKY_CONTINUATION_KIND_KEY to JsonPrimitive(STICKY_CONTINUATION_KIND)))

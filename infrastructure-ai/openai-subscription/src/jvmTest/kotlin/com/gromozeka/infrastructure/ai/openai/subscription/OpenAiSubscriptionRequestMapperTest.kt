@@ -75,14 +75,23 @@ class OpenAiSubscriptionRequestMapperTest {
             conversationId = conversationId,
             role = Conversation.Message.Role.USER,
             content = listOf(Conversation.Message.ContentItem.UserMessage("Continue after compact")),
+            instructions = listOf(instruction),
             createdAt = createdAt,
         )
         val service = StickyMessageInstructionService()
-        val continuation = Conversation.Message.ContentItem.ContextCompactionResult.ContinuationState(
-            stickyInstructionCandidates = listOf(instruction),
+        val carrier = Conversation.Message(
+            id = Conversation.Message.Id("sticky-continuation"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.RUNTIME,
+            author = Conversation.Message.Author.Runtime(),
+            content = listOf(Conversation.Message.ContentItem.RuntimeJson(buildJsonObject {
+                put("kind", "sticky_instruction_continuation")
+            })),
+            instructions = listOf(instruction),
+            createdAt = createdAt,
         )
-        val checkpointOnly = service.materialize(listOf(checkpoint), listOf(group), continuation)
-        val messages = service.materialize(listOf(checkpoint, tail), listOf(group), continuation)
+        val checkpointOnly = service.materialize(listOf(checkpoint, carrier), listOf(group))
+        val messages = service.materialize(listOf(checkpoint, carrier, tail), listOf(group))
 
         assertEquals(
             listOf(

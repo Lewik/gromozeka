@@ -79,7 +79,6 @@ class V99__compaction_continuation_state : BaseJavaMigration() {
                 rows.getString(1) to rows.getInt(2)
             }
         }
-        val latestInstructions = linkedMapOf<String, Conversation.Message.Instruction.UserInstruction>()
         var previousHumanAt: kotlin.time.Instant? = null
         var afterPosition = -1
         while (afterPosition < branch.second) {
@@ -87,16 +86,11 @@ class V99__compaction_continuation_state : BaseJavaMigration() {
             check(page.isNotEmpty()) { "Full checkpoint $checkpointId has a gap before its source boundary" }
             page.forEach { entry ->
                 val message = json.decodeFromString<Conversation.Message>(entry.message)
-                message.instructions.filterIsInstance<Conversation.Message.Instruction.UserInstruction>().forEach { instruction ->
-                    latestInstructions.remove(instruction.id)
-                    latestInstructions[instruction.id] = instruction
-                }
                 if (MessageContextMetadata.from(message).humanInput) previousHumanAt = message.createdAt
                 afterPosition = entry.position
             }
         }
         return Conversation.Message.ContentItem.ContextCompactionResult.ContinuationState(
-            stickyInstructionCandidates = latestInstructions.values.toList(),
             previousHumanMessageAt = previousHumanAt,
         )
     }
