@@ -821,6 +821,7 @@ class GromozekaRemoteServer(
                         taskId = request.taskId,
                         conversationId = request.conversationId,
                         messageIds = request.messageIds,
+                        fullSelection = request.fullSelection,
                         strategy = request.strategy,
                     )
                     ConversationResponse(conversationDomainService.findById(request.conversationId))

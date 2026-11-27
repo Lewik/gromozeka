@@ -198,7 +198,7 @@ class ConversationEngineDeliveryTest {
         f.captureNativeCompactRequest = true
         f.pins.values = listOf(testPin(conversation.id, "CURRENT_PIN"))
         val task = input("manual-compact").copy(payload = ConversationRuntimeTask.Payload.HistoryMutation(
-            mutation = ConversationHistoryMutation.Compact(listOf(Conversation.Message.Id("root")), SquashType.COMPACT),
+            mutation = ConversationHistoryMutation.Compact(emptyList(), true, SquashType.COMPACT),
             expectedThreadId = conversation.currentThread,
         ))
         assertTrue(f.coordinator.submit(task))

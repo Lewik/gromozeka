@@ -376,6 +376,7 @@ sealed interface ConversationHistoryMutation {
     @SerialName("compact")
     data class Compact(
         val messageIds: List<Conversation.Message.Id>,
+        val fullSelection: Boolean,
         val strategy: SquashType,
     ) : ConversationHistoryMutation
 }

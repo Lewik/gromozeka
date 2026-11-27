@@ -27,8 +27,6 @@ class CompactionHistoryWindowTest {
         val history = listOf(old, crossing, last)
         assertEquals(listOf(old), prefix(history, pairs))
         assertEquals(85_000L, history.drop(1).sumOf(MessageCompactionTextRenderer::characterCount))
-        assertTrue(window(history).isFullSelection(history.mapTo(mutableSetOf()) { it.id }))
-        assertFalse(window(history).isFullSelection(setOf(old.id, last.id)))
     }
 
     @Test fun `exact boundary retains exactly the last complete message`() {
@@ -67,7 +65,6 @@ class CompactionHistoryWindowTest {
         val recent = message("recent", "Recent work")
         val history = listOf(old, checkpoint, recent)
         assertEquals(listOf(old, checkpoint), prefix(history, pairs))
-        assertTrue(window(history).isFullSelection(setOf(checkpoint.id, recent.id)))
         assertEquals(listOf(checkpoint, recent), ConversationContext(history).messages())
     }
 

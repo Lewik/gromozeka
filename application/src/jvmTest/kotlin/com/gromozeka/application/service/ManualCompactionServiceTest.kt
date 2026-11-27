@@ -95,7 +95,7 @@ class ManualCompactionServiceTest {
         repeat(15_996) { f.append(f.third.copy(id = Conversation.Message.Id("archived-$it"))) }
         f.append(f.checkpoint())
         assertFailsWith<IllegalArgumentException> {
-            f.service().compactRuntimeHistory(f.conversation.id, listOf(f.first.id), SquashType.DISTILL)
+            f.service().compactRuntimeHistory(f.conversation.id, listOf(f.first.id), false, SquashType.DISTILL)
         }
         assertTrue(f.threadMessages.bodyReads.isEmpty())
     }
@@ -151,6 +151,7 @@ class ManualCompactionServiceTest {
             val updated = service.compactRuntimeHistory(
                 conversationId = fixture.conversation.id,
                 messageIds = listOf(fixture.third.id, fixture.first.id),
+                fullSelection = false,
                 strategy = strategy,
             )
 
@@ -193,7 +194,7 @@ class ManualCompactionServiceTest {
         for (strategy in SquashType.entries) {
             val f = Fixture()
             f.pins.values = listOf(testPin(f.conversation.id, "SQUASH_PIN"))
-            f.service().compactRuntimeHistory(f.conversation.id, listOf(f.first.id, f.third.id), strategy)
+            f.service().compactRuntimeHistory(f.conversation.id, listOf(f.first.id, f.third.id), false, strategy)
             if (strategy == SquashType.CONCATENATE) {
                 assertTrue(f.pins.reads.isEmpty()); assertTrue(f.runtimeProvider.requests.isEmpty())
             } else {
@@ -214,6 +215,7 @@ class ManualCompactionServiceTest {
             service.compactRuntimeHistory(
                 conversationId = fixture.conversation.id,
                 messageIds = listOf(fixture.first.id, fixture.third.id),
+                fullSelection = false,
                 strategy = SquashType.COMPACT,
             )
         }
@@ -232,6 +234,7 @@ class ManualCompactionServiceTest {
             fixture.service().compactRuntimeHistory(
                 conversationId = fixture.conversation.id,
                 messageIds = listOf(fixture.first.id, fixture.third.id),
+                fullSelection = false,
                 strategy = SquashType.CONCATENATE,
             )
         }
@@ -245,11 +248,11 @@ class ManualCompactionServiceTest {
         val fixture = Fixture()
         val service = fixture.service()
         val first = service.compactRuntimeHistory(
-            fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), SquashType.COMPACT,
+            fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), false, SquashType.COMPACT,
         )
         val firstHistory = fixture.threadMessages.messages(first.currentThread)
         val updated = service.compactRuntimeHistory(
-            fixture.conversation.id, firstHistory.map { it.id }, SquashType.DISTILL,
+            fixture.conversation.id, emptyList(), true, SquashType.DISTILL,
         )
         val request = fixture.runtimeProvider.requests.last()
         val text = (request.messages.single().content.single() as Conversation.Message.ContentItem.UserMessage).text
@@ -268,7 +271,7 @@ class ManualCompactionServiceTest {
             val boundary = fixture.checkpoint(opaque = true)
             fixture.append(boundary)
             assertFailsWith<IllegalArgumentException> {
-                fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(fixture.third.id), strategy)
+                fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(fixture.third.id), false, strategy)
             }
             assertEquals(listOf(boundary), ConversationContext(fixture.threadMessages.messages(fixture.initialThread.id)).messages())
             assertTrue(fixture.runtimeProvider.requests.isEmpty())
@@ -279,9 +282,47 @@ class ManualCompactionServiceTest {
     fun `single message concatenate is rejected before storage or provider calls`() = runBlocking {
         val fixture = Fixture()
         assertFailsWith<IllegalArgumentException> {
-            fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(fixture.third.id), SquashType.CONCATENATE)
+            fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(fixture.third.id), false, SquashType.CONCATENATE)
         }
         assertEquals(listOf(1, 3, 1, 3), fixture.storageCounts())
+        assertTrue(fixture.runtimeProvider.requests.isEmpty())
+    }
+
+    @Test
+    fun `partial selection rejects an unknown id even when every active message is selected`() = runBlocking {
+        val fixture = Fixture()
+        val selected = fixture.threadMessages.messages(fixture.initialThread.id).map { it.id } +
+            Conversation.Message.Id("not-in-current-thread")
+        val before = fixture.storageCounts()
+
+        assertFailsWith<IllegalArgumentException> {
+            fixture.service().compactRuntimeHistory(
+                fixture.conversation.id,
+                selected,
+                false,
+                SquashType.DISTILL,
+            )
+        }
+
+        assertEquals(before, fixture.storageCounts())
+        assertTrue(fixture.runtimeProvider.requests.isEmpty())
+    }
+
+    @Test
+    fun `full selection rejects explicit message ids`() = runBlocking {
+        val fixture = Fixture()
+        val before = fixture.storageCounts()
+
+        assertFailsWith<IllegalArgumentException> {
+            fixture.service().compactRuntimeHistory(
+                fixture.conversation.id,
+                listOf(fixture.first.id),
+                true,
+                SquashType.DISTILL,
+            )
+        }
+
+        assertEquals(before, fixture.storageCounts())
         assertTrue(fixture.runtimeProvider.requests.isEmpty())
     }
 
@@ -289,9 +330,8 @@ class ManualCompactionServiceTest {
     fun `opaque checkpoint without portable tail or native request is not replaced by an empty summary`() = runBlocking {
         val fixture = Fixture()
         fixture.append(fixture.checkpoint(opaque = true))
-        val original = fixture.threadMessages.messages(fixture.initialThread.id)
         assertFailsWith<IllegalArgumentException> {
-            fixture.service().compactRuntimeHistory(fixture.conversation.id, original.map { it.id }, SquashType.COMPACT)
+            fixture.service().compactRuntimeHistory(fixture.conversation.id, emptyList(), true, SquashType.COMPACT)
         }
         assertTrue(fixture.runtimeProvider.requests.isEmpty())
     }
@@ -307,7 +347,7 @@ class ManualCompactionServiceTest {
                 val selected = fixture.third.copy(id = Conversation.Message.Id("active-tail"))
                 fixture.append(selected)
                 val original = fixture.threadMessages.messages(fixture.initialThread.id)
-                val partial = service.compactRuntimeHistory(fixture.conversation.id, listOf(selected.id), strategy)
+                val partial = service.compactRuntimeHistory(fixture.conversation.id, listOf(selected.id), false, strategy)
                 val partialHistory = fixture.threadMessages.messages(partial.currentThread)
                     assertEquals(
                         listOf(selected.id),
@@ -319,7 +359,7 @@ class ManualCompactionServiceTest {
                     val targetHistory = fixture.threadMessages.messages(target.currentThread)
                     val targetIds = targetHistory.map { it.id }
                     assertTrue(targetHistory.flatMap { it.compactions() }.flatMap { it.sourceMessageIds }.all { it in targetIds }, message = case)
-                    val updated = service.compactRuntimeHistory(target.id, targetIds, strategy)
+                    val updated = service.compactRuntimeHistory(target.id, emptyList(), true, strategy)
 
                     val request = fixture.runtimeProvider.requests.last()
                     val message = request.messages.single()
@@ -349,7 +389,7 @@ class ManualCompactionServiceTest {
                         assertEquals(partial.currentThread, fixture.conversations.values.getValue(partial.id).currentThread, message = case)
                     }
 
-                    val repeated = service.compactRuntimeHistory(target.id, history.map { it.id }, strategy)
+                    val repeated = service.compactRuntimeHistory(target.id, emptyList(), true, strategy)
                     val repeatedText = (fixture.runtimeProvider.requests.last().messages.single().content.single()
                         as Conversation.Message.ContentItem.UserMessage).text
                     assertEquals(1, Regex("AI compacted text").findAll(repeatedText).count(), message = case)
@@ -370,12 +410,12 @@ class ManualCompactionServiceTest {
     fun `editing selective source invalidates nested summaries and restores the other sources`() = runBlocking {
         val fixture = Fixture()
         val first = fixture.service().compactRuntimeHistory(
-            fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), SquashType.COMPACT,
+            fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), false, SquashType.COMPACT,
         )
         val summaryId = fixture.threadMessages.messages(first.currentThread).last().id
         val tail = fixture.third.copy(id = Conversation.Message.Id("tail"))
         fixture.append(tail, first.currentThread)
-        val second = fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(summaryId), SquashType.DISTILL)
+        val second = fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(summaryId), false, SquashType.DISTILL)
         val before = fixture.threadMessages.messages(second.currentThread)
         val updated = fixture.historyService().editRuntimeHistory(
             fixture.conversation.id, fixture.third.id, listOf(Conversation.Message.ContentItem.UserMessage("Changed decision")),
@@ -394,7 +434,7 @@ class ManualCompactionServiceTest {
         listOf(false, true).forEach { deleteSummary ->
             val fixture = Fixture()
             val compacted = fixture.service().compactRuntimeHistory(
-                fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), SquashType.COMPACT,
+                fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), false, SquashType.COMPACT,
             )
             val selected = if (deleteSummary) fixture.threadMessages.messages(compacted.currentThread).last().id else fixture.third.id
             val updated = fixture.historyService().deleteRuntimeHistory(fixture.conversation.id, listOf(selected))!!
@@ -442,7 +482,7 @@ class ManualCompactionServiceTest {
     fun `fork remaps selective coverage and keeps source mutations independent`() = runBlocking {
         val fixture = Fixture()
         val compacted = fixture.service().compactRuntimeHistory(
-            fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), SquashType.COMPACT,
+            fixture.conversation.id, listOf(fixture.first.id, fixture.third.id), false, SquashType.COMPACT,
         )
         val sourceHistory = fixture.threadMessages.messages(compacted.currentThread)
         val fork = fixture.historyService().fork(fixture.conversation.id)
@@ -466,7 +506,7 @@ class ManualCompactionServiceTest {
             fixture.messages.values[fixture.third.id] = fixture.third.copy(content = content)
             val counts = fixture.storageCounts()
             assertFailsWith<IllegalArgumentException> {
-                fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(fixture.third.id), SquashType.COMPACT)
+                fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(fixture.third.id), false, SquashType.COMPACT)
             }
             assertEquals(counts, fixture.storageCounts())
             assertTrue(fixture.runtimeProvider.requests.isEmpty())
@@ -487,7 +527,7 @@ class ManualCompactionServiceTest {
             )
             fixture.append(runtime)
 
-            fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(runtime.id), strategy)
+            fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(runtime.id), false, strategy)
 
             assertContains(fixture.runtimeProvider.requests.single().toString(), "RUNTIME_JSON_${strategy.name}")
         }
@@ -506,6 +546,7 @@ class ManualCompactionServiceTest {
         val updated = fixture.service().compactRuntimeHistory(
             fixture.conversation.id,
             listOf(fixture.third.id, runtime.id),
+            false,
             SquashType.CONCATENATE,
         )
 
@@ -520,7 +561,7 @@ class ManualCompactionServiceTest {
         fixture.threadMessages.links[fixture.initialThread.id] = mutableListOf(ThreadMessageLink(fixture.initialThread.id, checkpoint.id, 0))
         val counts = fixture.storageCounts()
         assertFailsWith<IllegalArgumentException> {
-            fixture.service().compactRuntimeHistory(fixture.conversation.id, listOf(checkpoint.id), SquashType.COMPACT)
+            fixture.service().compactRuntimeHistory(fixture.conversation.id, emptyList(), true, SquashType.COMPACT)
         }
         assertEquals(counts, fixture.storageCounts())
         assertTrue(fixture.runtimeProvider.requests.isEmpty())
@@ -533,7 +574,7 @@ class ManualCompactionServiceTest {
             val latest = f.third.copy(id = Conversation.Message.Id("latest"), content = listOf(Conversation.Message.ContentItem.UserMessage("b".repeat(40_000))))
             f.append(crossing); f.append(latest)
             val all = f.threadMessages.messages(f.initialThread.id)
-            val compacted = f.service().compactRuntimeHistory(f.conversation.id, all.map { it.id }, strategy)
+            val compacted = f.service().compactRuntimeHistory(f.conversation.id, emptyList(), true, strategy)
             val active = ConversationContext(f.threadMessages.messages(compacted.currentThread)).messages()
             val checkpoint = active.first().compactions().single()
             assertTrue(checkpoint.sourceMessageIds.isEmpty())
@@ -562,7 +603,7 @@ class ManualCompactionServiceTest {
             val crossing = f.third.copy(id = Conversation.Message.Id("crossing"), content = listOf(Conversation.Message.ContentItem.UserMessage("a".repeat(45_000))))
             val latest = f.third.copy(id = Conversation.Message.Id("latest"), content = listOf(Conversation.Message.ContentItem.UserMessage("b".repeat(40_000))))
             f.append(crossing); f.append(latest)
-            val selection = f.service().compactRuntimeHistory(f.conversation.id, listOf(crossing.id), strategy)
+            val selection = f.service().compactRuntimeHistory(f.conversation.id, listOf(crossing.id), false, strategy)
             val after = ConversationContext(f.threadMessages.messages(selection.currentThread)).messages()
             assertTrue(after.none { it.id == crossing.id })
             assertTrue(after.any { it.id == latest.id && it.content == latest.content })
@@ -605,9 +646,10 @@ class ManualCompactionServiceTest {
 
     @Test fun `full manual compaction with only the raw suffix fails explicitly without generation`() = runBlocking {
         val f = Fixture()
-        val history = f.threadMessages.messages(f.initialThread.id)
         val before = f.storageCounts()
-        assertFailsWith<IllegalArgumentException> { f.service().compactRuntimeHistory(f.conversation.id, history.map { it.id }, SquashType.COMPACT) }
+        assertFailsWith<IllegalArgumentException> {
+            f.service().compactRuntimeHistory(f.conversation.id, emptyList(), true, SquashType.COMPACT)
+        }
         assertEquals(before, f.storageCounts())
         assertTrue(f.runtimeProvider.requests.isEmpty())
     }

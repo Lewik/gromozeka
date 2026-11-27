@@ -43,6 +43,7 @@ class ConversationRuntimeHistoryMutationExecutor(
             is ConversationHistoryMutation.Compact -> manualCompactions.compactRuntimeHistory(
                 conversationId = conversationId,
                 messageIds = mutation.messageIds,
+                fullSelection = mutation.fullSelection,
                 strategy = mutation.strategy,
                 checkpointId = Conversation.Message.Id("${task.id.value}:compaction"),
                 requestContext = mapOf("userId" to task.actorUserId?.value),

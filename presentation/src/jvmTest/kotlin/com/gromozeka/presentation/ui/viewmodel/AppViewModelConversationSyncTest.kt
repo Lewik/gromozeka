@@ -216,6 +216,34 @@ class AppViewModelConversationSyncTest {
         assertEquals(setOf(secondMessages.first().id), secondTab.uiState.value.selectedMessageIds)
     }
 
+    @Test
+    fun fullHistoryCompactionSendsExplicitScopeWithoutMessageIds() = runTest {
+        val fixture = Fixture(backgroundScope)
+        val conversation = fixture.add("full-compact", "project-a")
+        val messages = (1..3).map { fixture.message(conversation, "message-$it", it.toLong()) }
+        fixture.historyMessages[conversation.id] = messages
+        fixture.historySelectionIds[conversation.id to ConversationMessageSelection.ALL] = messages.map { it.id }
+        fixture.open(conversation)
+        runCurrent()
+        val tab = fixture.app.tabs.value.single()
+
+        tab.toggleHistorySelection(ConversationMessageSelection.ALL)
+        runCurrent()
+        tab.compactSelectedMessages()
+
+        assertEquals(
+            listOf(CompactCall(conversation.id, emptyList(), true, SquashType.COMPACT)),
+            fixture.compactCalls,
+        )
+    }
+
+    private data class CompactCall(
+        val conversationId: Conversation.Id,
+        val messageIds: List<Conversation.Message.Id>,
+        val fullSelection: Boolean,
+        val strategy: SquashType,
+    )
+
     private class Fixture(scope: CoroutineScope) {
         private val records = mutableMapOf<String, Conversation>()
         private val projects = mutableMapOf<Project.Id, MutableStateFlow<List<Conversation>>>()
@@ -229,6 +257,7 @@ class AppViewModelConversationSyncTest {
         val historyMessages = mutableMapOf<Conversation.Id, List<Conversation.Message>>()
         val historySelectionIds = mutableMapOf<Pair<Conversation.Id, ConversationMessageSelection>, List<Conversation.Message.Id>>()
         val messageLoads = mutableListOf<Pair<String, String>>()
+        val compactCalls = mutableListOf<CompactCall>()
         var failCopy = false
         val defaultAgent = AgentDefinition(id = AgentDefinition.Id("current-default"), name = "Default", prompts = emptyList(),
             runtimeSelection = com.gromozeka.domain.model.ai.AiRuntimeSelection(com.gromozeka.domain.model.ai.AiModelConfiguration.Id("test-model")),
@@ -296,6 +325,17 @@ class AppViewModelConversationSyncTest {
                     name.startsWith("loadMessage") -> {
                         messageLoads += args[0].toString() to args[1].toString()
                         fullMessages.getValue(args[1].toString())
+                    }
+                    name.startsWith("compactMessages") -> {
+                        @Suppress("UNCHECKED_CAST")
+                        val messageIds = args[1] as List<Conversation.Message.Id>
+                        compactCalls += CompactCall(
+                            conversationId = Conversation.Id(args[0].toString()),
+                            messageIds = messageIds,
+                            fullSelection = args[2] as Boolean,
+                            strategy = args[3] as SquashType,
+                        )
+                        records.getValue(args[0].toString())
                     }
                     else -> error("Unexpected history method: $name")
                 }

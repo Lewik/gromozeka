@@ -697,6 +697,7 @@ data class CompactMessagesRequest(
     val taskId: ConversationRuntimeTask.Id,
     val conversationId: Conversation.Id,
     val messageIds: List<Conversation.Message.Id>,
+    val fullSelection: Boolean,
     val strategy: SquashType,
 ) : ClientRequest
 

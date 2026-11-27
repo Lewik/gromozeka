@@ -49,12 +49,13 @@ class ConversationHistoryRuntimeApplicationService(
         taskId: ConversationRuntimeTask.Id,
         conversationId: Conversation.Id,
         messageIds: List<Conversation.Message.Id>,
+        fullSelection: Boolean,
         strategy: SquashType,
     ) = execute(
         actorUser = actorUser,
         taskId = taskId,
         conversationId = conversationId,
-        mutation = ConversationHistoryMutation.Compact(messageIds, strategy),
+        mutation = ConversationHistoryMutation.Compact(messageIds, fullSelection, strategy),
     )
 
     private suspend fun execute(

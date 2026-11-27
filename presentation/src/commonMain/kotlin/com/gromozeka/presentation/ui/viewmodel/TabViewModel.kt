@@ -1528,6 +1528,7 @@ class TabViewModel(
         squashType: SquashType,
     ) {
         val selectedIds = _uiState.value.selectedMessageIds
+        val fullSelection = ConversationMessageSelection.ALL in _selectedHistoryKinds.value
         val minimum = if (squashType == SquashType.CONCATENATE) 2 else 1
         if (selectedIds.size < minimum) {
             _messageSquashState.value = MessageSquashUiState.Failed(
@@ -1541,7 +1542,12 @@ class TabViewModel(
 
         _messageSquashState.value = MessageSquashUiState.Running(squashType)
         try {
-            conversationHistoryService.compactMessages(conversationId, selectedIds.toList(), squashType)
+            conversationHistoryService.compactMessages(
+                conversationId = conversationId,
+                messageIds = if (fullSelection) emptyList() else selectedIds.toList(),
+                fullSelection = fullSelection,
+                strategy = squashType,
+            )
             clearMessageSelection()
             loadMessages()
             val succeededState = MessageSquashUiState.Succeeded(squashType)

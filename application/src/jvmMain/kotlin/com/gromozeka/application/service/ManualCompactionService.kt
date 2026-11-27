@@ -31,6 +31,7 @@ class ManualCompactionService internal constructor(
     internal suspend fun compactRuntimeHistory(
         conversationId: Conversation.Id,
         messageIds: List<Conversation.Message.Id>,
+        fullSelection: Boolean,
         strategy: SquashType,
         checkpointId: Conversation.Message.Id = Conversation.Message.Id(com.gromozeka.shared.uuid.uuid7()),
         requestContext: Map<String, Any?> = emptyMap(),
@@ -38,7 +39,11 @@ class ManualCompactionService internal constructor(
         beforeCommit: (suspend () -> Unit)? = null,
     ): Conversation {
         val minimum = if (strategy == SquashType.CONCATENATE) 2 else 1
-        require(messageIds.size >= minimum) { "Need at least $minimum message(s) to compact" }
+        if (fullSelection) {
+            require(messageIds.isEmpty()) { "Full compaction must not include message IDs" }
+        } else {
+            require(messageIds.size >= minimum) { "Need at least $minimum message(s) to compact" }
+        }
         require(messageIds.distinct().size == messageIds.size) { "Duplicate message IDs are not allowed" }
 
         val conversation = conversationRepository.findById(conversationId)
@@ -48,25 +53,25 @@ class ManualCompactionService internal constructor(
         val headers = threadMessageRepository.compactionWindowHeaders(expectedThreadId)
         val window = CompactionHistoryWindow(headers)
         val requested = messageIds.toSet()
-        val activeIds = headers.mapTo(mutableSetOf()) { it.id }
-        val activeRequested = requested.intersect(activeIds)
-        val full = window.isFullSelection(activeRequested)
-        require(full || activeRequested.size == requested.size) {
-            "Some selected messages are outside the current compaction window"
+        if (!fullSelection) {
+            val activeIds = headers.mapTo(mutableSetOf()) { it.id }
+            require(requested.all(activeIds::contains)) {
+                "Some selected messages are outside the current compaction window"
+            }
         }
 
-        val selection = if (full && strategy == SquashType.COMPACT) window.prefix(toolCallPairingService)
-        else if (full) window.fullSelection()
+        val selection = if (fullSelection && strategy == SquashType.COMPACT) window.prefix(toolCallPairingService)
+        else if (fullSelection) window.fullSelection()
         else {
-            val paired = toolCallPairingService.includePairedHeaders(headers, activeRequested)
+            val paired = toolCallPairingService.includePairedHeaders(headers, requested)
             headers.filter { it.id in paired }
         }
         require(selection.size >= minimum) {
             "Full compaction has no older history outside its retained 80000-character suffix; select older messages explicitly"
         }
         require(selection.none { it.streaming }) { "Wait for selected messages to finish streaming before compaction" }
-        log.info { "COMPACTION phase=start id=${checkpointId.value} mode=manual full=$full sources=${selection.size} retained=${headers.size - selection.size}" }
-        val checkpoint = if (full && strategy == SquashType.COMPACT) {
+        log.info { "COMPACTION phase=start id=${checkpointId.value} mode=manual full=$fullSelection sources=${selection.size} retained=${headers.size - selection.size}" }
+        val checkpoint = if (fullSelection && strategy == SquashType.COMPACT) {
             val agent = currentAgent(conversation)
             val request = try {
                 nativeRequest(conversation, agent)
@@ -108,18 +113,18 @@ class ManualCompactionService internal constructor(
                     requestContext = requestContext,
                 )
             }
-            val coverage = if (full) Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS
+            val coverage = if (fullSelection) Conversation.Message.ContentItem.ContextCompactionResult.Coverage.ALL_PREVIOUS
                 else Conversation.Message.ContentItem.ContextCompactionResult.Coverage.SELECTED_MESSAGES
             val result = Conversation.Message.ContentItem.ContextCompactionResult(
                 payload = Conversation.Message.ContentItem.ContextCompactionResult.Payload.ReadableSummary(generated.text),
                 origin = Conversation.Message.ContentItem.ContextCompactionResult.Origin.USER_REQUESTED,
                 strategy = strategy.toCompactionStrategy(),
-                sourceMessageIds = if (full) emptyList() else selection.map { it.id },
-                sourceBoundaryMessageId = if (full) selection.last().id else null,
+                sourceMessageIds = if (fullSelection) emptyList() else selection.map { it.id },
+                sourceBoundaryMessageId = if (fullSelection) selection.last().id else null,
                 coverage = coverage,
                 providerScope = generated.providerScope,
                 promptTemplate = generated.promptTemplate,
-                continuationState = if (full) continuationStates.captureHeaders(selection)
+                continuationState = if (fullSelection) continuationStates.captureHeaders(selection)
                     else Conversation.Message.ContentItem.ContextCompactionResult.ContinuationState(),
             )
             Conversation.Message(
@@ -134,7 +139,7 @@ class ManualCompactionService internal constructor(
         kotlinx.coroutines.currentCoroutineContext().ensureActive()
         beforeCommit?.invoke()
         return compactionCommitter.commit(expectedThreadId, checkpoint)
-            .also { log.info { "COMPACTION phase=applied id=${checkpointId.value} mode=manual full=$full strategy=$strategy" } }
+            .also { log.info { "COMPACTION phase=applied id=${checkpointId.value} mode=manual full=$fullSelection strategy=$strategy" } }
     }
 
     private suspend fun currentAgent(conversation: Conversation): AgentDefinition {

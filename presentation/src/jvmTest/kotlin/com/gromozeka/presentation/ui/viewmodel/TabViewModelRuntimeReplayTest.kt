@@ -851,7 +851,8 @@ class TabViewModelRuntimeReplayTest {
                 override suspend fun latestUserMessage(conversationId: Conversation.Id): Conversation.Message? = latestUserMessage()
                 override suspend fun editMessage(conversationId: Conversation.Id, messageId: Conversation.Message.Id, newContent: List<Conversation.Message.ContentItem>): Conversation? = error("Unused")
                 override suspend fun deleteMessages(conversationId: Conversation.Id, messageIds: List<Conversation.Message.Id>): Conversation? = error("Unused")
-                override suspend fun compactMessages(conversationId: Conversation.Id, messageIds: List<Conversation.Message.Id>, strategy: SquashType): Conversation = error("Unused")
+                override suspend fun compactMessages(conversationId: Conversation.Id, messageIds: List<Conversation.Message.Id>,
+                    fullSelection: Boolean, strategy: SquashType): Conversation = error("Unused")
             },
             settingsService = settingsService,
             scope = scope,

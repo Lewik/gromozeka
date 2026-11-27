@@ -18,8 +18,6 @@ internal class CompactionHistoryWindow(val headers: List<CompactionMessageHeader
         index.project().map { headers[positions.getValue(it.id)] }
     }
 
-    fun isFullSelection(selected: Set<Message.Id>): Boolean = visible.all { it.id in selected }
-
     fun fullSelection(): List<CompactionMessageHeader> = headers
 
     fun prefix(pairs: ToolCallPairingService): List<CompactionMessageHeader> {
