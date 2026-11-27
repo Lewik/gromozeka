@@ -3,11 +3,13 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 import kotlinx.serialization.json.JsonElement
 
 import com.gromozeka.application.service.ConversationPinnedPrompt
+import com.gromozeka.application.service.StickyMessageInstructionService
 import com.gromozeka.application.service.SuggestedRepliesGenerationService
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationPin
 import com.gromozeka.domain.model.ConversationPinSource
+import com.gromozeka.domain.model.MessageInstructionGroup
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.UserProfile.SuggestedRepliesSettings
@@ -54,6 +56,61 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class OpenAiSubscriptionRequestMapperTest {
+    @Test
+    fun `sticky instruction after a full checkpoint reaches the wire through a stable runtime carrier`() {
+        val instruction = Conversation.Message.Instruction.UserInstruction(
+            id = "access-readonly",
+            title = "Read only",
+            description = "STICKY_INSTRUCTION_REACHED_WIRE",
+        )
+        val group = MessageInstructionGroup(
+            id = "access",
+            title = "Access",
+            controls = listOf(MessageInstructionGroup.Control(instruction, "R")),
+            retentionMode = MessageInstructionGroup.RetentionMode.STICKY_LATEST,
+        )
+        val checkpoint = assistantCompactionMessage("checkpoint", null)
+        val tail = Conversation.Message(
+            id = Conversation.Message.Id("tail"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.USER,
+            content = listOf(Conversation.Message.ContentItem.UserMessage("Continue after compact")),
+            createdAt = createdAt,
+        )
+        val service = StickyMessageInstructionService()
+        val continuation = Conversation.Message.ContentItem.ContextCompactionResult.ContinuationState(
+            stickyInstructionCandidates = listOf(instruction),
+        )
+        val checkpointOnly = service.materialize(listOf(checkpoint), listOf(group), continuation)
+        val messages = service.materialize(listOf(checkpoint, tail), listOf(group), continuation)
+
+        assertEquals(
+            listOf(
+                Conversation.Message.Role.ASSISTANT,
+                Conversation.Message.Role.RUNTIME,
+                Conversation.Message.Role.USER,
+            ),
+            messages.map { it.role },
+        )
+        val checkpointInput = mapper.toRequest(
+            AiRuntimeRequest(emptyList(), checkpointOnly),
+            modelProfile = modelProfile("gpt-5"),
+            conversationKey = "sticky-continuation",
+        ).input
+        val input = mapper.toRequest(
+            AiRuntimeRequest(emptyList(), messages),
+            modelProfile = modelProfile("gpt-5"),
+            conversationKey = "sticky-continuation",
+        ).input
+        val carrierIndex = input.indexOfFirst { "STICKY_INSTRUCTION_REACHED_WIRE" in it.toString() }
+        val tailIndex = input.indexOfFirst { "Continue after compact" in it.toString() }
+
+        assertEquals(checkpointInput, input.take(checkpointInput.size))
+        assertTrue(carrierIndex > 0)
+        assertTrue(tailIndex > carrierIndex)
+        assertEquals(JsonPrimitive("user"), input[carrierIndex]["role"])
+    }
+
     @Test
     fun `suggested replies media projection reaches the wire instead of matching provider replay`() = runBlocking {
         val rawMarker = "RAW_REPLAY_SHOULD_NOT_SURVIVE"

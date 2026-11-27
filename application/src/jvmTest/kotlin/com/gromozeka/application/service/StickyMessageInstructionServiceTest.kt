@@ -7,6 +7,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertSame
 import kotlin.time.Instant
+import kotlinx.serialization.json.JsonObject
 
 class StickyMessageInstructionServiceTest {
     private val service = StickyMessageInstructionService()
@@ -83,7 +84,7 @@ class StickyMessageInstructionServiceTest {
 
     @Test
     fun `full checkpoint continuation is stable until a tail instruction replaces it`() {
-        val checkpoint = assistantMessage()
+        val checkpoint = fullCheckpoint()
         val tail = message("tail")
         val inherited = ContextCompactionResult.ContinuationState(
             stickyInstructionCandidates = listOf(readonly, writable, readonly),
@@ -94,16 +95,62 @@ class StickyMessageInstructionServiceTest {
             listOf(accessGroup(MessageInstructionGroup.RetentionMode.STICKY_LATEST)),
             inherited,
         )
-        assertEquals(listOf(readonly), retained.first().instructions)
-        assertEquals(emptyList(), retained.last().instructions)
+        assertEquals(checkpoint, retained[0])
+        assertEquals(Conversation.Message.Role.RUNTIME, retained[1].role)
+        assertEquals(listOf(readonly), retained[1].instructions)
+        assertEquals(tail, retained[2])
 
         val replaced = service.materialize(
             listOf(checkpoint, message("tail", writable)),
             listOf(accessGroup(MessageInstructionGroup.RetentionMode.STICKY_LATEST)),
             inherited,
         )
-        assertEquals(emptyList(), replaced.first().instructions)
+        assertEquals(emptyList(), replaced[1].instructions)
         assertEquals(listOf(writable), replaced.last().instructions)
+    }
+
+    @Test
+    fun `full checkpoint continuation carrier is stable as the tail grows`() {
+        val checkpoint = fullCheckpoint()
+        val inherited = ContextCompactionResult.ContinuationState(
+            stickyInstructionCandidates = listOf(readonly),
+        )
+        val groups = listOf(accessGroup(MessageInstructionGroup.RetentionMode.STICKY_LATEST))
+
+        val first = service.materialize(listOf(checkpoint), groups, inherited)
+        val extended = service.materialize(listOf(checkpoint, message("tail"), message("later")), groups, inherited)
+
+        assertEquals(first[1], extended[1])
+        assertEquals(Conversation.Message.Role.RUNTIME, first[1].role)
+    }
+
+    @Test
+    fun `full checkpoint continuation carrier does not split its tool result`() {
+        val callId = Conversation.Message.ContentItem.ToolCall.Id("call")
+        val baseCheckpoint = fullCheckpoint()
+        val checkpoint = baseCheckpoint.copy(content = baseCheckpoint.content +
+            Conversation.Message.ContentItem.ToolCall(
+                callId,
+                Conversation.Message.ContentItem.ToolCall.Data("tool", JsonObject(emptyMap())),
+            ))
+        val result = message("result").copy(content = listOf(Conversation.Message.ContentItem.ToolResult(
+            callId,
+            "tool",
+            listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("done")),
+        )))
+        val inherited = ContextCompactionResult.ContinuationState(
+            stickyInstructionCandidates = listOf(readonly),
+        )
+
+        val materialized = service.materialize(
+            listOf(checkpoint, result, message("tail")),
+            listOf(accessGroup(MessageInstructionGroup.RetentionMode.STICKY_LATEST)),
+            inherited,
+        )
+
+        assertEquals(listOf(checkpoint, result), materialized.take(2))
+        assertEquals(Conversation.Message.Role.RUNTIME, materialized[2].role)
+        assertEquals(listOf(readonly), materialized[2].instructions)
     }
 
     @Test
@@ -120,12 +167,12 @@ class StickyMessageInstructionServiceTest {
         )
 
         val materialized = service.materialize(
-            listOf(assistantMessage()),
+            listOf(fullCheckpoint()),
             listOf(accessGroup(MessageInstructionGroup.RetentionMode.STICKY_LATEST), toneGroup),
             inherited,
         )
 
-        assertEquals(listOf(concise, writable), materialized.single().instructions)
+        assertEquals(listOf(concise, writable), materialized[1].instructions)
     }
 
     private fun accessGroup(
@@ -176,6 +223,15 @@ class StickyMessageInstructionServiceTest {
             )
         ),
         createdAt = Instant.parse("2026-08-18T00:00:01Z"),
+    )
+
+    private fun fullCheckpoint() = assistantMessage().copy(
+        id = Conversation.Message.Id("checkpoint"),
+        content = listOf(ContextCompactionResult(
+            payload = ContextCompactionResult.Payload.ReadableSummary("Earlier context"),
+            origin = ContextCompactionResult.Origin.GROMOZEKA_POLICY,
+            coverage = ContextCompactionResult.Coverage.ALL_PREVIOUS,
+        )),
     )
 
     private val conversationId = Conversation.Id("conversation-1")
