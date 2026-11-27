@@ -66,9 +66,19 @@ class PostgresCompactTerminologyMigrationTest {
                         val legacyMessage = Json.encodeToString(Conversation.Message.serializer(), currentMessage)
                             .replace("\"strategy\":\"COMPACT\"", "\"strategy\":\"SUMMARIZE\"")
                             .replace("\"id\":\"gromozeka.message-compaction.compact\"", "\"id\":\"gromozeka.message-compaction.summarize\"")
+                        val prettyLegacyMessage = Json { prettyPrint = true }
+                            .encodeToString(Conversation.Message.serializer(), currentMessage)
+                            .replace("\"strategy\": \"COMPACT\"", "\"strategy\": \"SUMMARIZE\"")
+                            .replace(
+                                "\"id\": \"gromozeka.message-compaction.compact\"",
+                                "\"id\": \"gromozeka.message-compaction.summarize\"",
+                            )
                         connection.prepareStatement("INSERT INTO messages VALUES (?)").use { insert ->
                             insert.setString(1, legacyMessage)
-                            insert.executeUpdate()
+                            insert.addBatch()
+                            insert.setString(1, prettyLegacyMessage)
+                            insert.addBatch()
+                            insert.executeBatch()
                         }
                         sql.execute(requireNotNull(javaClass.getResource(
                             "/db/migration/postgres/V91__compact_terminology.sql")).readText())
@@ -98,18 +108,20 @@ class PostgresCompactTerminologyMigrationTest {
                             }
                         }
                         statement.executeQuery("SELECT message_json FROM messages").use { rows ->
-                            assertTrue(rows.next())
-                            val value = rows.getString(1)
-                            assertFalse(value.contains("\"strategy\":\"SUMMARIZE\""), value)
-                            assertFalse(value.contains("\"id\":\"gromozeka.message-compaction.summarize\""), value)
-                            val message = Json.decodeFromString(Conversation.Message.serializer(), value)
-                            val checkpoint = message.content.single() as Conversation.Message.ContentItem.ContextCompactionResult
-                            assertEquals(Conversation.Message.ContentItem.ContextCompactionResult.Strategy.COMPACT, checkpoint.strategy)
-                            assertEquals("gromozeka.message-compaction.compact", checkpoint.promptTemplate?.id)
-                            assertEquals(
-                                """{"strategy":"SUMMARIZE","id":"gromozeka.message-compaction.summarize"}""",
-                                message.providerMetadata.getValue("literal").jsonPrimitive.content,
-                            )
+                            var count = 0
+                            while (rows.next()) {
+                                count++
+                                val value = rows.getString(1)
+                                val message = Json.decodeFromString(Conversation.Message.serializer(), value)
+                                val checkpoint = message.content.single() as Conversation.Message.ContentItem.ContextCompactionResult
+                                assertEquals(Conversation.Message.ContentItem.ContextCompactionResult.Strategy.COMPACT, checkpoint.strategy)
+                                assertEquals("gromozeka.message-compaction.compact", checkpoint.promptTemplate?.id)
+                                assertEquals(
+                                    """{"strategy":"SUMMARIZE","id":"gromozeka.message-compaction.summarize"}""",
+                                    message.providerMetadata.getValue("literal").jsonPrimitive.content,
+                                )
+                            }
+                            assertEquals(2, count)
                         }
                         statement.executeQuery("SELECT revision FROM runtime_catalog_configuration").use { rows ->
                             assertTrue(rows.next())
