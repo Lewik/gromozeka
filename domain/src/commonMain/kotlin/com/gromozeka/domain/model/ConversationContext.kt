@@ -37,7 +37,10 @@ class ConversationContext(
         replayTarget: ContextCompactionResult.ProviderScope? = nativeCompactionTarget,
     ): List<Message> {
         val candidates = if (selection == null) history else history.filter { it.id in selection }
-        return sanitizeProviderReplay(prepare(project(candidates), nativeCompactionTarget), replayTarget)
+        return sanitizeProviderReplay(
+            prepare(project(candidates), nativeCompactionTarget, replayTarget),
+            replayTarget,
+        )
     }
 
     /** Full checkpoints protect their prefix and all transitive source versions, including themselves. */
@@ -61,14 +64,15 @@ class ConversationContext(
 
     private fun prepare(
         input: List<Message>,
-        target: ContextCompactionResult.ProviderScope?,
+        nativeCompactionTarget: ContextCompactionResult.ProviderScope?,
+        replayTarget: ContextCompactionResult.ProviderScope?,
     ): List<Message> = buildList {
         val carriedInstructions = mutableListOf<Message.Instruction.UserInstruction>()
         input.forEach { message ->
             val portableContent = message.content.filterNot { item ->
                 item is ContextCompactionResult &&
                     item.payload is ContextCompactionResult.Payload.OpaqueProviderState &&
-                    !item.providerScope.isReplayCompatibleWith(target)
+                    !item.providerScope.isReplayCompatibleWith(nativeCompactionTarget)
             }
             var portable = if (portableContent.size == message.content.size) message
             else message.copy(content = portableContent).withoutProviderReplay()
@@ -81,7 +85,8 @@ class ConversationContext(
                 portable = portable.copy(instructions = carriedInstructions + portable.instructions)
                 carriedInstructions.clear()
             }
-            if (portable.content.isNotEmpty() || portable.instructions.isNotEmpty()) add(portable)
+            if (portable.content.isNotEmpty() || portable.instructions.isNotEmpty() ||
+                portable.hasCompatibleProviderReplay(replayTarget)) add(portable)
         }
     }
 
@@ -107,10 +112,15 @@ class ConversationContext(
                     it != AI_PROVIDER_MANAGED_TOOL_METADATA_KEY
                 }))
             }
-            portable.takeUnless { it.content.isEmpty() && it.instructions.isEmpty() }
+            portable.takeUnless {
+                it.content.isEmpty() && it.instructions.isEmpty() && !it.hasCompatibleProviderReplay(target)
+            }
         }
     }
 }
+
+private fun Message.hasCompatibleProviderReplay(target: ContextCompactionResult.ProviderScope?): Boolean =
+    replayScope()?.isReplayCompatibleWith(target) == true
 
 private fun ContextCompactionResult.ProviderScope?.isReplayCompatibleWith(
     target: ContextCompactionResult.ProviderScope?,

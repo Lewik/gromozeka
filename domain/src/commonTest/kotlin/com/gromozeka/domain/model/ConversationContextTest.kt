@@ -283,6 +283,38 @@ class ConversationContextTest {
     }
 
     @Test
+    fun compatibleMetadataOnlyReplayCarrierIsRetained() {
+        val metadata = buildJsonObject {
+            put("provider", JsonPrimitive(AiConnection.Kind.OPENAI_API.name))
+            put("connectionId", JsonPrimitive("connection"))
+            put("modelConfigurationId", JsonPrimitive("configuration"))
+            put("model", JsonPrimitive("model"))
+            put("openAiApiReasoningItems", JsonPrimitive("encrypted-reasoning"))
+        }
+        val carrier = text("carrier").copy(
+            role = Message.Role.ASSISTANT,
+            content = emptyList(),
+            providerMetadata = metadata,
+        )
+        val matching = Compaction.ProviderScope(
+            AiConnection.Kind.OPENAI_API.name,
+            "connection",
+            "configuration",
+            "model",
+        )
+        val foreign = matching.copy(modelName = "other-model")
+
+        assertEquals(listOf(carrier), ConversationContext(listOf(carrier)).messagesForProvider(
+            nativeCompactionTarget = matching,
+            replayTarget = matching,
+        ))
+        assertEquals(emptyList(), ConversationContext(listOf(carrier)).messagesForProvider(
+            nativeCompactionTarget = matching,
+            replayTarget = foreign,
+        ))
+    }
+
+    @Test
     fun incompatibleProviderManagedToolCallAndResultAreDroppedTogether() {
         val callId = Message.ContentItem.ToolCall.Id("provider-call")
         val metadata = buildJsonObject {
