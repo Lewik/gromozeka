@@ -16,6 +16,7 @@ import kotlin.time.Instant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 
@@ -50,6 +51,42 @@ class AppViewModelConversationSyncTest {
 
         assertEquals("First renamed", fixture.app.conversations.value[first.id]?.displayName)
         assertEquals("Second renamed", fixture.app.conversations.value[second.id]?.displayName)
+    }
+
+    @Test
+    fun conversationObservationRecoversWhileItsTabRemainsOpen() = runTest {
+        val fixture = Fixture(backgroundScope)
+        val conversation = fixture.add("one", "project-a")
+        fixture.open(conversation)
+        runCurrent()
+
+        fixture.failNextConversationObservation(conversation.projectId)
+        fixture.renameExternally(conversation, "Dropped update")
+        runCurrent()
+        fixture.renameExternally(conversation, "Recovered update")
+        advanceTimeBy(1_000)
+        runCurrent()
+
+        assertEquals("Recovered update", fixture.app.conversations.value[conversation.id]?.displayName)
+        assertEquals(2, fixture.startedObservers[conversation.projectId])
+    }
+
+    @Test
+    fun agentObservationRecoversWhileItsTabRemainsOpen() = runTest {
+        val fixture = Fixture(backgroundScope)
+        val conversation = fixture.add("one", "project-a")
+        fixture.open(conversation)
+        runCurrent()
+
+        fixture.failNextAgentObservation(conversation.projectId)
+        fixture.updateAgents(conversation.projectId, listOf(fixture.defaultAgent.copy(name = "Dropped update")))
+        runCurrent()
+        fixture.updateAgents(conversation.projectId, listOf(fixture.defaultAgent.copy(name = "Recovered agent")))
+        advanceTimeBy(1_000)
+        runCurrent()
+
+        assertEquals("Recovered agent", fixture.app.tabs.value.single().agentMentionCandidates.value.single().name)
+        assertEquals(2, fixture.startedAgentObservers[conversation.projectId])
     }
 
     @Test
@@ -253,6 +290,9 @@ class AppViewModelConversationSyncTest {
     private class Fixture(scope: CoroutineScope) {
         private val records = mutableMapOf<String, Conversation>()
         private val projects = mutableMapOf<Project.Id, MutableStateFlow<List<Conversation>>>()
+        private val projectAgents = mutableMapOf<Project.Id, MutableStateFlow<List<AgentDefinition>>>()
+        private val failingConversationObservers = mutableSetOf<Project.Id>()
+        private val failingAgentObservers = mutableSetOf<Project.Id>()
         val activeObservers = mutableMapOf<Project.Id, Int>()
         val startedObservers = mutableMapOf<Project.Id, Int>()
         val activeAgentObservers = mutableMapOf<Project.Id, Int>()
@@ -290,7 +330,12 @@ class AppViewModelConversationSyncTest {
                         activeObservers[projectId] = activeObservers.getOrDefault(projectId, 0) + 1
                         startedObservers[projectId] = startedObservers.getOrDefault(projectId, 0) + 1
                         try {
-                            emitAll(projects.getValue(projectId))
+                            emitAll(projects.getValue(projectId).map { conversations ->
+                                if (failingConversationObservers.remove(projectId)) {
+                                    error("Synthetic conversation observation failure")
+                                }
+                                conversations
+                            })
                         } finally {
                             activeObservers[projectId] = activeObservers.getValue(projectId) - 1
                         }
@@ -313,7 +358,14 @@ class AppViewModelConversationSyncTest {
                             activeAgentObservers[projectId] = activeAgentObservers.getOrDefault(projectId, 0) + 1
                             startedAgentObservers[projectId] = startedAgentObservers.getOrDefault(projectId, 0) + 1
                             try {
-                                emitAll(MutableStateFlow(listOf(defaultAgent)))
+                                emitAll(projectAgents.getOrPut(projectId) {
+                                    MutableStateFlow(listOf(defaultAgent))
+                                }.map { agents ->
+                                    if (failingAgentObservers.remove(projectId)) {
+                                        error("Synthetic agent observation failure")
+                                    }
+                                    agents
+                                })
                             } finally {
                                 activeAgentObservers[projectId] = activeAgentObservers.getValue(projectId) - 1
                             }
@@ -407,6 +459,18 @@ class AppViewModelConversationSyncTest {
             records[conversation.id.value] = conversation.copy(displayName = name)
             projects.getValue(conversation.projectId).value =
                 records.values.filter { it.projectId == conversation.projectId }
+        }
+
+        fun failNextConversationObservation(projectId: Project.Id) {
+            failingConversationObservers += projectId
+        }
+
+        fun failNextAgentObservation(projectId: Project.Id) {
+            failingAgentObservers += projectId
+        }
+
+        fun updateAgents(projectId: Project.Id, agents: List<AgentDefinition>) {
+            projectAgents.getOrPut(projectId) { MutableStateFlow(listOf(defaultAgent)) }.value = agents
         }
     }
 

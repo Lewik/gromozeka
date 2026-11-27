@@ -19,7 +19,9 @@ import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.presentation.ui.effectiveDisplayName
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
@@ -73,9 +75,7 @@ open class AppViewModel(
                 .flatMapLatest { projectIds ->
                     merge(*projectIds.map { projectId ->
                         conversationService.observeByProject(projectId)
-                            .catch { error ->
-                                log.warn(error) { "Failed to observe conversations for project ${projectId.value}" }
-                            }
+                            .retryProjectObservation("conversations", projectId)
                     }.toTypedArray())
                 }
                 .collect(::mergeConversationSnapshots)
@@ -402,8 +402,16 @@ open class AppViewModel(
     private fun sharedAgents(projectId: Project.Id): StateFlow<List<AgentDefinition>> =
         sharedProjectAgents.getOrPut(projectId) {
             agentService.observeByProject(projectId)
-                .catch { error -> log.warn(error) { "Failed to observe agents for project ${projectId.value}" } }
+                .retryProjectObservation("agents", projectId)
                 .stateIn(scope, SharingStarted.WhileSubscribed(), emptyList())
+        }
+
+    private fun <T> Flow<T>.retryProjectObservation(kind: String, projectId: Project.Id): Flow<T> =
+        retryWhen { error, _ ->
+            if (error is CancellationException) throw error
+            log.warn(error) { "Failed to observe $kind for project ${projectId.value}; retrying" }
+            delay(PROJECT_OBSERVATION_RETRY_DELAY_MILLIS)
+            true
         }
 
     private suspend fun TabViewModel.sendInitialMessage(
@@ -488,6 +496,7 @@ open class AppViewModel(
     }
 
     private companion object {
+        const val PROJECT_OBSERVATION_RETRY_DELAY_MILLIS = 1_000L
         val systemTabIndexes = setOf(-1, -2, -3)
     }
 }
