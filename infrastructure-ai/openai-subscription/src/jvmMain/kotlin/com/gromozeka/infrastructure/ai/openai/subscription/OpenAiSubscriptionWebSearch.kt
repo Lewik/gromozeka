@@ -12,6 +12,7 @@ import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiStepOutcome
 import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.tool.ProviderNativeTool
+import com.gromozeka.domain.tool.TOOL_CONTEXT_TARGET_MESSAGE_ID
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -43,7 +44,10 @@ class OpenAiSubscriptionWebSearch(private val client: OpenAiSubscriptionResponse
     ): AiRuntimeResponse? {
         val connectionId = configuration.connectionId.value
         val modelName = configuration.providerModelId
-        val pending = pendingCall(request.messages, connectionId, modelName) ?: return null
+        val rootMessageId = (request.options.toolContext[TOOL_CONTEXT_TARGET_MESSAGE_ID] as? String)
+            ?.let(Conversation.Message::Id)
+            ?: return null
+        val pending = pendingCall(request.messages, rootMessageId, connectionId, modelName) ?: return null
         val callId = requireNotNull(pending["call_id"]?.jsonPrimitive?.contentOrNull)
         var isError = false
         val output = if (!request.isSubscriptionWebSearchAllowed(enabled)) {
@@ -55,7 +59,7 @@ class OpenAiSubscriptionWebSearch(private val client: OpenAiSubscriptionResponse
                     put("id", conversationKey)
                     put("model", modelName)
                     put("commands", Json.parseOpenAiSubscriptionToolArguments(pending.getValue("arguments").jsonPrimitive.content))
-                    val input = recentInput(request.messages)
+                    val input = recentInput(request.messages, rootMessageId)
                     if (input.isNotEmpty()) put("input", JsonArray(input))
                     put("settings", buildJsonObject {
                         put("external_web_access", true)
@@ -102,10 +106,13 @@ class OpenAiSubscriptionWebSearch(private val client: OpenAiSubscriptionResponse
         )
     }
 
-    internal fun pendingCall(messages: List<Conversation.Message>, connectionId: String, modelName: String): JsonObject? {
-        val currentTurn = messages.drop(messages.indexOfLast { message ->
-            message.role == Conversation.Message.Role.USER && message.content.any { it is ContentItem.UserMessage || it is ContentItem.VisualInteraction }
-        }.coerceAtLeast(0))
+    internal fun pendingCall(
+        messages: List<Conversation.Message>,
+        rootMessageId: Conversation.Message.Id,
+        connectionId: String,
+        modelName: String,
+    ): JsonObject? {
+        val currentTurn = messages.drop(messages.turnRootIndex(rootMessageId))
         val completed = currentTurn.flatMap { it.content }.filterIsInstance<ContentItem.ToolResult>()
             .mapTo(mutableSetOf()) { it.toolUseId.value }
         return currentTurn.asSequence().filter { message ->
@@ -119,22 +126,20 @@ class OpenAiSubscriptionWebSearch(private val client: OpenAiSubscriptionResponse
             .firstOrNull { it.isStandaloneWebCall() && it["call_id"]?.jsonPrimitive?.contentOrNull !in completed }
     }
 
-    internal fun recentInput(messages: List<Conversation.Message>): List<JsonObject> {
-        val inputIndices = messages.indices.filter { index ->
-            val message = messages[index]
-            when (message.role) {
-                Conversation.Message.Role.USER,
-                Conversation.Message.Role.RUNTIME,
-                -> message.content.any { it.userInputTextOrNull() != null }
-
-                Conversation.Message.Role.ASSISTANT,
-                Conversation.Message.Role.SYSTEM,
-                -> false
-            }
-        }.takeLast(2)
-        if (inputIndices.isEmpty()) return emptyList()
+    internal fun recentInput(
+        messages: List<Conversation.Message>,
+        rootMessageId: Conversation.Message.Id,
+    ): List<JsonObject> {
+        val rootIndex = messages.turnRootIndex(rootMessageId)
+        val lastInputIndex = messages.indices.lastOrNull { index ->
+            index >= rootIndex && messages[index].isUserSideInput()
+        } ?: return emptyList()
+        val previousUserIndex = (rootIndex - 1 downTo 0).firstOrNull { index ->
+            messages[index].role == Conversation.Message.Role.USER && messages[index].isUserSideInput()
+        }
+        val firstInputIndex = previousUserIndex ?: rootIndex
         var assistantCharactersLeft = 4000
-        return messages.subList(inputIndices.first(), inputIndices.last() + 1).mapNotNull { message ->
+        return messages.subList(firstInputIndex, lastInputIndex + 1).mapNotNull { message ->
             val text = when (message.role) {
                 Conversation.Message.Role.USER,
                 Conversation.Message.Role.RUNTIME,
@@ -163,4 +168,30 @@ class OpenAiSubscriptionWebSearch(private val client: OpenAiSubscriptionResponse
             }.bufferedReader().use { it.readText() }
         ).jsonObject
     }
+}
+
+private fun List<Conversation.Message>.turnRootIndex(rootMessageId: Conversation.Message.Id): Int {
+    val exact = indexOfFirst { it.id == rootMessageId }
+    if (exact >= 0) return exact
+    val checkpoint = indexOfLast { message ->
+        message.content.filterIsInstance<ContentItem.ContextCompactionResult>().any { result ->
+            rootMessageId in result.sourceMessageIds ||
+                result.sourceBoundaryMessageId == rootMessageId ||
+                result.coversAllPrevious
+        }
+    }
+    require(checkpoint >= 0) {
+        "Web search turn root ${rootMessageId.value} is outside the projected history without a covering checkpoint"
+    }
+    return checkpoint
+}
+
+private fun Conversation.Message.isUserSideInput(): Boolean = when (role) {
+    Conversation.Message.Role.USER,
+    Conversation.Message.Role.RUNTIME,
+    -> content.any { it.userInputTextOrNull() != null }
+
+    Conversation.Message.Role.ASSISTANT,
+    Conversation.Message.Role.SYSTEM,
+    -> false
 }

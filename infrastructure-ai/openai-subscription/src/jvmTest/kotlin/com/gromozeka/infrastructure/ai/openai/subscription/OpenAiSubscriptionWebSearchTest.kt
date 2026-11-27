@@ -3,6 +3,7 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.model.ai.*
+import com.gromozeka.domain.tool.TOOL_CONTEXT_TARGET_MESSAGE_ID
 import com.gromozeka.domain.tool.ToolAccessPolicy
 import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
@@ -22,8 +23,8 @@ class OpenAiSubscriptionWebSearchTest {
         val history = listOf(source, summary) + persisted(mapResponse(listOf(webCall)))
         val projected = AiRuntimeRequest(emptyList(), history).projectedMessages(AiConnection.Kind.OPENAI_SUBSCRIPTION.name)
         val search = OpenAiSubscriptionWebSearch(client("http://127.0.0.1:1"))
-        assertEquals(webCall["call_id"], search.pendingCall(projected, connectionId, model)?.get("call_id"))
-        assertFalse(search.recentInput(projected).toString().contains("Archived user request"))
+        assertEquals(webCall["call_id"], search.pendingCall(projected, source.id, connectionId, model)?.get("call_id"))
+        assertFalse(search.recentInput(projected, source.id).toString().contains("Archived user request"))
     }
 
     @Test
@@ -38,7 +39,7 @@ class OpenAiSubscriptionWebSearchTest {
         server.start()
         try {
             val search = OpenAiSubscriptionWebSearch(client("http://127.0.0.1:${server.address.port}"))
-            val request = AiRuntimeRequest(emptyList(), listOf(userMessage("Search")) + persisted(mapResponse(listOf(webCall))))
+            val request = request(listOf(userMessage("Search")) + persisted(mapResponse(listOf(webCall))))
             assertFailsWith<OpenAiSubscriptionUnauthorizedException> {
                 search.executePending(request, session, "conversation", testModelConfiguration(connectionId, model), true)
             }
@@ -81,10 +82,10 @@ class OpenAiSubscriptionWebSearchTest {
             val history = mutableListOf(userMessage("Find Example"))
             history += persisted(response)
             val search = OpenAiSubscriptionWebSearch(client("http://127.0.0.1:${server.address.port}"))
-            assertNotNull(search.pendingCall(history, connectionId, model))
-            assertNull(search.pendingCall(history, "other", model))
-            assertNull(search.pendingCall(history, connectionId, "other-model"))
-            val result = assertNotNull(search.executePending(AiRuntimeRequest(emptyList(), history), session, "conversation", testModelConfiguration(connectionId, model), true))
+            assertNotNull(search.pendingCall(history, history.first().id, connectionId, model))
+            assertNull(search.pendingCall(history, history.first().id, "other", model))
+            assertNull(search.pendingCall(history, history.first().id, connectionId, "other-model"))
+            val result = assertNotNull(search.executePending(request(history), session, "conversation", testModelConfiguration(connectionId, model), true))
             val toolResult = result.messages.single().content.single() as ContentItem.ToolResult
             assertEquals(output, (toolResult.result.single() as ContentItem.ToolResult.Data.Text).content)
             history += persisted(result)
@@ -93,7 +94,7 @@ class OpenAiSubscriptionWebSearchTest {
             assertEquals(model, calls.single()["model"]?.jsonPrimitive?.content)
             assertEquals(JsonPrimitive(true), calls.single()["settings"]?.jsonObject?.get("external_web_access"))
             assertNull(OpenAiSubscriptionWebSearch(client("http://127.0.0.1:${server.address.port}"))
-                .executePending(AiRuntimeRequest(emptyList(), history), session, "conversation", testModelConfiguration(connectionId, model), true))
+                .executePending(request(history), session, "conversation", testModelConfiguration(connectionId, model), true))
             assertEquals(1, calls.size)
             val replay = OpenAiSubscriptionRequestMapper().toRequest(
                 AiRuntimeRequest(emptyList(), history), profile, "conversation", true, connectionId,
@@ -121,10 +122,11 @@ class OpenAiSubscriptionWebSearchTest {
         val search = OpenAiSubscriptionWebSearch(client("http://127.0.0.1:1"))
         val history = listOf(userMessage("Search")) + persisted(mapResponse(listOf(webCall)))
         for (options in listOf(AiRuntimeOptions(toolChoice = AiToolChoice.None), AiRuntimeOptions(toolAccess = ToolAccessPolicy.AllowOnly()))) {
-            val result = assertNotNull(search.executePending(AiRuntimeRequest(emptyList(), history, options = options), session, "conversation", testModelConfiguration(connectionId, model), true))
+            val result = assertNotNull(search.executePending(request(history, options), session, "conversation", testModelConfiguration(connectionId, model), true))
             assertTrue((result.messages.single().content.single() as ContentItem.ToolResult).isError)
         }
-        assertNull(search.pendingCall(history + userMessage("New turn"), connectionId, model))
+        val newTurn = userMessage("New turn")
+        assertNull(search.pendingCall(history + newTurn, newTurn.id, connectionId, model))
         assertEquals(AiStepOutcome.INCOMPLETE, mapResponse(listOf(webCall), status = "incomplete").outcome)
         assertTrue(mapResponse(listOf(webCall), status = "incomplete").messages.isEmpty())
         val refusal = Json.parseToJsonElement("""{"type":"message","role":"assistant","content":[{"type":"refusal","refusal":"No"}]}""").jsonObject
@@ -144,7 +146,7 @@ class OpenAiSubscriptionWebSearchTest {
             Conversation.Message.Role.ASSISTANT, listOf(ContentItem.AssistantMessage(Conversation.Message.StructuredText("x".repeat(5000))),
                 ContentItem.Thinking("private reasoning")),
         ), userMessage("current")) + persisted(mapResponse(listOf(webCall)))
-        val input = search.recentInput(history)
+        val input = search.recentInput(history, history.last { it.role == Conversation.Message.Role.USER }.id)
         assertEquals(3, input.size)
         assertFalse(input.toString().contains("private reasoning"))
         assertFalse(input.toString().contains("function_call"))
@@ -158,21 +160,61 @@ class OpenAiSubscriptionWebSearchTest {
             put("kind", "panel_state")
             put("revision", 7)
         })))
+        val old = userMessage("old")
+        val current = userMessage("current")
         val input = search.recentInput(listOf(
-            userMessage("old"),
-            userMessage("current"),
+            old,
+            current,
             message(Conversation.Message.Role.ASSISTANT, listOf(
                 ContentItem.AssistantMessage(Conversation.Message.StructuredText("answer")),
             )),
             runtime,
-        ))
+        ), current.id)
 
-        assertEquals(3, input.size)
+        assertEquals(4, input.size)
+        assertContains(input.first().toString(), "old")
         assertEquals("user", input.last().getValue("role").jsonPrimitive.content)
         assertEquals("input_text", input.last().getValue("content").jsonArray.single().jsonObject
             .getValue("type").jsonPrimitive.content)
         assertContains(input.last().toString(), "panel_state")
         assertContains(input.last().toString(), "revision")
+    }
+
+    @Test
+    fun `runtime updates do not evict the human web search request`() {
+        val search = OpenAiSubscriptionWebSearch(client("http://127.0.0.1:1"))
+        val query = userMessage("Find the current release notes")
+        val runtimeOne = message(Conversation.Message.Role.RUNTIME, listOf(ContentItem.RuntimeJson(JsonPrimitive("state-one"))))
+        val runtimeTwo = message(Conversation.Message.Role.RUNTIME, listOf(ContentItem.RuntimeJson(JsonPrimitive("state-two"))))
+
+        val input = search.recentInput(listOf(query, runtimeOne, runtimeTwo), query.id)
+
+        assertEquals(3, input.size)
+        assertContains(input[0].toString(), "Find the current release notes")
+        assertContains(input[1].toString(), "state-one")
+        assertContains(input[2].toString(), "state-two")
+    }
+
+    @Test
+    fun `runtime rooted turn does not execute an interrupted web call from an earlier turn`() = runBlocking {
+        val search = OpenAiSubscriptionWebSearch(client("http://127.0.0.1:1"))
+        val earlier = userMessage("Search the old topic")
+        val interrupted = persisted(mapResponse(listOf(webCall)))
+        val runtimeRoot = message(
+            Conversation.Message.Role.RUNTIME,
+            listOf(ContentItem.RuntimeJson(JsonPrimitive("start a different operation"))),
+        )
+        val history = listOf(earlier) + interrupted + runtimeRoot
+        val request = AiRuntimeRequest(
+            emptyList(),
+            history,
+            options = AiRuntimeOptions(
+                toolContext = mapOf(TOOL_CONTEXT_TARGET_MESSAGE_ID to runtimeRoot.id.value),
+            ),
+        )
+
+        assertNull(search.pendingCall(history, runtimeRoot.id, connectionId, model))
+        assertNull(search.executePending(request, session, "conversation", testModelConfiguration(connectionId, model), true))
     }
 
     companion object {
@@ -195,6 +237,13 @@ class OpenAiSubscriptionWebSearchTest {
                 } }
             ))
         }
+        fun request(messages: List<Conversation.Message>, options: AiRuntimeOptions = AiRuntimeOptions()) = AiRuntimeRequest(
+            emptyList(),
+            messages,
+            options = options.copy(
+                toolContext = options.toolContext + (TOOL_CONTEXT_TARGET_MESSAGE_ID to messages.first().id.value),
+            ),
+        )
         fun userMessage(text: String) = message(Conversation.Message.Role.USER, listOf(ContentItem.UserMessage(text)))
         fun message(role: Conversation.Message.Role, content: List<ContentItem>) = Conversation.Message(
             Conversation.Message.Id(UUID.randomUUID().toString()), Conversation.Id("conversation"), role = role,

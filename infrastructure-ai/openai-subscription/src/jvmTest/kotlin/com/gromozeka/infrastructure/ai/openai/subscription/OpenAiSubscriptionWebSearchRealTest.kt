@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.ai.*
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.ServerToolMetadata
+import com.gromozeka.domain.tool.TOOL_CONTEXT_TARGET_MESSAGE_ID
 import com.gromozeka.domain.tool.ToolExecutionContext
 import java.io.File
 import java.util.Base64
@@ -50,6 +51,7 @@ class OpenAiSubscriptionWebSearchRealTest {
                 "fullText":{"type":"string"},"ttsText":{"type":"string"},"voiceTone":{"type":"string"},
                 "attentionRequested":{"type":"boolean"}},"required":["fullText","ttsText","voiceTone","attentionRequested"]}
             """).jsonObject),
+            toolContext = mapOf(TOOL_CONTEXT_TARGET_MESSAGE_ID to history.first().id.value),
         )
         val observed = mutableSetOf<String>()
         var finalText: String? = null
