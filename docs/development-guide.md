@@ -1812,6 +1812,23 @@ Windows service and Linux/Windows/macOS command-process and Python Code Mode che
 run through the reusable Worker workflow; translation/font validation and Compose
 E2E run inside the main workflow. JNI library builds remain separately manual.
 
+Ordinary native commands do not require an available bundled Python runtime. The
+shell SDK environment treats only `BundledPythonUnavailableException` as optional
+and clears `GRZ_PYTHON` instead of selecting an unmanaged interpreter. Using the
+Python-backed shell SDK then fails explicitly. Python Code Mode still requires the
+validated bundled runtime before launch. SDK integrity failures and invalid internal
+lock state are not converted to optional-runtime success; auth, CA and grant handling
+are unchanged. This is a command/SDK-path guarantee for an already running Worker,
+not a claim that every platform can start without Python: the Windows startup and
+license-consent gate remains unchanged.
+
+`./gradlew :worker:commandJarSmoke` checks the real production runner loaded from
+the standalone fat JAR, with Python unavailable: native `echo OK` succeeds, while
+Python Code Mode and the Python-backed shell SDK fail explicitly. The helper is
+test-only, not a new Worker startup mode. `deploy/aws/bin/smoke-images` runs the same
+check inside its disposable JRE after registration; liveness alone is insufficient.
+This does not replace distribution integrity or native Windows acceptance checks.
+
 The Worker stock Python is assembled by `./gradlew preparePythonRuntime` for local
 development, and by the same `scripts/prepare-python-runtime.py` helper during
 standalone packaging. Build-time Python 3.14+ is required (stdlib Zstandard support);
