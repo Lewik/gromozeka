@@ -9,6 +9,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.dp
@@ -33,6 +34,7 @@ import com.gromozeka.presentation.services.LiveInterpreterController
 import com.gromozeka.presentation.services.LiveInterpreterPhase
 import com.gromozeka.presentation.services.translation.LocalizedText
 import com.gromozeka.presentation.services.translation.data.Translation
+import com.gromozeka.remote.protocol.LiveInterpreterFailedEvent
 import com.gromozeka.remote.protocol.LiveInterpreterStatusEvent
 import com.gromozeka.remote.protocol.LiveInterpreterStoppedEvent
 import com.gromozeka.remote.protocol.LiveInterpreterTranscriptEvent
@@ -87,6 +89,35 @@ class LiveTranslationScreenTest {
         onNodeWithText("en:$original").assertExists()
         onNodeWithText(original).assertExists()
         onNodeWithText("Speaker 2").assertExists()
+    }
+
+    @Test
+    fun `paused session freezes its model and exposes Stop beside Resume`() = runComposeUiTest {
+        val client = FakeClient()
+        val configuration = configuration()
+        lateinit var controller: LiveInterpreterController
+        setContent {
+            val scope = rememberCoroutineScope()
+            controller = remember { LiveInterpreterController(client, FakeMicrophone(), scope) }
+            DisposableEffect(controller) { onDispose { controller.cancel() } }
+            TranslationProvider(Translation(BundledTranslations.english)) {
+                MaterialTheme { Box(Modifier.size(1_200.dp, 800.dp)) { LiveInterpreterScreen(controller, configuration) } }
+            }
+        }
+
+        onNodeWithText("Start").assertIsEnabled().performClick()
+        waitUntil(timeoutMillis = 5_000) { controller.state.value.phase == LiveInterpreterPhase.LISTENING }
+        runOnIdle {
+            client.output.trySend(LiveInterpreterFailedEvent("ui-session", "Synthetic failure", retryable = false))
+        }
+        waitUntil(timeoutMillis = 5_000) { controller.state.value.phase == LiveInterpreterPhase.PAUSED }
+
+        onNodeWithText("Transcription model: UI model").assertIsNotEnabled()
+        onNodeWithText("Resume").assertIsEnabled()
+        onNodeWithText("Stop").assertIsEnabled().performClick()
+        waitUntil(timeoutMillis = 5_000) { controller.state.value.phase == LiveInterpreterPhase.STOPPED }
+        onNodeWithText("Transcription model: UI model").assertIsEnabled()
+        onNodeWithText("Start").assertIsEnabled()
     }
 
     @Test

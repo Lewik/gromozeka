@@ -125,7 +125,9 @@ class LiveInterpreterController(
     }
 
     fun selectModel(id: AiModelConfiguration.Id) {
-        check(!state.value.phase.isActive) { "Cannot change the model during Live capture" }
+        check(!state.value.phase.isActive && state.value.phase != LiveInterpreterPhase.PAUSED) {
+            "Cannot change the model for an active or resumable Live session"
+        }
         mutableState.update { it.copy(selectedModelId = id) }
     }
 
@@ -142,7 +144,9 @@ class LiveInterpreterController(
     fun useInterfaceNativeTranslationLanguage(language: String) {
         val normalized = normalizeLiveLanguage(language)
         mutableState.update { current ->
-            if (current.nativeTranslationLanguageExplicit) current else current.copy(nativeTranslationLanguage = normalized)
+            if (current.nativeTranslationLanguageExplicit || current.phase.isActive ||
+                current.phase == LiveInterpreterPhase.PAUSED) current
+            else current.copy(nativeTranslationLanguage = normalized)
         }
     }
 
@@ -152,6 +156,9 @@ class LiveInterpreterController(
         val nativeLanguage = nativeTranslationLanguage?.let(::normalizeLiveLanguage)
         val preserveHistory = state.value.phase == LiveInterpreterPhase.PAUSED
         if (preserveHistory) {
+            check(state.value.selectedModelId == selection.modelConfigurationId) {
+                "Cannot change the transcription model while resuming a Live session"
+            }
             check(state.value.activeNativeTranslationLanguage == nativeLanguage) {
                 "Cannot change Soniox translation while resuming a Live session"
             }

@@ -116,11 +116,18 @@ fun LiveInterpreterScreen(
                     Text(translation.text("interpreter.stop"))
                 }
             } else {
-                Button(onClick = { selectedModel?.let {
-                    controller.start(AiRuntimeSelection(it.id), state.nativeTranslationLanguage.takeIf { nativeTranslationSupported })
-                } },
-                    enabled = selectedModel != null && languageHintsValid && controller.unavailableReason == null) {
-                    Text(translation.text(if (state.phase == LiveInterpreterPhase.PAUSED) "interpreter.resume" else "interpreter.start"))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (state.phase == LiveInterpreterPhase.PAUSED) {
+                        OutlinedButton(onClick = controller::stop) {
+                            Text(translation.text("interpreter.stop"))
+                        }
+                    }
+                    Button(onClick = { selectedModel?.let {
+                        controller.start(AiRuntimeSelection(it.id), state.nativeTranslationLanguage.takeIf { nativeTranslationSupported })
+                    } },
+                        enabled = selectedModel != null && languageHintsValid && controller.unavailableReason == null) {
+                        Text(translation.text(if (state.phase == LiveInterpreterPhase.PAUSED) "interpreter.resume" else "interpreter.start"))
+                    }
                 }
             }
         }
@@ -134,7 +141,8 @@ fun LiveInterpreterScreen(
             textStyle = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Ltr), modifier = Modifier.fillMaxWidth(),
         )
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            LiveModelMenu(translation.text("interpreter.model"), models, selectedModel, !state.phase.isActive, controller::selectModel)
+            LiveModelMenu(translation.text("interpreter.model"), models, selectedModel,
+                !state.phase.isActive && state.phase != LiveInterpreterPhase.PAUSED, controller::selectModel)
             if (nativeTranslationSupported) {
                 LiveNativeTranslationMenu(state.nativeTranslationLanguage, names,
                     !state.phase.isActive && state.phase != LiveInterpreterPhase.PAUSED,
