@@ -32,7 +32,7 @@ Stage 1 records:
 
 - POSIX and Windows commands launched by `grz_execute_command`;
 - inline Python launched by `grz_execute_python`;
-- command lifecycle and exit status;
+- command lifecycle and exit status when those observations reach the Server;
 - retained terminal UTF-8 output with byte-range/truncation metadata;
 - MCP tool calls made through the command-scoped SDK, including textual results;
 - direct MCP command launches and durable async command launches.
@@ -42,6 +42,18 @@ Resolved secret maps are not passed directly to the journal; supported `secret_e
 sensitive values. Tool input is omitted when the tool contract has `logInput=false`, and binary tool results
 are omitted. Arbitrary subprocesses created inside shell or Python code are not observable unless that code
 invokes Gromozeka through the SDK/MCP boundary.
+
+## Observation and failure semantics
+
+Command Journal is an observational sidecar, not a live execution-state or recovery system. Each Event records a
+fact received at an existing processing boundary. Event streams may therefore be incomplete: for example, an
+`ACCEPTED` Event without a later terminal Event means only that no terminal observation was recorded. It does not
+mean that the command is still running. `WorkerRequest` and `CommandTask` remain authoritative for current state.
+
+The journal does not infer `FAILED` or `OUTCOME_UNKNOWN` from silence, and Stage 1 does not add retries, backfill,
+or reconciliation to reconstruct missing observations. Such Events are appended only when the existing Runtime
+has established that outcome. Whether an immediate Journal write is required or best-effort is a separate policy
+decision; either choice must not replay an action or invent a lifecycle fact.
 
 ## Journal tools
 

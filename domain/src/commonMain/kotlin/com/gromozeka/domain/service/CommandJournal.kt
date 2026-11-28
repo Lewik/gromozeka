@@ -12,8 +12,10 @@ import kotlin.jvm.JvmInline
 import kotlin.time.Instant
 
 /**
- * Optional sidecar history for managed commands and their nested MCP calls.
- * Conversation remains the provider-facing causal history.
+ * Optional observational sidecar for managed commands and their nested MCP calls.
+ * Conversation remains the provider-facing causal history; WorkerRequest and CommandTask remain the live state.
+ * Events record facts observed at existing processing boundaries. A missing terminal event is not inferred as
+ * continued execution, failure, or an unknown outcome.
  */
 interface CommandJournal {
     suspend fun admit(
