@@ -163,7 +163,7 @@ internal class PostgresCommandJournal(
                 SELECT entry.* FROM command_journal_entries entry
                 JOIN command_journal_events event ON event.entry_id=entry.id
                 WHERE event.command_task_id=?
-                ORDER BY event.occurred_at,event.id LIMIT 1
+                ORDER BY event.append_sequence LIMIT 1
                 """.trimIndent()
             ).use { statement ->
                 statement.setString(1, commandTaskId.value)
@@ -186,7 +186,7 @@ internal class PostgresCommandJournal(
     override suspend fun events(entryId: CommandJournal.Entry.Id): List<CommandJournal.Event> = io {
         dataSource.connection.use { connection ->
             connection.prepareStatement(
-                "SELECT * FROM command_journal_events WHERE entry_id=? ORDER BY occurred_at,id"
+                "SELECT * FROM command_journal_events WHERE entry_id=? ORDER BY append_sequence"
             ).use { statement ->
                 statement.setString(1, entryId.value)
                 statement.executeQuery().use { rows -> buildList { while (rows.next()) add(rows.event()) } }
@@ -335,7 +335,7 @@ internal class PostgresCommandJournal(
                 LEFT JOIN LATERAL (
                     SELECT * FROM command_journal_events latest
                     WHERE latest.entry_id=entry.id
-                    ORDER BY latest.occurred_at DESC,latest.id DESC LIMIT 1
+                    ORDER BY latest.append_sequence DESC LIMIT 1
                 ) latest_event ON TRUE
                 WHERE ${conditions.joinToString(" AND ")}
                 ORDER BY entry.created_at DESC,entry.id DESC
@@ -390,7 +390,7 @@ internal class PostgresCommandJournal(
                 statement.executeQuery().use { rows -> buildList { while (rows.next()) add(rows.call()) } }
             }
             val events = connection.prepareStatement(
-                "SELECT * FROM command_journal_events WHERE entry_id=? ORDER BY occurred_at,id LIMIT ?"
+                "SELECT * FROM command_journal_events WHERE entry_id=? ORDER BY append_sequence LIMIT ?"
             ).use { statement ->
                 statement.setString(1, entryId.value)
                 statement.setInt(2, eventLimit + 1)

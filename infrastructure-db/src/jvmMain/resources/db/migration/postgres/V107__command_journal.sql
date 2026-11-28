@@ -37,6 +37,7 @@ CREATE TABLE command_journal_calls (
 
 CREATE TABLE command_journal_events (
     id TEXT PRIMARY KEY,
+    append_sequence BIGINT GENERATED ALWAYS AS IDENTITY UNIQUE,
     entry_id TEXT NOT NULL REFERENCES command_journal_entries(id) ON DELETE CASCADE,
     call_id TEXT NOT NULL REFERENCES command_journal_calls(id) ON DELETE CASCADE,
     source_key TEXT NOT NULL,
@@ -95,7 +96,7 @@ CREATE INDEX command_journal_calls_entry
 CREATE INDEX command_journal_calls_worker
     ON command_journal_calls(worker_id, created_at DESC, id DESC) WHERE worker_id IS NOT NULL;
 CREATE INDEX command_journal_events_entry
-    ON command_journal_events(entry_id, occurred_at, id);
+    ON command_journal_events(entry_id, append_sequence);
 CREATE INDEX command_journal_events_task
     ON command_journal_events(command_task_id) WHERE command_task_id IS NOT NULL;
 CREATE INDEX command_journal_content_links_entry

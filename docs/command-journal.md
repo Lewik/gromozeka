@@ -20,7 +20,7 @@ The code uses the following nested `CommandJournal` types consistently:
 
 - **Entry** — one root console activity and its related calls. A model command tool call is a root Entry.
 - **Call** — the root command/Python invocation or a nested MCP tool call made by its command-scoped SDK.
-- **Event** — a durable lifecycle observation such as accepted, started, completed, failed, or cancelled.
+- **Event** — a durable lifecycle observation such as accepted, started, completed, failed, or cancelled. `occurredAt` preserves source-reported time, while Journal state follows Server append order.
 - **Content** — deduplicated textual arguments, source, or output linked to a Call or Event.
 - **Source** — trusted Harness provenance carried outside public tool arguments.
 

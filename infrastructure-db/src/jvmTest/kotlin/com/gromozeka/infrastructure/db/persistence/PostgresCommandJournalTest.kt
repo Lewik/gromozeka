@@ -170,6 +170,72 @@ class PostgresCommandJournalTest {
     }
 
     @Test
+    fun `latest lifecycle follows append order instead of source clocks`() = runBlocking {
+        database { dataSource ->
+            val journal = PostgresCommandJournal(dataSource)
+            val entry = entry(Instant.fromEpochSeconds(100))
+            val root = rootCall(entry, entry.createdAt)
+            journal.admit(entry, root)
+            val accepted = CommandJournal.Event(
+                id = CommandJournal.Event.Id("accepted-event"),
+                entryId = entry.id,
+                callId = root.id,
+                sourceKey = "accepted",
+                kind = CommandJournal.Event.Kind.ACCEPTED,
+                occurredAt = Instant.fromEpochSeconds(1_000),
+            )
+            val started = CommandJournal.Event(
+                id = CommandJournal.Event.Id("skewed-started-event"),
+                entryId = entry.id,
+                callId = root.id,
+                sourceKey = "started",
+                kind = CommandJournal.Event.Kind.STARTED,
+                occurredAt = Instant.fromEpochSeconds(1),
+                commandTaskId = CommandTask.Id("skewed-task"),
+            )
+            val completed = CommandJournal.Event(
+                id = CommandJournal.Event.Id("skewed-completed-event"),
+                entryId = entry.id,
+                callId = root.id,
+                sourceKey = "completed",
+                kind = CommandJournal.Event.Kind.COMPLETED,
+                occurredAt = started.occurredAt,
+                commandTaskId = CommandTask.Id("skewed-task"),
+                exitCode = 0,
+            )
+
+            journal.append(accepted)
+            journal.append(started)
+            journal.append(completed)
+            journal.append(accepted)
+
+            assertEquals(listOf(accepted, started, completed), journal.events(entry.id))
+            val search = journal.search(
+                CommandJournal.SearchQuery(
+                    projectId = entry.projectId,
+                    eventKind = CommandJournal.Event.Kind.COMPLETED,
+                )
+            )
+            assertEquals(completed.id, search.entries.single().latestEvent?.id)
+            assertEquals(
+                listOf(accepted, started, completed),
+                assertNotNull(journal.get(entry.projectId, entry.id)).events,
+            )
+            dataSource.connection.use { connection ->
+                connection.prepareStatement(
+                    "SELECT id FROM command_journal_events WHERE entry_id=? ORDER BY append_sequence"
+                ).use { statement ->
+                    statement.setString(1, entry.id.value)
+                    statement.executeQuery().use { rows ->
+                        val ids = buildList { while (rows.next()) add(rows.getString(1)) }
+                        assertEquals(listOf(accepted.id.value, started.id.value, completed.id.value), ids)
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     fun `source call content and event identities cannot be rebound`() = runBlocking {
         database { dataSource ->
             val journal = PostgresCommandJournal(dataSource)
