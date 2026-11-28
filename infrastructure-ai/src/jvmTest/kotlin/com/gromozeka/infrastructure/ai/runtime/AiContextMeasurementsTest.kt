@@ -172,6 +172,32 @@ class AiContextMeasurementsTest {
         assertTrue(large < 20_000)
     }
 
+    @Test fun documentBase64DoesNotBecomePortableTextTokens() {
+        fun directRequest(data: String) = initial.copy(messages = listOf(initial.messages.single().copy(content = listOf(
+            Conversation.Message.ContentItem.DocumentItem(
+                Conversation.Message.DocumentSource.Base64DocumentSource(data, "application/pdf", "document.pdf"),
+            ),
+        ))))
+        fun toolRequest(data: String) = initial.copy(messages = listOf(initial.messages.single().copy(content = listOf(
+            Conversation.Message.ContentItem.ToolResult(
+                Conversation.Message.ContentItem.ToolCall.Id("document"),
+                "grz_read_file",
+                listOf(Conversation.Message.ContentItem.ToolResult.Data.Base64Data(
+                    data,
+                    Conversation.Message.MediaType.parse("application/pdf"),
+                    "document.pdf",
+                )),
+            ),
+        ))))
+
+        for (request in listOf(::directRequest, ::toolRequest)) {
+            val small = AiRequestTokenEstimate.input(request("AAAA"))
+            val large = AiRequestTokenEstimate.input(request("A".repeat(1_000_000)))
+            assertEquals(small, large)
+            assertTrue(large in 50_000..60_000)
+        }
+    }
+
     @Test fun editsToCoveredInputOrOutputInvalidateEvenWithTheSameIds() {
         val stored = persisted(AiContextMeasurements.record(runtime, initial, response))
         val next = initial.copy(messages = initial.messages + stored)

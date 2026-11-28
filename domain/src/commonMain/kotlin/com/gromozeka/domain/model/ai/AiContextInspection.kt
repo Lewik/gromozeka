@@ -36,6 +36,8 @@ object AiRequestTokenEstimate : AiRequestTokenEstimator {
     override val id: String = "portable-visible-context-v3"
     /** Conservative modality cost when the portable request has no model-specific image detail. */
     const val IMAGE_INPUT_TOKENS: Int = 10_000
+    /** Coarse fallback for provider file parsing; transport base64 is not model-visible text. */
+    const val FILE_INPUT_TOKENS: Int = 50_000
     private val json = Json { encodeDefaults = false }
 
     override fun input(request: AiRuntimeRequest): Int = checked(
@@ -64,12 +66,9 @@ object AiRequestTokenEstimate : AiRequestTokenEstimator {
             is ContentItem.ContextCompactionResult.Payload.OpaqueProviderState -> checked(opaqueTokens(payload.state))
         }
         is ContentItem.ImageItem -> imageTokens(item)
+        is ContentItem.DocumentItem -> documentTokens(item)
         is ContentItem.ArtifactItem -> checked(
-            serializedTokens(item).toLong() + if (item.artifact.kind == Artifact.Kind.IMAGE) {
-                IMAGE_INPUT_TOKENS
-            } else {
-                0
-            }
+            serializedTokens(item).toLong() + item.artifact.kind.modalityTokens()
         )
         is ContentItem.ToolResult -> toolResultTokens(item)
         else -> text(json.encodeToString(ContentItem.serializer(), item))
@@ -84,29 +83,40 @@ object AiRequestTokenEstimate : AiRequestTokenEstimator {
         return checked(serializedTokens(item.copy(source = source)).toLong() + IMAGE_INPUT_TOKENS)
     }
 
+    private fun documentTokens(item: ContentItem.DocumentItem): Int {
+        val source = when (val source = item.source) {
+            is Conversation.Message.DocumentSource.Base64DocumentSource -> source.copy(data = "")
+        }
+        return checked(serializedTokens(item.copy(source = source)).toLong() + FILE_INPUT_TOKENS)
+    }
+
     private fun toolResultTokens(item: ContentItem.ToolResult): Int {
-        var imageCount = 0L
+        var modalityTokens = 0L
         val result = item.result.map { data ->
             when (data) {
-                is ContentItem.ToolResult.Data.Base64Data -> if (data.mediaType.type == "image") {
-                    imageCount++
+                is ContentItem.ToolResult.Data.Base64Data -> {
+                    modalityTokens += if (data.mediaType.type == "image") IMAGE_INPUT_TOKENS else FILE_INPUT_TOKENS
                     data.copy(data = "")
-                } else {
-                    data
                 }
                 is ContentItem.ToolResult.Data.UrlData -> if (data.mediaType?.type == "image") {
-                    imageCount++
+                    modalityTokens += IMAGE_INPUT_TOKENS
                     data.copy(url = "")
                 } else {
                     data
                 }
                 is ContentItem.ToolResult.Data.ArtifactData -> data.also {
-                    if (data.artifact.kind == Artifact.Kind.IMAGE) imageCount++
+                    modalityTokens += data.artifact.kind.modalityTokens()
                 }
                 is ContentItem.ToolResult.Data.Text -> data
             }
         }
-        return checked(serializedTokens(item.copy(result = result)).toLong() + imageCount * IMAGE_INPUT_TOKENS)
+        return checked(serializedTokens(item.copy(result = result)).toLong() + modalityTokens)
+    }
+
+    private fun Artifact.Kind.modalityTokens(): Int = when (this) {
+        Artifact.Kind.IMAGE -> IMAGE_INPUT_TOKENS
+        Artifact.Kind.DOCUMENT -> FILE_INPUT_TOKENS
+        Artifact.Kind.FILE -> 0
     }
 
     private fun serializedTokens(item: ContentItem): Int =
