@@ -1,13 +1,10 @@
 package com.gromozeka.infrastructure.ai.openai
 
-import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.tool.*
 import com.gromozeka.infrastructure.ai.runtime.SdkHttpCallIdentity
 import com.openai.core.jsonMapper
 import com.openai.models.responses.ResponseInputItem
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import org.springframework.stereotype.Component
 import java.security.MessageDigest
 import java.util.HexFormat
@@ -30,7 +27,7 @@ internal class OpenAiResponsesContinuations {
         val input: List<ResponseInputItem>, val previousResponseId: String?, val store: Boolean, val reason: Reason,
     )
 
-    fun scope(connection: AiConnection.OpenAiApi, modelConfiguration: String, model: String,
+    fun scope(connectionId: String, settingsIdentity: String, modelConfiguration: String, model: String,
         request: AiRuntimeRequest, identity: SdkHttpCallIdentity): Scope? {
         if (request.options.usagePurpose != "CONVERSATION") return null
         fun field(key: String) = (request.options.toolContext[key] as? String)?.takeIf(String::isNotBlank)
@@ -40,11 +37,10 @@ internal class OpenAiResponsesContinuations {
             conversation = field(TOOL_CONTEXT_CONVERSATION_ID) ?: return null,
             thread = field(TOOL_CONTEXT_THREAD_ID) ?: return null,
             agent = field(TOOL_CONTEXT_AGENT_DEFINITION_ID) ?: return null,
-            connection = connection.id.value, modelConfiguration = modelConfiguration, model = model,
+            connection = connectionId, modelConfiguration = modelConfiguration, model = model,
             endpoint = identity.baseUrl,
             authFingerprint = identity.credentialFingerprint,
-            settingsFingerprint = digest((Json.encodeToString(connection.httpSettings) + "\n" +
-                Json.encodeToString(connection.executionTarget)).toByteArray()),
+            settingsFingerprint = digest(settingsIdentity.toByteArray()),
         )
     }
 

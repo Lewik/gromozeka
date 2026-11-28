@@ -84,22 +84,31 @@ internal class OpenAiResponsesSdkRuntime(
     private val modelName: String,
     private val webSearchEnabled: Boolean,
     private val executor: SdkHttpCallExecutor<OpenAIClient>,
-    private val connection: AiConnection.OpenAiApi,
+    private val provider: OpenAiResponsesProvider,
     private val continuations: OpenAiResponsesContinuations,
+    private val continuationSettingsIdentity: String? = null,
     private val quotaEnabled: Boolean,
     generation: ModelGenerationPolicy = ModelGenerationPolicy(),
     private val messageMapper: OpenAiResponsesMessageMapper = OpenAiResponsesMessageMapper(
         connectionId = connectionId,
         modelConfigurationId = modelConfigurationId,
         modelName = modelName,
+        provider = provider.providerScope,
+        nativeCompactionProvider = provider.nativeCompactionProvider,
+        requestFeatures = provider.requestFeatures,
         generation = generation,
     ),
 ) : AiRuntime {
-    override val capabilities = com.gromozeka.domain.model.ai.AiRuntimeCapabilities(supportsNativeCompaction = true, supportsDetachedNativeCompaction = true)
+    override val capabilities = com.gromozeka.domain.model.ai.AiRuntimeCapabilities(
+        supportsNativeCompaction = provider.supportsNativeCompaction,
+        supportsDetachedNativeCompaction = provider.supportsDetachedNativeCompaction,
+    )
     private val log = KLoggers.logger(this)
 
     override suspend fun inspectContext(request: AiRuntimeRequest, allowProviderCount: Boolean): AiContextInspection {
-        if (!allowProviderCount) return super.inspectContext(request, false).copy(nativeCompactionAvailable = true)
+        if (!allowProviderCount || !provider.supportsProviderTokenCount) {
+            return super.inspectContext(request, false).copy(nativeCompactionAvailable = provider.supportsNativeCompaction)
+        }
         val body = messageMapper.toCreateParams(modelName, webSearchEnabled, request)._body()
         val fields = Json.parseToJsonElement(jsonMapper().writeValueAsString(body)).jsonObject
         val countBody = jsonMapper().readValue(JsonObject(fields.filterKeys {
@@ -115,6 +124,7 @@ internal class OpenAiResponsesSdkRuntime(
     }
 
     override suspend fun compact(request: AiRuntimeRequest): AiRuntimeResponse {
+        check(provider.supportsNativeCompaction) { "${provider.providerScope} does not support native Responses compaction" }
         val body = messageMapper.toCreateParams(modelName, webSearchEnabled, request)._body()
         val fields = Json.parseToJsonElement(jsonMapper().writeValueAsString(body)).jsonObject
         // Custom compaction instructions can invalidate subsequent preserved reasoning.
@@ -150,9 +160,11 @@ internal class OpenAiResponsesSdkRuntime(
                 } else false
             }) { client, remaining, session ->
                 val plan = prepared ?: continuations.plan(
-                    if (connection.responsesStoredContinuationEnabled) continuations.scope(connection, modelConfigurationId,
-                        modelName, request, checkNotNull(session.identity) { "Responses client has no call identity" }) else null,
-                    fullInput, connection.responsesStoredContinuationEnabled,
+                    continuationSettingsIdentity?.let { settingsIdentity ->
+                        continuations.scope(connectionId, settingsIdentity, modelConfigurationId,
+                            modelName, request, checkNotNull(session.identity) { "Responses client has no call identity" })
+                    },
+                    fullInput, continuationSettingsIdentity != null,
                 ).also { prepared = it }
                 val params = fullParams.toBuilder().store(plan.store).inputOfResponse(plan.input)
                     .apply { plan.previousResponseId?.let(::previousResponseId) }.build()
@@ -161,11 +173,11 @@ internal class OpenAiResponsesSdkRuntime(
                     session.transport.accountForRequest(Json.parseToJsonElement(jsonMapper().writeValueAsString(wireBody(accounting))))
                 }
                 logRequestPlan(accounting, params, plan)
-                val pending = if (connection.responsesStreamingEnabled) collectOpenAiResponsesStream(client, params, remaining)
+                val pending = if (provider.streaming) collectOpenAiResponsesStream(client, params, remaining)
                     else client.async().responses().create(params,
                         com.openai.core.RequestOptions.builder().timeout(remaining).build())
                 pending.thenApply { response ->
-                    if (quotaEnabled && connection.responsesStreamingEnabled) {
+                    if (quotaEnabled && provider.streaming) {
                         session.transport.accountForResponse(Json.parseToJsonElement(jsonMapper().writeValueAsString(response)))
                     }
                     val mapped = messageMapper.toRuntimeResponse(response, request.options.assistantResponseFormat)
@@ -188,7 +200,7 @@ internal class OpenAiResponsesSdkRuntime(
             prepared?.let(continuations::forget)
             throw error
         } finally {
-            safeMetricLog { "RESPONSES_HTTP outcome=$outcome streaming=${connection.responsesStreamingEnabled} " +
+            safeMetricLog { "RESPONSES_HTTP outcome=$outcome streaming=${provider.streaming} " +
                 "mapping_ms=${mappedNanos / 1_000_000} logical_ms=${(System.nanoTime() - started) / 1_000_000}" }
         }
     }
@@ -204,7 +216,7 @@ internal class OpenAiResponsesSdkRuntime(
         }
     }
 
-    private fun wireBody(params: ResponseCreateParams) = if (connection.responsesStreamingEnabled) params._body().toBuilder()
+    private fun wireBody(params: ResponseCreateParams) = if (provider.streaming) params._body().toBuilder()
         .putAdditionalProperty("stream", JsonValue.from(true)).build() else params._body()
 
     private fun safeMetricLog(debug: Boolean = false, message: () -> String) {
@@ -230,11 +242,37 @@ internal class OpenAiResponsesSdkRuntime(
     }
 }
 
+/** Fixed protocol characteristics selected by a provider adapter, not user-facing feature flags. */
+internal data class OpenAiResponsesProvider(
+    val providerScope: String,
+    val supportsNativeCompaction: Boolean,
+    val supportsDetachedNativeCompaction: Boolean,
+    val supportsProviderTokenCount: Boolean,
+    val streaming: Boolean,
+    val requestFeatures: OpenAiResponsesRequestFeatures = OpenAiResponsesRequestFeatures(),
+) {
+    val nativeCompactionProvider: String? = providerScope.takeIf { supportsNativeCompaction }
+
+    init {
+        require(providerScope.isNotBlank()) { "Responses provider scope must not be blank" }
+        require(!supportsDetachedNativeCompaction || supportsNativeCompaction) {
+            "Detached Responses compaction requires native compaction"
+        }
+    }
+}
+
+internal data class OpenAiResponsesRequestFeatures(
+    val maxOutputTokens: Boolean = true,
+)
+
 internal class OpenAiResponsesMessageMapper(
     private val connectionId: String,
     private val modelConfigurationId: String,
     private val modelName: String,
     private val generation: ModelGenerationPolicy = ModelGenerationPolicy(),
+    private val provider: String = "OPENAI_API",
+    private val nativeCompactionProvider: String? = provider,
+    private val requestFeatures: OpenAiResponsesRequestFeatures = OpenAiResponsesRequestFeatures(),
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -243,7 +281,7 @@ internal class OpenAiResponsesMessageMapper(
         webSearchEnabled: Boolean,
         request: AiRuntimeRequest,
     ): ResponseCreateParams {
-        val input = request.projectedMessages("OPENAI_API").flatMap(::toInputItems)
+        val input = request.projectedMessages(nativeCompactionProvider, provider).flatMap(::toInputItems)
         require(input.isNotEmpty()) { "OpenAI Responses request must contain at least one input item" }
 
         val builder = ResponseCreateParams.builder()
@@ -253,7 +291,7 @@ internal class OpenAiResponsesMessageMapper(
             .store(false)
             .addInclude(ResponseIncludable.REASONING_ENCRYPTED_CONTENT)
 
-        request.options.maxOutputTokens?.let { builder.maxOutputTokens(it.toLong()) }
+        if (requestFeatures.maxOutputTokens) request.options.maxOutputTokens?.let { builder.maxOutputTokens(it.toLong()) }
 
         request.systemPrompts
             .filter(String::isNotBlank)
@@ -340,7 +378,7 @@ internal class OpenAiResponsesMessageMapper(
             finishReason = response.incompleteDetails().getOrNull()?.reason()?.getOrNull()?.asString() ?: status,
             outcome = outcome,
             providerMetadata = mapOf(
-                "provider" to "OPENAI_API",
+                "provider" to provider,
                 "model" to modelName,
                 "reportedModel" to model,
                 "connectionId" to connectionId,
@@ -360,7 +398,7 @@ internal class OpenAiResponsesMessageMapper(
                 strategy = ContextCompactionResult.Strategy.PROVIDER_MANAGED,
                 coverage = ContextCompactionResult.Coverage.ALL_PREVIOUS,
                 sourceBoundaryMessageId = request.messages.last().id,
-                providerScope = ContextCompactionResult.ProviderScope("OPENAI_API", connectionId, modelConfigurationId, modelName),
+                providerScope = ContextCompactionResult.ProviderScope(provider, connectionId, modelConfigurationId, modelName),
             )))),
             usage = response.usage().toAiUsage(), outcome = AiStepOutcome.CONTINUE, finishReason = "compaction",
         )
@@ -375,7 +413,7 @@ internal class OpenAiResponsesMessageMapper(
             strategy = ContextCompactionResult.Strategy.PROVIDER_MANAGED,
             coverage = ContextCompactionResult.Coverage.ALL_PREVIOUS,
             providerScope = ContextCompactionResult.ProviderScope(
-                provider = "OPENAI_API", connectionId = connectionId,
+                provider = provider, connectionId = connectionId,
                 modelConfigurationId = modelConfigurationId, modelName = modelName,
             ),
         )))
@@ -389,7 +427,7 @@ internal class OpenAiResponsesMessageMapper(
         }
         val rawItems = message.providerMetadata["openaiOutputItems"] as? JsonArray
         if (nativeCompactions.isEmpty() && message.role == Conversation.Message.Role.ASSISTANT && rawItems != null &&
-            message.providerMetadata["provider"]?.jsonPrimitive?.contentOrNull == "OPENAI_API" &&
+            message.providerMetadata["provider"]?.jsonPrimitive?.contentOrNull == provider &&
             message.providerMetadata["connectionId"]?.jsonPrimitive?.contentOrNull == connectionId &&
             message.providerMetadata["model"]?.jsonPrimitive?.contentOrNull == modelName
         ) {
@@ -474,7 +512,7 @@ internal class OpenAiResponsesMessageMapper(
     private fun ContextCompactionResult.nativeInputItems(): List<ResponseInputItem> {
         val opaque = payload as? ContextCompactionResult.Payload.OpaqueProviderState ?: return emptyList()
         val scope = providerScope
-        check(scope?.provider == "OPENAI_API" && scope.connectionId == connectionId && scope.modelName == modelName) {
+        check(scope?.provider == provider && scope.connectionId == connectionId && scope.modelName == modelName) {
             "OpenAI Responses compaction checkpoint belongs to another provider, connection or model"
         }
         (opaque.state["replay_window"] as? JsonArray)?.let { window ->
@@ -535,7 +573,7 @@ internal class OpenAiResponsesMessageMapper(
         )
 
     private fun Conversation.Message.toReasoningInputItems(): List<ResponseInputItem> {
-        if (providerMetadata["provider"]?.jsonPrimitive?.contentOrNull != "OPENAI_API") return emptyList()
+        if (providerMetadata["provider"]?.jsonPrimitive?.contentOrNull != provider) return emptyList()
         if (providerMetadata["connectionId"]?.jsonPrimitive?.contentOrNull != connectionId) return emptyList()
         if (providerMetadata["model"]?.jsonPrimitive?.contentOrNull != modelName) return emptyList()
 

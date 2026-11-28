@@ -69,6 +69,7 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.encodeToString
 import org.springframework.stereotype.Service
 import kotlin.jvm.optionals.getOrNull
 
@@ -105,8 +106,17 @@ internal class OpenAiSdkRuntimeBackend(
                 modelName = modelConfiguration.providerModelId,
                 webSearchEnabled = connection.webSearchEnabled,
                 executor = executor,
-                connection = connection,
+                provider = OpenAiResponsesProvider(
+                    providerScope = connection.kind.name,
+                    supportsNativeCompaction = true,
+                    supportsDetachedNativeCompaction = true,
+                    supportsProviderTokenCount = true,
+                    streaming = connection.responsesStreamingEnabled,
+                ),
                 continuations = responsesContinuations,
+                continuationSettingsIdentity = if (connection.responsesStoredContinuationEnabled) {
+                    Json.encodeToString(connection.httpSettings) + "\n" + Json.encodeToString(connection.executionTarget)
+                } else null,
                 quotaEnabled = modelConfiguration.tpm != null,
                 generation = ModelGenerationPolicy(runtime.modelSpec),
             )
