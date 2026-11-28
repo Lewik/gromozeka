@@ -95,19 +95,31 @@ class PostgresCommandJournalTest {
             assertEquals(1, search.entries.single().eventCount)
             assertEquals(null, search.nextCursor)
 
-            val snapshot = assertNotNull(journal.get(entry.id, callLimit = 1, eventLimit = 1))
+            assertNull(journal.get(Project.Id("other-project"), entry.id, callLimit = 1, eventLimit = 1))
+            val snapshot = assertNotNull(journal.get(entry.projectId, entry.id, callLimit = 1, eventLimit = 1))
             assertEquals(2, snapshot.callCount)
             assertEquals(1, snapshot.eventCount)
             assertEquals(1, snapshot.calls.size)
             assertEquals(true, snapshot.callsTruncated)
             assertEquals(false, snapshot.eventsTruncated)
 
-            val contentPage = journal.readContent(
-                CommandJournal.ContentQuery(
-                    entryId = entry.id,
-                    kinds = setOf(CommandJournal.Content.Kind.OUTPUT),
-                    limit = 1,
-                    maxCharactersPerItem = 256,
+            assertNull(
+                journal.readContent(
+                    CommandJournal.ContentQuery(
+                        projectId = Project.Id("other-project"),
+                        entryId = entry.id,
+                    )
+                )
+            )
+            val contentPage = assertNotNull(
+                journal.readContent(
+                    CommandJournal.ContentQuery(
+                        projectId = entry.projectId,
+                        entryId = entry.id,
+                        kinds = setOf(CommandJournal.Content.Kind.OUTPUT),
+                        limit = 1,
+                        maxCharactersPerItem = 256,
+                    )
                 )
             )
             assertEquals(1, contentPage.items.size)

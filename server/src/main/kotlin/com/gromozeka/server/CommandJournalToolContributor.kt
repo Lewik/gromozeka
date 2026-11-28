@@ -32,7 +32,6 @@ import kotlin.time.Instant
 @ConditionalOnProperty(name = ["gromozeka.command-journal.enabled"], havingValue = "true")
 internal class CommandJournalToolContributor(
     private val toolFactory: ServerJsonToolFactory,
-    private val journal: CommandJournal,
     private val reader: CommandJournal.Reader,
     private val recorder: CommandJournalRecorder,
     private val projectAccess: ProjectAccessService,
@@ -198,15 +197,20 @@ internal class CommandJournalToolContributor(
         inputSchema = GET_SCHEMA,
         readOnly = true,
         idempotent = true,
+        contextRequirements = AiToolContextRequirements(
+            required = setOf(AiToolContextField.USER, AiToolContextField.PROJECT),
+        ),
     ) { input ->
         requireKeys(input, setOf("entry_id", "call_limit", "event_limit"))
+        val projectId = toolContext.requiredProjectId()
+        projectAccess.requirePermission(user.id, projectId, ProjectPermission.READ)
         val entryId = CommandJournal.Entry.Id(input.requiredString("entry_id"))
         val snapshot = reader.get(
+            projectId = projectId,
             entryId = entryId,
             callLimit = input.optionalInt("call_limit", 100, 1..200),
             eventLimit = input.optionalInt("event_limit", 200, 1..500),
-        ) ?: throw ServerToolException("not_found", "Command Journal entry not found")
-        projectAccess.requirePermission(user.id, snapshot.entry.projectId, ProjectPermission.READ)
+        ) ?: throw ServerToolException("not_found", "Command Journal entry not found in the current project")
         serverToolJson.encodeToJsonElement(CommandJournal.Snapshot.serializer(), snapshot).jsonObject
     }
 
@@ -217,17 +221,20 @@ internal class CommandJournalToolContributor(
         inputSchema = READ_CONTENT_SCHEMA,
         readOnly = true,
         idempotent = true,
+        contextRequirements = AiToolContextRequirements(
+            required = setOf(AiToolContextField.USER, AiToolContextField.PROJECT),
+        ),
     ) { input ->
         requireKeys(
             input,
             setOf("entry_id", "call_id", "event_id", "kinds", "after_link_id", "limit", "max_characters_per_item"),
         )
+        val projectId = toolContext.requiredProjectId()
+        projectAccess.requirePermission(user.id, projectId, ProjectPermission.READ)
         val entryId = CommandJournal.Entry.Id(input.requiredString("entry_id"))
-        val entry = journal.findEntry(entryId)
-            ?: throw ServerToolException("not_found", "Command Journal entry not found")
-        projectAccess.requirePermission(user.id, entry.projectId, ProjectPermission.READ)
         val page = reader.readContent(
             CommandJournal.ContentQuery(
+                projectId = projectId,
                 entryId = entryId,
                 callId = input.optionalString("call_id")?.let(CommandJournal.Call::Id),
                 eventId = input.optionalString("event_id")?.let(CommandJournal.Event::Id),
@@ -238,7 +245,7 @@ internal class CommandJournalToolContributor(
                 limit = input.optionalInt("limit", 10, 1..50),
                 maxCharactersPerItem = input.optionalInt("max_characters_per_item", 8_192, 256..65_536),
             )
-        )
+        ) ?: throw ServerToolException("not_found", "Command Journal entry not found in the current project")
         serverToolJson.encodeToJsonElement(CommandJournal.ContentPage.serializer(), page).jsonObject
     }
 

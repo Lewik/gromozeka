@@ -67,7 +67,6 @@ class CommandJournalToolContributorTest {
         })
         val contributor = CommandJournalToolContributor(
             toolFactory = factory,
-            journal = journal,
             reader = journal,
             recorder = CommandJournalRecorder(provider(journal)),
             projectAccess = projectAccess,
@@ -225,11 +224,12 @@ class CommandJournalToolContributorTest {
         }
 
         override suspend fun get(
+            projectId: Project.Id,
             entryId: CommandJournal.Entry.Id,
             callLimit: Int,
             eventLimit: Int,
         ): CommandJournal.Snapshot? {
-            val entry = entries[entryId] ?: return null
+            val entry = entries[entryId]?.takeIf { it.projectId == projectId } ?: return null
             val calls = calls(entryId)
             val events = events(entryId)
             return CommandJournal.Snapshot(
@@ -243,8 +243,9 @@ class CommandJournalToolContributorTest {
             )
         }
 
-        override suspend fun readContent(query: CommandJournal.ContentQuery): CommandJournal.ContentPage {
-            val values = content(query.entryId)
+        override suspend fun readContent(query: CommandJournal.ContentQuery): CommandJournal.ContentPage? {
+            val entry = entries[query.entryId]?.takeIf { it.projectId == query.projectId } ?: return null
+            val values = content(entry.id)
                 .filter { query.callId == null || it.callId == query.callId }
                 .filter { query.eventId == null || it.eventId == query.eventId }
                 .filter { query.kinds.isEmpty() || it.kind in query.kinds }

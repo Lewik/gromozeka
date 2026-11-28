@@ -52,12 +52,13 @@ interface CommandJournal {
         suspend fun search(query: SearchQuery): SearchPage
 
         suspend fun get(
+            projectId: Project.Id,
             entryId: Entry.Id,
             callLimit: Int = 100,
             eventLimit: Int = 200,
         ): Snapshot?
 
-        suspend fun readContent(query: ContentQuery): ContentPage
+        suspend fun readContent(query: ContentQuery): ContentPage?
 
         suspend fun statistics(projectId: Project.Id): Statistics
     }
@@ -122,6 +123,7 @@ interface CommandJournal {
 
     @Serializable
     data class ContentQuery(
+        val projectId: Project.Id,
         val entryId: Entry.Id,
         val callId: Call.Id? = null,
         val eventId: Event.Id? = null,

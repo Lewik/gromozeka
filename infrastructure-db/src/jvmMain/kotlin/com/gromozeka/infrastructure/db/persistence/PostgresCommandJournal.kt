@@ -344,6 +344,7 @@ internal class PostgresCommandJournal(
     }
 
     override suspend fun get(
+        projectId: Project.Id,
         entryId: CommandJournal.Entry.Id,
         callLimit: Int,
         eventLimit: Int,
@@ -352,7 +353,7 @@ internal class PostgresCommandJournal(
         require(eventLimit in 1..500) { "Command Journal event limit must be between 1 and 500" }
         require(callLimit + eventLimit <= 500) { "Command Journal snapshot may request at most 500 records" }
         dataSource.connection.use { connection ->
-            val entry = connection.findEntry(entryId, forUpdate = false) ?: return@use null
+            val entry = connection.findEntry(projectId, entryId) ?: return@use null
             val calls = connection.prepareStatement(
                 "SELECT * FROM command_journal_calls WHERE entry_id=? ORDER BY created_at,id LIMIT ?"
             ).use { statement ->
@@ -381,11 +382,9 @@ internal class PostgresCommandJournal(
         }
     }
 
-    override suspend fun readContent(query: CommandJournal.ContentQuery): CommandJournal.ContentPage = io {
+    override suspend fun readContent(query: CommandJournal.ContentQuery): CommandJournal.ContentPage? = io {
         dataSource.connection.use { connection ->
-            requireNotNull(connection.findEntry(query.entryId, forUpdate = false)) {
-                "Command Journal entry is missing: ${query.entryId.value}"
-            }
+            connection.findEntry(query.projectId, query.entryId) ?: return@use null
             val conditions = mutableListOf("link.entry_id=?", "link.id>?")
             val parameters = mutableListOf<Any>(query.entryId.value, query.afterLinkId ?: 0L)
             query.callId?.let {
@@ -709,6 +708,16 @@ internal class PostgresCommandJournal(
             statement.executeQuery().use { rows -> if (rows.next()) rows.entry() else null }
         }
     }
+
+    private fun Connection.findEntry(
+        projectId: Project.Id,
+        entryId: CommandJournal.Entry.Id,
+    ): CommandJournal.Entry? =
+        prepareStatement("SELECT * FROM command_journal_entries WHERE project_id=? AND id=?").use { statement ->
+            statement.setString(1, projectId.value)
+            statement.setString(2, entryId.value)
+            statement.executeQuery().use { rows -> if (rows.next()) rows.entry() else null }
+        }
 
     private fun Connection.findCall(id: CommandJournal.Call.Id): CommandJournal.Call? =
         prepareStatement("SELECT * FROM command_journal_calls WHERE id=?").use { statement ->
