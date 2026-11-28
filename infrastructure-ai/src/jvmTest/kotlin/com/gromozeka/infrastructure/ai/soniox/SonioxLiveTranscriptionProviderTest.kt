@@ -162,12 +162,17 @@ class SonioxLiveTranscriptionProviderTest {
             token(".", true, 600, 700, "1", language = "en", translationStatus = "original"),
         ))
         assertTrue(source.none { it is LiveTranscriptionEvent.Translation })
+        assertEquals(
+            null,
+            source.filterIsInstance<LiveTranscriptionEvent.Transcript>().single { it.isFinal }.language,
+        )
 
         val translated = assembler.accept(listOf(
             token("hello ", true, speaker = "1", language = "en", sourceLanguage = "es", translationStatus = "translation"),
         )).filterIsInstance<LiveTranscriptionEvent.Translation>()
 
         assertEquals("hello world.", translated.last().text)
+        assertEquals(null, translated.last().sourceLanguage)
         assertTrue(translated.last().isFinal)
         assertTrue(assembler.finish().isEmpty())
     }

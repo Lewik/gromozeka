@@ -230,25 +230,38 @@ internal class SonioxTranscriptAssembler(
     private val maximumSegmentCharacters: Int = 1_000,
     private val nativeTranslationLanguage: String? = null,
 ) {
-    private data class Active(
+    private class ObservedLanguages {
+        private val values = linkedSetOf<String>()
+
+        fun add(language: String?) {
+            if (language != null) values += language
+        }
+
+        fun singleOrNull(additional: Iterable<String> = emptyList()): String? =
+            (values + additional).singleOrNull()
+    }
+
+    private class Active(
         val id: String,
         val stable: StringBuilder = StringBuilder(),
         var speakerId: String? = null,
-        var language: String? = null,
+        val languages: ObservedLanguages = ObservedLanguages(),
         var startMillis: Long? = null,
         var endMillis: Long? = null,
         var committed: Boolean = false,
         var flushPending: Boolean = false,
         var lastPartialSignature: String? = null,
-    )
+    ) {
+        val language: String? get() = languages.singleOrNull()
+    }
 
-    private data class NativeTranslationState(
-        val targetLanguage: String,
-        var sourceLanguage: String? = null,
-        var speakerId: String? = null,
-        var sourceClosed: Boolean = false,
-        var lastPublishedSignature: String? = null,
-    )
+    private class NativeTranslationState(val targetLanguage: String) {
+        val sourceLanguages = ObservedLanguages()
+        val sourceLanguage: String? get() = sourceLanguages.singleOrNull()
+        var speakerId: String? = null
+        var sourceClosed: Boolean = false
+        var lastPublishedSignature: String? = null
+    }
 
     private sealed interface NativeTranslationChunk {
         val itemId: String
@@ -431,7 +444,6 @@ internal class SonioxTranscriptAssembler(
         var current = active ?: newActive(token)
         if (current.stable.isEmpty()) {
             current.speakerId = token.speaker ?: current.speakerId
-            current.language = token.language ?: current.language
             current.startMillis = token.startMillis ?: current.startMillis
         } else if (current.speakerId != null && token.speaker != null && current.speakerId != token.speaker) {
             finalizeActive(events)
@@ -446,11 +458,7 @@ internal class SonioxTranscriptAssembler(
 
     private fun appendToActive(current: Active, token: SonioxRealtimeToken) {
         if (current.speakerId == null) current.speakerId = token.speaker
-        current.language = when {
-            current.language == null -> token.language
-            token.language == null || current.language == token.language -> current.language
-            else -> null
-        }
+        current.languages.add(token.language)
         if (current.startMillis == null) current.startMillis = token.startMillis
         current.endMillis = token.endMillis ?: current.endMillis
         current.stable.append(token.text)
@@ -468,9 +476,8 @@ internal class SonioxTranscriptAssembler(
         val text = current.stable.toString() + draftText
         if (text.isEmpty()) return
         val draftSpeaker = latestDraft.mapNotNull { it.speaker }.distinct().singleOrNull()
-        val draftLanguage = latestDraft.mapNotNull { it.language }.distinct().singleOrNull()
         val speaker = current.speakerId ?: draftSpeaker
-        val language = current.language ?: draftLanguage
+        val language = current.languages.singleOrNull(latestDraft.mapNotNull { it.language })
         val start = current.startMillis ?: latestDraft.firstOrNull()?.startMillis
         val end = latestDraft.lastOrNull()?.endMillis ?: current.endMillis
         val signature = listOf(text, speaker.orEmpty(), language.orEmpty(), start?.toString().orEmpty(), end?.toString().orEmpty())
@@ -527,11 +534,7 @@ internal class SonioxTranscriptAssembler(
     private fun nativeTranslation(itemId: String, sourceLanguage: String?, speakerId: String?): NativeTranslationState {
         val target = requireNotNull(nativeTranslationLanguage)
         return nativeTranslations.getOrPut(itemId) { NativeTranslationState(target) }.also { state ->
-            state.sourceLanguage = when {
-                state.sourceLanguage == null -> sourceLanguage
-                sourceLanguage == null || state.sourceLanguage == sourceLanguage -> state.sourceLanguage
-                else -> null
-            }
+            state.sourceLanguages.add(sourceLanguage)
             if (state.speakerId == null) state.speakerId = speakerId
         }
     }
@@ -574,10 +577,12 @@ internal class SonioxTranscriptAssembler(
     private fun newActive(token: SonioxRealtimeToken): Active = Active(
         id = "soniox-${nextItem++}",
         speakerId = token.speaker,
-        language = token.language,
         startMillis = token.startMillis,
         endMillis = token.endMillis,
-    ).also { active = it }
+    ).also {
+        it.languages.add(token.language)
+        active = it
+    }
 
     private fun durationMillis(current: Active): Long =
         if (current.startMillis == null || current.endMillis == null) 0 else current.endMillis!! - current.startMillis!!
