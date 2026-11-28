@@ -62,7 +62,7 @@ class PostgresAiAdmissionRepositoryTest {
                             ('legacy-pending', 'default', 'worker', 'capture-root', 'capture-b', FALSE, '{}', now())
                         """.trimIndent()
                     )
-                    sql.execute(requireNotNull(PostgresAiAdmissionRepositoryTest::class.java.getResource("/db/migration/postgres/V93__remove_background_ai_admission.sql")).readText())
+                    sql.execute(requireNotNull(PostgresAiAdmissionRepositoryTest::class.java.getResource("/db/migration/postgres/V106__remove_background_ai_admission.sql")).readText())
                     sql.executeQuery("SELECT count(*) FROM ai_admission_leases").use { rows ->
                         rows.next(); assertEquals(0, rows.getInt(1))
                     }
