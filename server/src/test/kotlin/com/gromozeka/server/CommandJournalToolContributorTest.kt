@@ -204,7 +204,7 @@ class CommandJournalToolContributorTest {
         ) = callValues.values.singleOrNull { call ->
             call.sourceToolCallId == sourceToolCallId && entries[call.entryId]?.conversationId == conversationId
         }
-        override suspend fun findEntryByCommandTask(commandTaskId: CommandTask.Id): CommandJournal.Entry? = null
+        override suspend fun findCallByCommandTask(commandTaskId: CommandTask.Id): CommandJournal.Call? = null
         override suspend fun calls(entryId: CommandJournal.Entry.Id) = callValues.values.filter { it.entryId == entryId }
         override suspend fun events(entryId: CommandJournal.Entry.Id) = eventValues.values.filter { it.entryId == entryId }
         override suspend fun content(entryId: CommandJournal.Entry.Id) = contentValues.values.filter { it.entryId == entryId }

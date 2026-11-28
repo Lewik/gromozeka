@@ -172,6 +172,68 @@ class CommandJournalRecorderTest {
     }
 
     @Test
+    fun `recursive command SDK call uses its immediate managed parent`() = runBlocking {
+        val journal = InMemoryJournal()
+        val recorder = recorder(journal)
+        val rootSource = commandCall("root-call", "python script.py")
+        recorder.admitManagedCalls(listOf(rootSource), target(), context())
+        val entry = assertNotNull(journal.findEntryBySource(Conversation.Id("conversation"), rootSource.id))
+        val rootCall = journal.calls(entry.id).single()
+        journal.append(
+            CommandJournal.Event(
+                id = CommandJournal.Event.Id("root-started"),
+                entryId = entry.id,
+                callId = rootCall.id,
+                sourceKey = "root-started",
+                kind = CommandJournal.Event.Kind.STARTED,
+                occurredAt = Instant.fromEpochSeconds(2),
+                commandTaskId = CommandTask.Id("root-task"),
+            )
+        )
+        val managedSource = commandCall("managed-child", "echo nested")
+        val managed = assertNotNull(
+            recorder.admitNestedCall(
+                parentCommandTaskId = CommandTask.Id("root-task"),
+                call = managedSource,
+                target = target(),
+                context = context(),
+                logInput = true,
+                at = Instant.fromEpochSeconds(3),
+            )
+        )
+        journal.append(
+            CommandJournal.Event(
+                id = CommandJournal.Event.Id("managed-started"),
+                entryId = entry.id,
+                callId = managed.call.id,
+                sourceKey = "managed-started",
+                kind = CommandJournal.Event.Kind.STARTED,
+                occurredAt = Instant.fromEpochSeconds(4),
+                commandTaskId = CommandTask.Id("managed-task"),
+            )
+        )
+        val descendantSource = ContentItem.ToolCall(
+            ContentItem.ToolCall.Id("descendant-call"),
+            ContentItem.ToolCall.Data("grz_read_file", buildJsonObject { put("file_path", "child.txt") }),
+        )
+
+        val descendant = assertNotNull(
+            recorder.admitNestedCall(
+                parentCommandTaskId = CommandTask.Id("managed-task"),
+                call = descendantSource,
+                target = ConversationRuntimeTaskTarget.Server,
+                context = context(),
+                logInput = true,
+                at = Instant.fromEpochSeconds(5),
+            )
+        )
+
+        assertEquals(entry.id, descendant.entry.id)
+        assertEquals(managed.call.id, descendant.call.parentId)
+        assertEquals(rootCall.id, managed.call.parentId)
+    }
+
+    @Test
     fun `caller report is explicit idempotent and never Worker confirmed`() = runBlocking {
         val journal = InMemoryJournal()
         val recorder = recorder(journal)
@@ -320,8 +382,8 @@ class CommandJournalRecorderTest {
             call.sourceToolCallId == sourceToolCallId && entries[call.entryId]?.conversationId == conversationId
         }
 
-        override suspend fun findEntryByCommandTask(commandTaskId: CommandTask.Id): CommandJournal.Entry? =
-            eventValues.values.firstOrNull { it.commandTaskId == commandTaskId }?.let { entries[it.entryId] }
+        override suspend fun findCallByCommandTask(commandTaskId: CommandTask.Id): CommandJournal.Call? =
+            eventValues.values.firstOrNull { it.commandTaskId == commandTaskId }?.let { callValues[it.callId] }
 
         override suspend fun calls(entryId: CommandJournal.Entry.Id) = callValues.values.filter { it.entryId == entryId }
         override suspend fun events(entryId: CommandJournal.Entry.Id) = eventValues.values.filter { it.entryId == entryId }

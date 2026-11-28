@@ -44,7 +44,7 @@ interface CommandJournal {
         sourceToolCallId: ContentItem.ToolCall.Id,
     ): Call?
 
-    suspend fun findEntryByCommandTask(commandTaskId: CommandTask.Id): Entry?
+    suspend fun findCallByCommandTask(commandTaskId: CommandTask.Id): Call?
 
     suspend fun calls(entryId: Entry.Id): List<Call>
 

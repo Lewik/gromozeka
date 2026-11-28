@@ -86,7 +86,7 @@ class ServerCommandRuntimeStateServiceCommandJournalTest {
             events.map { it.kind },
         )
         assertEquals(listOf(nestedCall.id, nestedCall.id), events.map { it.callId })
-        assertEquals(entry, journal.findEntryByCommandTask(CommandTask.Id("task")))
+        assertEquals(nestedCall, journal.findCallByCommandTask(CommandTask.Id("task")))
         val output = assertNotNull(journal.content(entry.id).singleOrNull())
         assertEquals(nestedCall.id, output.callId)
         assertEquals("tail-output", output.text)
@@ -148,8 +148,8 @@ class ServerCommandRuntimeStateServiceCommandJournalTest {
             calls.values.singleOrNull { call ->
                 call.sourceToolCallId == sourceToolCallId && entries[call.entryId]?.conversationId == conversationId
             }
-        override suspend fun findEntryByCommandTask(commandTaskId: CommandTask.Id) =
-            events.values.firstOrNull { it.commandTaskId == commandTaskId }?.let { entries[it.entryId] }
+        override suspend fun findCallByCommandTask(commandTaskId: CommandTask.Id) =
+            events.values.firstOrNull { it.commandTaskId == commandTaskId }?.let { calls[it.callId] }
         override suspend fun calls(entryId: CommandJournal.Entry.Id) = calls.values.filter { it.entryId == entryId }
         override suspend fun events(entryId: CommandJournal.Entry.Id) = events.values.filter { it.entryId == entryId }
         override suspend fun content(entryId: CommandJournal.Entry.Id) = content.values.filter { it.entryId == entryId }

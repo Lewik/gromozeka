@@ -156,18 +156,31 @@ internal class PostgresCommandJournal(
         }
     }
 
-    override suspend fun findEntryByCommandTask(commandTaskId: CommandTask.Id): CommandJournal.Entry? = io {
+    override suspend fun findCallByCommandTask(commandTaskId: CommandTask.Id): CommandJournal.Call? = io {
         dataSource.connection.use { connection ->
             connection.prepareStatement(
                 """
-                SELECT entry.* FROM command_journal_entries entry
-                JOIN command_journal_events event ON event.entry_id=entry.id
-                WHERE event.command_task_id=?
-                ORDER BY event.append_sequence LIMIT 1
+                SELECT call.*
+                FROM command_journal_calls call
+                JOIN (
+                    SELECT event.call_id, min(event.append_sequence) AS first_sequence
+                    FROM command_journal_events event
+                    WHERE event.command_task_id=?
+                    GROUP BY event.call_id
+                    ORDER BY first_sequence
+                    LIMIT 2
+                ) mapping ON mapping.call_id=call.id
+                ORDER BY mapping.first_sequence
                 """.trimIndent()
             ).use { statement ->
                 statement.setString(1, commandTaskId.value)
-                statement.executeQuery().use { rows -> if (rows.next()) rows.entry() else null }
+                statement.executeQuery().use { rows ->
+                    val matches = buildList { while (rows.next()) add(rows.call()) }
+                    check(matches.size <= 1) {
+                        "Command Journal task ${commandTaskId.value} is bound to more than one call"
+                    }
+                    matches.singleOrNull()
+                }
             }
         }
     }

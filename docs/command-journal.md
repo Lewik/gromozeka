@@ -37,9 +37,11 @@ Stage 1 records:
 - MCP tool calls made through the command-scoped SDK, including textual results;
 - direct MCP command launches and durable async command launches.
 
-Resolved secret values are never supplied to the journal. Tool input is omitted when the tool contract has
-`logInput=false`, and binary tool results are omitted. Arbitrary subprocesses created inside shell or Python
-code are not observable unless that code invokes Gromozeka through the SDK/MCP boundary.
+Resolved secret maps are not passed directly to the journal; supported `secret_env` inputs retain their
+`secret://` references. Textual command, tool, and caller-reported output is stored verbatim and may contain
+sensitive values. Tool input is omitted when the tool contract has `logInput=false`, and binary tool results
+are omitted. Arbitrary subprocesses created inside shell or Python code are not observable unless that code
+invokes Gromozeka through the SDK/MCP boundary.
 
 ## Journal tools
 

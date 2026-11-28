@@ -80,7 +80,7 @@ class PostgresCommandJournalTest {
                 .copy(eventId = started.id)
             assertEquals(started, journal.append(started, listOf(output)))
             assertEquals(started, journal.append(started, listOf(output)))
-            assertEquals(entry, journal.findEntryByCommandTask(CommandTask.Id("task")))
+            assertEquals(root, journal.findCallByCommandTask(CommandTask.Id("task")))
             assertEquals(listOf(started), journal.events(entry.id))
 
             val search = journal.search(
@@ -268,7 +268,7 @@ class PostgresCommandJournalTest {
             assertFailsWith<IllegalArgumentException> {
                 journal.append(event.copy(id = CommandJournal.Event.Id("replacement"), exitCode = 1))
             }
-            assertNull(journal.findEntryByCommandTask(CommandTask.Id("missing")))
+            assertNull(journal.findCallByCommandTask(CommandTask.Id("missing")))
         }
     }
 

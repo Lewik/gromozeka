@@ -187,10 +187,12 @@ class CommandJournalRecorder(
         at: Instant = Clock.System.now(),
     ): RecordedCall? {
         val journal = journalProvider.ifAvailable ?: return null
-        val entry = journal.findEntryByCommandTask(parentCommandTaskId) ?: return null
-        val root = journal.calls(entry.id).single { it.parentId == null }
+        val parent = journal.findCallByCommandTask(parentCommandTaskId) ?: return null
+        val entry = requireNotNull(journal.findEntry(parent.entryId)) {
+            "Command Journal call ${parent.id.value} lost its entry ${parent.entryId.value}"
+        }
         val input = call.call.input as? JsonObject ?: error("MCP tool input must be an object")
-        val journalCall = call(call, entry.id, root.id, target, context, input, at)
+        val journalCall = call(call, entry.id, parent.id, target, context, input, at)
         journal.append(
             journalCall,
             if (logInput) content(entry.id, journalCall.id, call, input, at) else emptyList(),
