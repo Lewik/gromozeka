@@ -1,6 +1,6 @@
 package com.gromozeka.server
 
-import com.gromozeka.application.service.CommandJournalWritePolicy
+import com.gromozeka.application.service.CommandJournalBestEffortWriter
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
@@ -35,7 +35,7 @@ import kotlin.time.Instant
 @Service
 class CommandJournalRecorder(
     private val journalProvider: ObjectProvider<CommandJournal>,
-    private val writePolicy: CommandJournalWritePolicy? = null,
+    private val bestEffortWriter: CommandJournalBestEffortWriter? = null,
 ) {
     suspend fun admitManagedCalls(
         calls: List<Conversation.Message.ContentItem.ToolCall>,
@@ -309,17 +309,17 @@ class CommandJournalRecorder(
 
     private suspend fun <T> write(
         operation: String,
-        context: CommandJournalWritePolicy.Context,
+        context: CommandJournalBestEffortWriter.Context,
         block: suspend () -> T,
-    ): T? = if (writePolicy == null) block() else writePolicy.write(operation, { context }, block)
+    ): T? = if (bestEffortWriter == null) block() else bestEffortWriter.write(operation, { context }, block)
 
-    private fun writeContext(context: ToolExecutionContext, correlation: String) = CommandJournalWritePolicy.Context(
+    private fun writeContext(context: ToolExecutionContext, correlation: String) = CommandJournalBestEffortWriter.Context(
         actorUserId = required(context, TOOL_CONTEXT_USER_ID).let(User::Id),
         conversationId = required(context, TOOL_CONTEXT_CONVERSATION_ID).let(Conversation::Id),
         correlation = correlation,
     )
 
-    private fun writeContext(recorded: RecordedCall, correlation: String) = CommandJournalWritePolicy.Context(
+    private fun writeContext(recorded: RecordedCall, correlation: String) = CommandJournalBestEffortWriter.Context(
         actorUserId = recorded.entry.actorUserId,
         conversationId = recorded.entry.conversationId,
         correlation = correlation,

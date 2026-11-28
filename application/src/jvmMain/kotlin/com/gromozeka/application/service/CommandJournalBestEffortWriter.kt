@@ -9,16 +9,13 @@ import com.gromozeka.domain.service.UserNotificationPublisher
 import com.gromozeka.shared.utils.sha256
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 
-/** Immediate write policy only. It never retries, replays, or reconstructs a missing Journal observation. */
+/** Best-effort automatic Journal writes. Never retries, replays, or reconstructs a missing observation. */
 @Service
 @ConditionalOnProperty(name = ["gromozeka.command-journal.enabled"], havingValue = "true")
-class CommandJournalWritePolicy(
-    @Value("\${gromozeka.command-journal.failure-mode:BEST_EFFORT}")
-    val mode: CommandJournal.FailureMode,
+class CommandJournalBestEffortWriter(
     private val notifications: UserNotificationPublisher,
 ) {
     data class Context(
@@ -38,9 +35,8 @@ class CommandJournalWritePolicy(
     } catch (cancelled: CancellationException) {
         throw cancelled
     } catch (failure: CommandJournal.StorageException) {
-        if (mode == CommandJournal.FailureMode.REQUIRED) throw failure
         val current = context()
-        log.error(failure) { "Command Journal could not $operation; execution continues in BEST_EFFORT mode" }
+        log.error(failure) { "Command Journal could not $operation; the original operation continues" }
         current.actorUserId?.let { actor ->
             try {
                 notifications.publish(

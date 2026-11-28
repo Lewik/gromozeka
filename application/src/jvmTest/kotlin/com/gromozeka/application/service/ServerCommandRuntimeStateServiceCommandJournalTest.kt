@@ -143,8 +143,7 @@ class ServerCommandRuntimeStateServiceCommandJournalTest {
             commandTaskLifecycleEventPublisher = CommandTaskLifecycleEventPublisher { },
             commandMonitorLifecycleEventPublisher = CommandMonitorLifecycleEventPublisher { },
             commandJournal = journal,
-            commandJournalWritePolicy = CommandJournalWritePolicy(
-                CommandJournal.FailureMode.BEST_EFFORT,
+            commandJournalBestEffortWriter = CommandJournalBestEffortWriter(
                 UserNotificationPublisher { user, draft ->
                     UserNotification(
                         id = UserNotification.Id("notification"),

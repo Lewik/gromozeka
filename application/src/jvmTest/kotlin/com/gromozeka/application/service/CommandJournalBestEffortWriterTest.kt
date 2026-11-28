@@ -17,31 +17,27 @@ import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.time.Instant
 
-class CommandJournalWritePolicyTest {
+class CommandJournalBestEffortWriterTest {
     @Test
-    fun `configuration defaults to best effort and accepts required`() {
+    fun `writer exists only when Command Journal is enabled`() {
         val runner = ApplicationContextRunner()
-            .withUserConfiguration(CommandJournalWritePolicy::class.java)
+            .withUserConfiguration(CommandJournalBestEffortWriter::class.java)
             .withBean(UserNotificationPublisher::class.java, {
                 UserNotificationPublisher { _, _ -> error("unused") }
             })
+
         runner.run { context ->
-            assertFalse(context.containsBean("commandJournalWritePolicy"))
+            assertFalse(context.containsBean("commandJournalBestEffortWriter"))
         }
-        val base = runner.withPropertyValues("gromozeka.command-journal.enabled=true")
-        base.run { context ->
-            assertEquals(CommandJournal.FailureMode.BEST_EFFORT, context.getBean(CommandJournalWritePolicy::class.java).mode)
-        }
-        base.withPropertyValues("gromozeka.command-journal.failure-mode=REQUIRED").run { context ->
-            assertEquals(CommandJournal.FailureMode.REQUIRED, context.getBean(CommandJournalWritePolicy::class.java).mode)
+        runner.withPropertyValues("gromozeka.command-journal.enabled=true").run { context ->
+            context.getBean(CommandJournalBestEffortWriter::class.java)
         }
     }
 
     @Test
-    fun `best effort preserves the operation and publishes a bounded notification`() = runBlocking {
+    fun `storage failure preserves the operation and publishes a bounded notification`() = runBlocking {
         val published = mutableListOf<Pair<User.Id, UserNotificationDraft>>()
-        val policy = CommandJournalWritePolicy(
-            CommandJournal.FailureMode.BEST_EFFORT,
+        val writer = CommandJournalBestEffortWriter(
             UserNotificationPublisher { user, draft ->
                 published += user to draft
                 UserNotification(
@@ -56,10 +52,10 @@ class CommandJournalWritePolicyTest {
             },
         )
         val failure = CommandJournal.StorageException(SQLException("database unavailable"))
-        val result = policy.write(
+        val result = writer.write(
             operation = "record command lifecycle",
             context = {
-                CommandJournalWritePolicy.Context(
+                CommandJournalBestEffortWriter.Context(
                     actorUserId = User.Id("user"),
                     conversationId = Conversation.Id("conversation"),
                     correlation = "command-task:task:COMPLETED",
@@ -78,20 +74,19 @@ class CommandJournalWritePolicyTest {
     }
 
     @Test
-    fun `best effort does not let notification failure change the original operation`() = runBlocking {
+    fun `notification failure does not change the original operation`() = runBlocking {
         var publicationAttempts = 0
-        val policy = CommandJournalWritePolicy(
-            CommandJournal.FailureMode.BEST_EFFORT,
+        val writer = CommandJournalBestEffortWriter(
             UserNotificationPublisher { _, _ ->
                 publicationAttempts++
                 throw IllegalStateException("notification unavailable")
             },
         )
 
-        val result = policy.write(
+        val result = writer.write(
             operation = "record command lifecycle",
             context = {
-                CommandJournalWritePolicy.Context(
+                CommandJournalBestEffortWriter.Context(
                     actorUserId = User.Id("user"),
                     conversationId = Conversation.Id("conversation"),
                     correlation = "task",
@@ -104,42 +99,16 @@ class CommandJournalWritePolicyTest {
     }
 
     @Test
-    fun `required propagates the original storage failure without publishing`() = runBlocking {
-        var publications = 0
-        val policy = CommandJournalWritePolicy(
-            CommandJournal.FailureMode.REQUIRED,
-            UserNotificationPublisher { _, _ ->
-                publications++
-                error("must not publish")
-            },
-        )
-        val failure = CommandJournal.StorageException(SQLException("database unavailable"))
-
-        val thrown = assertFailsWith<CommandJournal.StorageException> {
-            policy.write(
-                operation = "record command admission",
-                context = {
-                    CommandJournalWritePolicy.Context(User.Id("user"), Conversation.Id("conversation"), "call")
-                },
-            ) { throw failure }
-        }
-
-        assertSame(failure, thrown)
-        assertEquals(0, publications)
-    }
-
-    @Test
-    fun `best effort does not hide a Journal invariant violation`() = runBlocking {
-        val policy = CommandJournalWritePolicy(
-            CommandJournal.FailureMode.BEST_EFFORT,
+    fun `writer does not hide a Journal invariant violation`() = runBlocking {
+        val writer = CommandJournalBestEffortWriter(
             UserNotificationPublisher { _, _ -> error("must not publish") },
         )
         val failure = IllegalStateException("identity changed")
 
         val thrown = assertFailsWith<IllegalStateException> {
-            policy.write(
+            writer.write(
                 operation = "record command admission",
-                context = { CommandJournalWritePolicy.Context(null, null, "call") },
+                context = { CommandJournalBestEffortWriter.Context(null, null, "call") },
             ) { throw failure }
         }
 

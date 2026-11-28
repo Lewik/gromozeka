@@ -1,6 +1,6 @@
 package com.gromozeka.server
 
-import com.gromozeka.application.service.CommandJournalWritePolicy
+import com.gromozeka.application.service.CommandJournalBestEffortWriter
 import com.gromozeka.application.service.SlotApplicationService
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.UserNotification
@@ -23,7 +23,6 @@ import org.springframework.beans.factory.ObjectProvider
 import java.sql.SQLException
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.time.Instant
 
@@ -51,47 +50,6 @@ class CommandJournalRecorderTest {
     }
 
     @Test
-    fun `required journal admission failure prevents Worker dispatch`() = runBlocking {
-        val failure = CommandJournal.StorageException(SQLException("journal unavailable"))
-        val journal = object : InMemoryJournal() {
-            override suspend fun admit(
-                entry: CommandJournal.Entry,
-                rootCall: CommandJournal.Call,
-                content: List<CommandJournal.Content>,
-            ): CommandJournal.Entry = throw failure
-        }
-        val requests = Mockito.mock(WorkerRequestService::class.java)
-        val gateway = GatewayWorkerToolExecutionClient(
-            requests = requests,
-            timeoutMillis = 1_000,
-            slots = Mockito.mock(SlotApplicationService::class.java),
-            commandJournal = recorder(
-                journal,
-                CommandJournalWritePolicy(
-                    CommandJournal.FailureMode.REQUIRED,
-                    UserNotificationPublisher { _, _ -> error("must not publish") },
-                ),
-            ),
-        )
-
-        val thrown = assertFailsWith<CommandJournal.StorageException> {
-            gateway.execute(
-                target = ConversationRuntimeWorkerIdentity(
-                    ConversationRuntimeWorkerId("worker"),
-                    ConversationRuntimeWorkerSessionId("session"),
-                ),
-                executionTarget = target(),
-                toolCalls = listOf(commandCall("call", "echo ok")),
-                toolContext = context(),
-                resolvedSecretsByToolCallId = emptyMap(),
-            )
-        }
-
-        assertEquals(failure, thrown)
-        Mockito.verifyNoInteractions(requests)
-    }
-
-    @Test
     fun `best effort admission failure is notified without a recovery attempt`() = runBlocking {
         val failure = CommandJournal.StorageException(SQLException("journal unavailable"))
         var attempts = 0
@@ -106,8 +64,7 @@ class CommandJournalRecorderTest {
             }
         }
         val notifications = mutableListOf<UserNotification>()
-        val policy = CommandJournalWritePolicy(
-            CommandJournal.FailureMode.BEST_EFFORT,
+        val writer = CommandJournalBestEffortWriter(
             UserNotificationPublisher { user, draft ->
                 UserNotification(
                     id = UserNotification.Id("journal-failure"),
@@ -121,7 +78,7 @@ class CommandJournalRecorderTest {
             },
         )
 
-        recorder(journal, policy).admitManagedCalls(
+        recorder(journal, writer).admitManagedCalls(
             calls = listOf(commandCall("call", "echo ok")),
             target = target(),
             context = context(),
@@ -130,6 +87,100 @@ class CommandJournalRecorderTest {
         assertEquals(1, attempts)
         assertEquals(1, notifications.size)
         assertEquals(Conversation.Id("conversation"), notifications.single().conversationId)
+    }
+
+    @Test
+    fun `nested MCP result survives a Journal outcome storage failure`() = runBlocking {
+        var outcomeAttempts = 0
+        val journal = object : InMemoryJournal() {
+            override suspend fun append(
+                event: CommandJournal.Event,
+                content: List<CommandJournal.Content>,
+            ): CommandJournal.Event {
+                if (event.kind == CommandJournal.Event.Kind.COMPLETED) {
+                    outcomeAttempts++
+                    throw CommandJournal.StorageException(SQLException("journal unavailable"))
+                }
+                return super.append(event, content)
+            }
+        }
+        val notifications = mutableListOf<UserNotification>()
+        val writer = CommandJournalBestEffortWriter(
+            UserNotificationPublisher { user, draft ->
+                UserNotification(
+                    id = UserNotification.Id("journal-failure"),
+                    userId = user,
+                    title = draft.title,
+                    message = draft.message,
+                    level = draft.level,
+                    createdAt = Instant.fromEpochSeconds(2),
+                    conversationId = draft.conversationId,
+                ).also(notifications::add)
+            },
+        )
+        val recorder = recorder(journal, writer)
+        var effects = 0
+        val fixture = UnifiedMcpTestFixture(
+            mcpTestProvider(
+                mcpTestTool("nested") { _, _ ->
+                    effects++
+                    AiToolCallResult(listOf(AiToolResult.Text("done")))
+                }
+            ),
+            recorder,
+        ).initialize()
+        val root = commandCall("root-call", "echo ok")
+        recorder.admitManagedCalls(
+            calls = listOf(root),
+            target = target(),
+            context = ToolExecutionContext(
+                values = mapOf(
+                    TOOL_CONTEXT_USER_ID to fixture.user.id.value,
+                    TOOL_CONTEXT_PROJECT_ID to fixture.project.id.value,
+                    TOOL_CONTEXT_CONVERSATION_ID to fixture.conversation.id.value,
+                    TOOL_CONTEXT_THREAD_ID to fixture.conversation.currentThread.value,
+                    TOOL_CONTEXT_AGENT_DEFINITION_ID to fixture.agent.id.value,
+                ),
+                commandJournalSource = CommandJournal.Source(
+                    CommandJournal.Source.Kind.CONVERSATION_TOOL_CALL,
+                    sourceRuntimeTaskId = ConversationRuntimeTask.Id("runtime-task"),
+                ),
+            ),
+        )
+        val entry = assertNotNull(journal.findEntryBySource(fixture.conversation.id, root.id))
+        val rootCall = journal.calls(entry.id).single()
+        journal.append(
+            CommandJournal.Event(
+                id = CommandJournal.Event.Id("root-started"),
+                entryId = entry.id,
+                callId = rootCall.id,
+                sourceKey = "command-task:script-command:started",
+                kind = CommandJournal.Event.Kind.STARTED,
+                occurredAt = Instant.fromEpochSeconds(1),
+                commandTaskId = CommandTask.Id("script-command"),
+            )
+        )
+        val caller = AuthenticatedMcpCaller.CommandScript(
+            CommandScriptPrincipal(
+                fixture.user,
+                CommandTask.Id("script-command"),
+                fixture.conversation.id,
+                fixture.project.id,
+                fixture.agent.id,
+            )
+        )
+
+        val result = fixture.service.call(caller, "nested", buildJsonObject {})
+
+        assertEquals(false, result.isError)
+        assertEquals(listOf(AiToolResult.Text("done")), result.content)
+        assertEquals(1, effects)
+        assertEquals(1, outcomeAttempts)
+        assertEquals(1, notifications.size)
+        assertEquals(
+            listOf(CommandJournal.Event.Kind.ACCEPTED, CommandJournal.Event.Kind.STARTED, CommandJournal.Event.Kind.ACCEPTED),
+            journal.events(entry.id).map(CommandJournal.Event::kind),
+        )
     }
 
     @Test
@@ -407,8 +458,8 @@ class CommandJournalRecorderTest {
 
     private fun recorder(
         journal: CommandJournal,
-        writePolicy: CommandJournalWritePolicy? = null,
-    ): CommandJournalRecorder = CommandJournalRecorder(provider(journal), writePolicy)
+        bestEffortWriter: CommandJournalBestEffortWriter? = null,
+    ): CommandJournalRecorder = CommandJournalRecorder(provider(journal), bestEffortWriter)
 
     @Suppress("UNCHECKED_CAST")
     private fun provider(journal: CommandJournal?): ObjectProvider<CommandJournal> {

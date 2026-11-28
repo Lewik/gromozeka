@@ -32,7 +32,7 @@ class ServerCommandRuntimeStateService(
     private val commandTaskLifecycleEventPublisher: CommandTaskLifecycleEventPublisher,
     private val commandMonitorLifecycleEventPublisher: CommandMonitorLifecycleEventPublisher,
     private val commandJournal: CommandJournal? = null,
-    private val commandJournalWritePolicy: CommandJournalWritePolicy? = null,
+    private val commandJournalBestEffortWriter: CommandJournalBestEffortWriter? = null,
 ) : CommandRuntimeStateService {
     override suspend fun upsertCommandTask(task: CommandTask): CommandTaskUpsertResult {
         val result = runtimeCoordinator.upsertCommandTask(task)
@@ -63,13 +63,13 @@ class ServerCommandRuntimeStateService(
         val write = suspend {
             writeCommandJournalObservation(journal, task, sourceCallId) { actorUserId = it.actorUserId }
         }
-        if (commandJournalWritePolicy == null) {
+        if (commandJournalBestEffortWriter == null) {
             write()
         } else {
-            commandJournalWritePolicy.write(
+            commandJournalBestEffortWriter.write(
                 operation = "record command lifecycle",
                 context = {
-                    CommandJournalWritePolicy.Context(
+                    CommandJournalBestEffortWriter.Context(
                         actorUserId = actorUserId,
                         conversationId = task.conversationId,
                         correlation = "command-task:${task.id.value}:${task.status.name}",
