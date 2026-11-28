@@ -37,7 +37,7 @@ class RuntimeCatalogTemplateApplicationServiceTest {
     }
 
     @Test
-    fun exposesOptionalSonioxLive2WithDiarizationWhileWhisperRemainsDefault() {
+    fun exposesOptionalSonioxLive2WhileKeepingWhisperOutOfLive() {
         val catalog = RuntimeCatalogTemplateApplicationService().getTemplates().aiCatalog
         val soniox = catalog.modelSpecs.single { it.provider == AiProvider.SONIOX && it.id == "stt-rt-v6" }
         assertEquals(
@@ -45,11 +45,13 @@ class RuntimeCatalogTemplateApplicationServiceTest {
                 AiModelCapability.SPEAKER_DIARIZATION),
             soniox.capabilities,
         )
+        val whisper = catalog.modelSpecs.single { it.provider == AiProvider.OPENAI && it.id == "whisper-1" }
+        assertEquals(setOf(AiModelCapability.SPEECH_TO_TEXT), whisper.capabilities)
         val configuration = catalog.modelConfigurations.single { it.id == AiModelConfiguration.Id("soniox-api-stt-rt-v6") }
         assertEquals("soniox-api", configuration.connectionId.value)
         assertEquals(false, catalog.connections.single { it.id == configuration.connectionId }.enabled)
         assertEquals(
-            AiModelConfiguration.Id("openai-api-whisper-1"),
+            AiModelConfiguration.Id("openai-api-gpt-transcribe"),
             catalog.runtimeSelectionFor(AiRuntimeAssignment.Purpose.LIVE_TRANSCRIPTION)?.modelConfigurationId,
         )
     }

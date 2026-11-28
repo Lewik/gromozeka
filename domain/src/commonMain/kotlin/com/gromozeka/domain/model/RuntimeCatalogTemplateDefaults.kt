@@ -30,7 +30,7 @@ object RuntimeCatalogTemplateDefaults {
         assignment(AiRuntimeAssignment.Purpose.MEMORY_WRITE, "openai-subscription-gpt-5.5"),
         assignment(AiRuntimeAssignment.Purpose.MEMORY_MAINTENANCE, "openai-subscription-gpt-5.5"),
         assignment(AiRuntimeAssignment.Purpose.MEMORY_EMBEDDINGS, "openai-api-text-embedding-3-large"),
-        assignment(AiRuntimeAssignment.Purpose.LIVE_TRANSCRIPTION, "openai-api-whisper-1"),
+        assignment(AiRuntimeAssignment.Purpose.LIVE_TRANSCRIPTION, "openai-api-gpt-transcribe"),
         assignment(AiRuntimeAssignment.Purpose.LIVE_TRANSLATION, "openai-api-gpt-5.4-mini"),
         assignment(AiRuntimeAssignment.Purpose.SPEECH_TO_TEXT, "openai-api-gpt-transcribe"),
         assignment(AiRuntimeAssignment.Purpose.TEXT_TO_SPEECH, "openai-api-gpt-4o-mini-tts"),

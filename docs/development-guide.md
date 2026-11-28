@@ -351,34 +351,16 @@ OpenAI or Soniox API model with the `REALTIME_TRANSCRIPTION` capability. The
 `LIVE_TRANSCRIPTION` runtime assignment supplies the default model; a user may
 explicitly select another eligible model. Bootstrap inserts missing bundled catalog
 entries but does not rewrite an existing model configuration or assignment.
-The bundled default is `whisper-1` through overlapping finite transcription
-requests. `gpt-live-transcribe` and `gpt-transcribe` remain eligible native Realtime
-alternatives. Ordinary dictation retains its separate `SPEECH_TO_TEXT` assignment
-and behavior.
+The bundled default is `gpt-transcribe`; `gpt-live-transcribe` and Soniox STT v6
+remain eligible alternatives. `whisper-1` remains available for ordinary finite
+`SPEECH_TO_TEXT` requests but is deliberately not a Live model. Ordinary dictation
+retains its separate assignment and behavior.
 
-The client sends mono PCM16 at 16 kHz, big endian. The Whisper path retains a
-bounded PCM buffer, creates 20-second WAV windows every 10 seconds (50% overlap),
-and requests `verbose_json` word timestamps. Adjacent hypotheses are joined only
-at a matching consecutive timestamped-word anchor near the temporal ownership
-boundary, or at silence observed by both windows. Genuine repeated words are not
-removed by a string-deduplication heuristic. If the two normal windows disagree at
-the boundary, their 30-second union is transcribed once as a wider third audio pass.
-That repair must align independently on each side using timestamp-confirmed words
-or a silence interval present in both hypotheses; otherwise the stage fails explicitly
-and the normal Live recovery/gap policy applies. A monotonic audio watermark prevents
-a later regular window from replaying text already consumed by a wider repair. The
-original is never reconstructed by an LLM and already published text is immutable.
-The default buffer holds at most 120 seconds while requests are pending. This design
-trades native partial text for a delayed, overlap-checked canonical original.
-
-Whisper accepts one language hint. The adapter sends it only when the Live field
-contains exactly one code; the default multi-language `he`, `en`, `ru` field and an
-empty field both leave language detection automatic. Native Realtime models keep
-their existing behavior: `gpt-transcribe` uses provider `semantic_vad` at
-`eagerness=low`, while `gpt-live-transcribe` uses the client silence/max-turn
-detector and receives `delay=low`. Their Stop path drains commit acknowledgements
-and final transcripts. There is no LLM transcript stabilizer in any path, and
-translation never modifies the original.
+The client sends mono PCM16 at 16 kHz, big endian. `gpt-transcribe` uses provider
+`semantic_vad` at `eagerness=low`, while `gpt-live-transcribe` uses the client
+silence/max-turn detector and receives `delay=low`. Their Stop path drains commit
+acknowledgements and final transcripts. There is no audio overlap or LLM transcript
+stabilizer in any path, and translation never modifies the original.
 
 The root client controller owns the logical session across tab switches. Its text
 is held in client memory for that app lifetime, not stored in conversation history.
@@ -413,26 +395,11 @@ does not retain stale environment values. The effective model and hints are
 printed before connecting. Do not pass a literal key through command-line
 arguments or commit API keys.
 
-`OpenAiWhisperWindowedLiveTest` exercises the production Whisper window assembler
-against one natural recording. Set `GROMOZEKA_OPENAI_WHISPER_WINDOW_SMOKE=true`,
-`GROMOZEKA_OPENAI_WHISPER_WINDOW_AUDIO` to a 21-second to five-minute recording,
-and optionally `GROMOZEKA_OPENAI_WHISPER_WINDOW_HINTS` to one language code.
-`GROMOZEKA_OPENAI_WHISPER_WINDOW_EXPECTED` accepts comma-separated words for a
-strict fixture check; `GROMOZEKA_OPENAI_WHISPER_WINDOW_EXPECTED_REQUESTS` can pin
-the expected number of regular plus repair requests. Set
-`GROMOZEKA_OPENAI_WHISPER_WINDOW_PLAYBACK_SPEED` to replay long recordings at a
-positive multiple of real time instead of enqueueing them immediately.
-`GROMOZEKA_OPENAI_WHISPER_WINDOW_SECONDS` may evaluate an even 8–30 second window
-(the hop remains one half); production defaults to 20 seconds. The test
-decodes the recording to PCM16BE/16 kHz, feeds the
-real session, checks the committed-item chain and admission cleanup, and prints the
-canonical original. It is not a microphone or full browser test.
-
 ### Soniox Live 2
 
 `soniox-api-stt-rt-v6` is an optional Live transcription model configuration on the
-disabled `soniox-api` connection. It does not replace the bundled Whisper assignment.
-Enable the connection explicitly, provide `SONIOX_API_KEY`, and select **Soniox Live 2
+disabled `soniox-api` connection. Enable the connection explicitly, provide
+`SONIOX_API_KEY`, and select **Soniox Live 2
 (STT v6)** in the Live model menu. The connection may override its realtime endpoint;
 the default is `https://stt-rt.soniox.com/transcribe-websocket`, and regional projects
 can use the corresponding EU, Japan, or India endpoint.
@@ -476,9 +443,9 @@ microphone.
 
 ### Manual Live fragment commits
 
-Live exposes an explicit `Manual commits` option before Start only for the native
-Realtime models. It is hidden for windowed Whisper and defaults off, preserving the
-selected model's existing automatic turn policy. When enabled,
+Live exposes an explicit `Manual commits` option before Start only for the supported
+OpenAI Realtime models. It defaults off, preserving the selected model's existing
+automatic turn policy. When enabled,
 `turn_detection` is `null` and neither semantic VAD nor the local timed detector
 creates boundaries. Only Commit and Stop complete fragments. This does not affect
 ordinary dictation or continuous voice input in conversation tabs.

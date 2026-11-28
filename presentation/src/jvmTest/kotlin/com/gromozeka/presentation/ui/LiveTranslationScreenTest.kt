@@ -128,25 +128,6 @@ class LiveTranslationScreenTest {
     }
 
     @Test
-    fun `windowed Whisper hides rejected manual boundary controls`() = runComposeUiTest {
-        val client = FakeClient()
-        val configuration = configuration("whisper-1")
-        lateinit var controller: LiveInterpreterController
-        setContent {
-            val scope = rememberCoroutineScope()
-            controller = remember { LiveInterpreterController(client, FakeMicrophone(), scope) }
-            DisposableEffect(controller) { onDispose { controller.cancel() } }
-            TranslationProvider(Translation(BundledTranslations.english)) {
-                MaterialTheme { Box(Modifier.size(1_200.dp, 800.dp)) { LiveInterpreterScreen(controller, configuration) } }
-            }
-        }
-
-        onNodeWithText("Manual commits").assertDoesNotExist()
-        onNodeWithText("Commit").assertDoesNotExist()
-        onNodeWithText("Start").assertIsEnabled()
-    }
-
-    @Test
     fun `Soniox Live 2 is selectable without exposing manual commit controls`() = runComposeUiTest {
         val configuration = configuration(soniox = true)
         lateinit var controller: LiveInterpreterController

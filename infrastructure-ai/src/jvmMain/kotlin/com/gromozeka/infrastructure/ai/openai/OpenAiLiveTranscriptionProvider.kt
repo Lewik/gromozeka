@@ -3,7 +3,6 @@ package com.gromozeka.infrastructure.ai.openai
 import com.gromozeka.domain.model.ai.AiAdmissionOutcome
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiExecutionTarget
-import com.gromozeka.domain.model.ai.AiModelCapability
 import com.gromozeka.domain.model.ai.AiHttpSettings
 import com.gromozeka.infrastructure.ai.LiveTranscriptionBackend
 import com.gromozeka.infrastructure.ai.runtime.SdkHttpSupport
@@ -78,15 +77,7 @@ class OpenAiLiveTranscriptionProvider(
         require(nativeTranslationLanguage == null) { "OpenAI Live does not provide native translation" }
         require(runtime.connection.kind == AiConnection.Kind.OPENAI_API) { "Live transcription requires an OpenAI API connection" }
         val model = runtime.modelConfiguration.providerModelId
-        if (model !in NATIVE_REALTIME_MODELS) {
-            require(AiModelCapability.SPEECH_TO_TEXT in runtime.modelSpec.capabilities) {
-                "Windowed Live transcription requires a speech-to-text model"
-            }
-            require(!manualTurnControl) { "Windowed Live transcription owns its audio boundaries" }
-            return OpenAiWhisperWindowedTranscriptionSession(
-                OpenAiWhisperWindowTranscriber(runtime, clients, admission, languages),
-            ).also { it.start() }
-        }
+        require(model in NATIVE_REALTIME_MODELS) { "Unsupported OpenAI Live transcription model: $model" }
         val configuration = OpenAiLiveTranscriptionConfiguration(
             baseUrl = clients.resolveBaseUrl(runtime.connection),
             apiKey = clients.resolveApiKey(runtime.connection),
