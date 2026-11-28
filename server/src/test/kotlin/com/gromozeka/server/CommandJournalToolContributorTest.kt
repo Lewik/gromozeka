@@ -448,18 +448,20 @@ class CommandJournalToolContributorTest {
             entryId: CommandJournal.Entry.Id,
             callLimit: Int,
             eventLimit: Int,
-        ): CommandJournal.Snapshot? {
+        ): CommandJournal.EntryDetails? {
             val entry = entries[entryId]?.takeIf { it.projectId == projectId } ?: return null
             val calls = calls(entryId)
             val events = events(entryId)
-            return CommandJournal.Snapshot(
+            val returnedCalls = calls.take(callLimit)
+            val returnedEvents = events.take(eventLimit)
+            return CommandJournal.EntryDetails(
                 entry = entry,
-                calls = calls.take(callLimit),
-                events = events.take(eventLimit),
+                calls = returnedCalls,
+                events = returnedEvents,
                 callCount = calls.size.toLong(),
                 eventCount = events.size.toLong(),
-                callsTruncated = calls.size > callLimit,
-                eventsTruncated = events.size > eventLimit,
+                callsTruncated = calls.size > returnedCalls.size,
+                eventsTruncated = events.size > returnedEvents.size,
             )
         }
 

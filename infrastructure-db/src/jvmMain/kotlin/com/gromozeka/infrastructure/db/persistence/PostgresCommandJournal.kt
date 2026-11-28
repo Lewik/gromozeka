@@ -390,7 +390,7 @@ internal class PostgresCommandJournal(
         entryId: CommandJournal.Entry.Id,
         callLimit: Int,
         eventLimit: Int,
-    ): CommandJournal.Snapshot? = io {
+    ): CommandJournal.EntryDetails? = io {
         require(callLimit in 1..200) { "Command Journal call limit must be between 1 and 200" }
         require(eventLimit in 1..500) { "Command Journal event limit must be between 1 and 500" }
         require(callLimit + eventLimit <= 500) { "Command Journal snapshot may request at most 500 records" }
@@ -400,26 +400,26 @@ internal class PostgresCommandJournal(
                 "SELECT * FROM command_journal_calls WHERE entry_id=? ORDER BY created_at,id LIMIT ?"
             ).use { statement ->
                 statement.setString(1, entryId.value)
-                statement.setInt(2, callLimit + 1)
+                statement.setInt(2, callLimit)
                 statement.executeQuery().use { rows -> buildList { while (rows.next()) add(rows.call()) } }
             }
             val events = connection.prepareStatement(
                 "SELECT * FROM command_journal_events WHERE entry_id=? ORDER BY append_sequence LIMIT ?"
             ).use { statement ->
                 statement.setString(1, entryId.value)
-                statement.setInt(2, eventLimit + 1)
+                statement.setInt(2, eventLimit)
                 statement.executeQuery().use { rows -> buildList { while (rows.next()) add(rows.event()) } }
             }
             val callCount = connection.count("command_journal_calls", entryId)
             val eventCount = connection.count("command_journal_events", entryId)
-            CommandJournal.Snapshot(
+            CommandJournal.EntryDetails(
                 entry = entry,
-                calls = calls.take(callLimit),
-                events = events.take(eventLimit),
+                calls = calls,
+                events = events,
                 callCount = callCount,
                 eventCount = eventCount,
-                callsTruncated = calls.size > callLimit,
-                eventsTruncated = events.size > eventLimit,
+                callsTruncated = callCount > calls.size.toLong(),
+                eventsTruncated = eventCount > events.size.toLong(),
             )
         }
     }

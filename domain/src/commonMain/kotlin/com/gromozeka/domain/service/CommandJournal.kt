@@ -70,7 +70,7 @@ interface CommandJournal {
             entryId: Entry.Id,
             callLimit: Int = 100,
             eventLimit: Int = 200,
-        ): Snapshot?
+        ): EntryDetails?
 
         suspend fun readContent(query: ContentQuery): ContentPage?
 
@@ -125,7 +125,7 @@ interface CommandJournal {
     )
 
     @Serializable
-    data class Snapshot(
+    data class EntryDetails(
         val entry: Entry,
         val calls: List<Call>,
         val events: List<Event>,
@@ -133,7 +133,16 @@ interface CommandJournal {
         val eventCount: Long,
         val callsTruncated: Boolean,
         val eventsTruncated: Boolean,
-    )
+    ) {
+        init {
+            require(callCount >= calls.size && eventCount >= events.size) {
+                "Command Journal entry details counts cannot be smaller than their returned pages"
+            }
+            require(callsTruncated == (callCount > calls.size) && eventsTruncated == (eventCount > events.size)) {
+                "Command Journal entry details truncation must match the returned pages and totals"
+            }
+        }
+    }
 
     @Serializable
     data class ContentCursor(

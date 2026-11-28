@@ -207,13 +207,13 @@ internal class CommandJournalToolContributor(
         val projectId = toolContext.requiredProjectId()
         projectAccess.requirePermission(user.id, projectId, ProjectPermission.READ)
         val entryId = CommandJournal.Entry.Id(input.requiredString("entry_id"))
-        val snapshot = reader.get(
+        val details = reader.get(
             projectId = projectId,
             entryId = entryId,
             callLimit = input.optionalInt("call_limit", 100, 1..200),
             eventLimit = input.optionalInt("event_limit", 200, 1..500),
         ) ?: throw ServerToolException("not_found", "Command Journal entry not found in the current project")
-        serverToolJson.encodeToJsonElement(CommandJournal.Snapshot.serializer(), snapshot).jsonObject
+        serverToolJson.encodeToJsonElement(CommandJournal.EntryDetails.serializer(), details).jsonObject
     }
 
     private fun readContentTool(): AiToolCallback = toolFactory.create(
