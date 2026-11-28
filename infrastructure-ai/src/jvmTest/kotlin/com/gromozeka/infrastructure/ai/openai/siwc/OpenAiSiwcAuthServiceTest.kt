@@ -211,14 +211,18 @@ class OpenAiSiwcAuthServiceTest {
 
         service.resourceRejectedAccessToken(
             credentialFingerprint("access-1"),
-            rejection.copy(status = 403),
+            rejection.copy(status = 200, code = "subscription_sharing_usage_limit_exceeded"),
             Long.MAX_VALUE,
         )
         assertEquals(originalExpiry, store.read()?.credentials?.expiresAtMillis)
 
         val browser = OpenAiSiwcBrowserAuthService(service)
         try {
-            browser.resourceRejectedAccessToken(credentialFingerprint("access-1"), rejection, Long.MAX_VALUE)
+            browser.resourceRejectedAccessToken(
+                credentialFingerprint("access-1"),
+                rejection.copy(status = 200),
+                Long.MAX_VALUE,
+            )
             assertEquals(now, store.read()?.credentials?.expiresAtMillis)
             assertEquals("access-2", browser.validAccessToken(Long.MAX_VALUE))
             assertEquals(OpenAiSiwcStoredState.Status.CONNECTED, store.read()?.status)

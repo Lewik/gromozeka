@@ -81,16 +81,13 @@ internal class OpenAiSiwcRuntimeBackend(
             failure.httpStatus,
             session.transport.responseHeader("x-request-id"),
         ) ?: return failure
-        if (failure.outcome == AiCallFailure.Outcome.REJECTED) {
+        val mapped = failure.withOpenAiSiwcResourceError(error)
+        if (mapped.outcome == AiCallFailure.Outcome.REJECTED) {
             session.identity?.credentialFingerprint?.let {
                 accessTokens.resourceRejectedAccessToken(it, error, deadlineNanos)
             }
         }
-        return failure.copy(
-            providerErrorCode = error.code,
-            providerErrorParameter = error.parameter,
-            providerRequestId = error.requestId,
-        )
+        return mapped
     }
 
     private companion object {
@@ -107,4 +104,31 @@ internal class OpenAiSiwcRuntimeBackend(
             requestFeatures = OpenAiResponsesRequestFeatures(maxOutputTokens = false),
         )
     }
+}
+
+internal fun AiCallFailure.withOpenAiSiwcResourceError(error: OpenAiSiwcResourceError): AiCallFailure {
+    val (mappedKind, mappedOutcome) = when (error.code) {
+        "subscription_sharing_usage_limit_exceeded" ->
+            AiCallFailure.Kind.RATE_LIMITED to AiCallFailure.Outcome.REJECTED
+        "subscription_sharing_usage_unavailable",
+        "subscription_sharing_user_unavailable",
+        -> AiCallFailure.Kind.TRANSPORT to AiCallFailure.Outcome.UNKNOWN
+        "subscription_sharing_invalid_user" ->
+            AiCallFailure.Kind.AUTHENTICATION to AiCallFailure.Outcome.REJECTED
+        "subscription_sharing_user_not_eligible",
+        "chatpass_v2_scope_not_authorized",
+        "chatpass_v2_invalid_authorization_context",
+        -> AiCallFailure.Kind.ACCESS_DENIED to AiCallFailure.Outcome.REJECTED
+        "subscription_sharing_unsupported_capability",
+        "subscription_sharing_route_not_supported",
+        -> AiCallFailure.Kind.CONFIGURATION to AiCallFailure.Outcome.REJECTED
+        else -> kind to outcome
+    }
+    return copy(
+        kind = mappedKind,
+        outcome = mappedOutcome,
+        providerErrorCode = error.code,
+        providerErrorParameter = error.parameter,
+        providerRequestId = error.requestId,
+    )
 }

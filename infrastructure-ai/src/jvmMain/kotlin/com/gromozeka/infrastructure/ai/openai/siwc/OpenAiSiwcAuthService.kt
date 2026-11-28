@@ -224,7 +224,7 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
         error: OpenAiSiwcResourceError,
         deadlineNanos: Long,
     ) {
-        if (error.status != 401) return
+        if (error.status != 401 && error.code != "subscription_sharing_invalid_user") return
         try {
             store.lockedState(deadlineNanos) {
                 val current = state ?: return@lockedState

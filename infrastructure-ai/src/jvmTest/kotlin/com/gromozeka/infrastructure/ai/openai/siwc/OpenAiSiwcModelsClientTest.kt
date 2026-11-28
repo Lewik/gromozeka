@@ -145,6 +145,62 @@ class OpenAiSiwcModelsClientTest {
         assertEquals("req_stream-1", streamError.requestId)
     }
 
+    @Test
+    fun `structured Responses codes drive SIWC failure semantics over HTTP 200`() {
+        val generic = AiCallFailure(
+            kind = AiCallFailure.Kind.INVALID_RESPONSE,
+            outcome = AiCallFailure.Outcome.UNKNOWN,
+            attempts = 1,
+            httpStatus = 200,
+        )
+        val cases = listOf(
+            Triple("subscription_sharing_usage_limit_exceeded",
+                AiCallFailure.Kind.RATE_LIMITED, AiCallFailure.Outcome.REJECTED),
+            Triple("subscription_sharing_usage_unavailable",
+                AiCallFailure.Kind.TRANSPORT, AiCallFailure.Outcome.UNKNOWN),
+            Triple("subscription_sharing_user_unavailable",
+                AiCallFailure.Kind.TRANSPORT, AiCallFailure.Outcome.UNKNOWN),
+            Triple("subscription_sharing_invalid_user",
+                AiCallFailure.Kind.AUTHENTICATION, AiCallFailure.Outcome.REJECTED),
+            Triple("subscription_sharing_user_not_eligible",
+                AiCallFailure.Kind.ACCESS_DENIED, AiCallFailure.Outcome.REJECTED),
+            Triple("chatpass_v2_scope_not_authorized",
+                AiCallFailure.Kind.ACCESS_DENIED, AiCallFailure.Outcome.REJECTED),
+            Triple("chatpass_v2_invalid_authorization_context",
+                AiCallFailure.Kind.ACCESS_DENIED, AiCallFailure.Outcome.REJECTED),
+            Triple("subscription_sharing_unsupported_capability",
+                AiCallFailure.Kind.CONFIGURATION, AiCallFailure.Outcome.REJECTED),
+            Triple("subscription_sharing_route_not_supported",
+                AiCallFailure.Kind.CONFIGURATION, AiCallFailure.Outcome.REJECTED),
+        )
+
+        for ((code, kind, outcome) in cases) {
+            val mapped = generic.withOpenAiSiwcResourceError(OpenAiSiwcResourceError(
+                status = 200,
+                code = code,
+                parameter = "input[0].tools",
+                requestId = "req_stream-1",
+            ))
+
+            assertEquals(kind, mapped.kind, code)
+            assertEquals(outcome, mapped.outcome, code)
+            assertEquals(200, mapped.httpStatus, code)
+            assertEquals(code, mapped.providerErrorCode)
+            assertEquals("input[0].tools", mapped.providerErrorParameter)
+            assertEquals("req_stream-1", mapped.providerRequestId)
+        }
+
+        val unknown = generic.withOpenAiSiwcResourceError(OpenAiSiwcResourceError(
+            status = 200,
+            code = "unrecognized_future_code",
+            parameter = null,
+            requestId = null,
+        ))
+        assertEquals(AiCallFailure.Kind.INVALID_RESPONSE, unknown.kind)
+        assertEquals(AiCallFailure.Outcome.UNKNOWN, unknown.outcome)
+        assertEquals("unrecognized_future_code", unknown.providerErrorCode)
+    }
+
     private fun models(exchange: HttpExchange) {
         assertEquals("GET", exchange.requestMethod)
         assertEquals("Bearer oauth-access", exchange.requestHeaders.getFirst("Authorization"))
