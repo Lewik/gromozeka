@@ -40,9 +40,9 @@ class AsyncCleanBackupUpgradeTest {
         }
         val before = messages(source, validateTypedMetadata = false)
         val migration = flyway.migrate()
-        assertEquals((89..105).map(Int::toString), migration.migrations.map { it.version })
+        assertEquals((89..106).map(Int::toString), migration.migrations.map { it.version })
         flyway.validate()
-        assertEquals("105", assertNotNull(flyway.info().current()).version.toString())
+        assertEquals("106", assertNotNull(flyway.info().current()).version.toString())
         val after = messages(source, validateTypedMetadata = true)
         assertEquals(before, after, "Upgrade may normalize typed metadata and compact terminology, but must preserve history semantics and opaque replay payloads")
         assertTrue(after.count > 0, "The restored backup must contain actual history")
@@ -71,7 +71,7 @@ class AsyncCleanBackupUpgradeTest {
                 }
             }
         }
-        println("ASYNC_BACKUP_UPGRADE_VERIFIED messages=${after.count} referencedManagedArtifacts=$verified flyway=88->105")
+        println("ASYNC_BACKUP_UPGRADE_VERIFIED messages=${after.count} referencedManagedArtifacts=$verified flyway=88->106")
     }
 
     @Test fun `empty database receives the same final schema without the old async upgrade step`() {
@@ -82,7 +82,8 @@ class AsyncCleanBackupUpgradeTest {
             val flyway = Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema)
                 .locations("classpath:db/migration/postgres").load()
             flyway.migrate(); flyway.validate()
-            assertEquals("105", assertNotNull(flyway.info().current()).version.toString())
+            assertEquals("106", assertNotNull(flyway.info().current()).version.toString())
+            assertEquals(0, legacyAdmissionColumnCount(source))
             source.connection.use { connection -> connection.createStatement().use { statement ->
                 statement.executeQuery("SELECT count(*) FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace WHERE n.nspname=current_schema() AND t.relname='async_tool_operations' AND conname IN ('async_tool_claim_generation_nonnegative','async_tool_claim_generation_owner')").use { rows ->
                     assertTrue(rows.next()); assertEquals(2, rows.getInt(1))
@@ -93,11 +94,46 @@ class AsyncCleanBackupUpgradeTest {
         }
     }
 
+    @Test fun `database at 105 applies the admission cleanup as 106`() {
+        assumeTrue("Requires isolated PostgreSQL test configuration", System.getenv("GROMOZEKA_POSTGRES_RUNTIME_TEST") == "true")
+        val schema = "admission_106_${UUID.randomUUID().toString().replace("-", "") }"
+        val source = source(requireNotNull(System.getenv("GROMOZEKA_POSTGRES_URL")), schema)
+        try {
+            val old = Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema)
+                .locations("classpath:db/migration/postgres").target("105").load()
+            old.migrate(); old.validate()
+            assertEquals("105", assertNotNull(old.info().current()).version.toString())
+            assertEquals(2, legacyAdmissionColumnCount(source))
+
+            val current = Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema)
+                .locations("classpath:db/migration/postgres").load()
+            val result = current.migrate()
+            current.validate()
+            assertEquals(listOf("106"), result.migrations.map { it.version })
+            assertEquals(0, legacyAdmissionColumnCount(source))
+        } finally {
+            source.connection.use { connection -> connection.createStatement().use { it.execute("DROP SCHEMA IF EXISTS $schema CASCADE") } }
+        }
+    }
+
     private fun source(url: String, schema: String) = PGSimpleDataSource().apply {
         setURL(url)
         user = requireNotNull(System.getenv("GROMOZEKA_POSTGRES_USER"))
         password = requireNotNull(System.getenv("GROMOZEKA_POSTGRES_PASSWORD"))
         currentSchema = "$schema,public"
+    }
+
+    private fun legacyAdmissionColumnCount(source: PGSimpleDataSource): Int = source.connection.use { connection ->
+        connection.createStatement().use { statement ->
+            statement.executeQuery(
+                "SELECT count(*) FROM information_schema.columns " +
+                    "WHERE table_schema=current_schema() AND table_name='ai_admission_leases' " +
+                    "AND column_name IN ('background_session_id','accepted')"
+            ).use { rows ->
+                check(rows.next())
+                rows.getInt(1)
+            }
+        }
     }
 
     private fun messages(source: PGSimpleDataSource, validateTypedMetadata: Boolean): MessageSnapshot {
