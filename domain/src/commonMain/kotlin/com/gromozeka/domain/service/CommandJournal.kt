@@ -127,14 +127,17 @@ interface CommandJournal {
         val eventId: Event.Id? = null,
         val kinds: Set<Content.Kind> = emptySet(),
         val afterLinkId: Long? = null,
-        val limit: Int = 20,
-        val maxCharactersPerItem: Int = 16_384,
+        val limit: Int = 10,
+        val maxCharactersPerItem: Int = 8_192,
     ) {
         init {
             require(afterLinkId == null || afterLinkId >= 0) { "Command Journal content cursor is invalid" }
             require(limit in 1..50) { "Command Journal content limit must be between 1 and 50" }
             require(maxCharactersPerItem in 256..65_536) {
                 "Command Journal content character limit must be between 256 and 65536"
+            }
+            require(limit.toLong() * maxCharactersPerItem <= 131_072) {
+                "Command Journal content page must not exceed 131072 requested characters"
             }
         }
     }

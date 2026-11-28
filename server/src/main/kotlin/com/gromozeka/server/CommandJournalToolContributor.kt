@@ -203,8 +203,8 @@ internal class CommandJournalToolContributor(
         val entryId = CommandJournal.Entry.Id(input.requiredString("entry_id"))
         val snapshot = reader.get(
             entryId = entryId,
-            callLimit = input.optionalInt("call_limit", 100, 1..500),
-            eventLimit = input.optionalInt("event_limit", 200, 1..1000),
+            callLimit = input.optionalInt("call_limit", 100, 1..200),
+            eventLimit = input.optionalInt("event_limit", 200, 1..500),
         ) ?: throw ServerToolException("not_found", "Command Journal entry not found")
         projectAccess.requirePermission(user.id, snapshot.entry.projectId, ProjectPermission.READ)
         serverToolJson.encodeToJsonElement(CommandJournal.Snapshot.serializer(), snapshot).jsonObject
@@ -235,8 +235,8 @@ internal class CommandJournalToolContributor(
                     parseEnum<CommandJournal.Content.Kind>("kinds", it)
                 },
                 afterLinkId = input["after_link_id"]?.let { input.requiredLong("after_link_id") },
-                limit = input.optionalInt("limit", 20, 1..50),
-                maxCharactersPerItem = input.optionalInt("max_characters_per_item", 16_384, 256..65_536),
+                limit = input.optionalInt("limit", 10, 1..50),
+                maxCharactersPerItem = input.optionalInt("max_characters_per_item", 8_192, 256..65_536),
             )
         )
         serverToolJson.encodeToJsonElement(CommandJournal.ContentPage.serializer(), page).jsonObject
@@ -364,8 +364,8 @@ internal class CommandJournalToolContributor(
         val GET_SCHEMA = ServerToolSchemas.objectSchema(
             properties = mapOf(
                 "entry_id" to ServerToolSchemas.string("Exact Command Journal entry id."),
-                "call_limit" to ServerToolSchemas.integer("Maximum calls returned.", 1, 500),
-                "event_limit" to ServerToolSchemas.integer("Maximum events returned.", 1, 1000),
+                "call_limit" to ServerToolSchemas.integer("Maximum calls returned; calls plus events may not exceed 500.", 1, 200),
+                "event_limit" to ServerToolSchemas.integer("Maximum events returned; calls plus events may not exceed 500.", 1, 500),
             ),
             required = listOf("entry_id"),
         )
@@ -377,8 +377,8 @@ internal class CommandJournalToolContributor(
                 "event_id" to ServerToolSchemas.string("Optional exact event id."),
                 "kinds" to ServerToolSchemas.stringArray("Optional content kinds to include."),
                 "after_link_id" to ServerToolSchemas.integer("Return links after this cursor.", 0),
-                "limit" to ServerToolSchemas.integer("Maximum content links returned.", 1, 50),
-                "max_characters_per_item" to ServerToolSchemas.integer("Maximum returned characters per item.", 256, 65_536),
+                "limit" to ServerToolSchemas.integer("Maximum content links returned; limit multiplied by max_characters_per_item must not exceed 131072.", 1, 50),
+                "max_characters_per_item" to ServerToolSchemas.integer("Maximum returned characters per item; the complete requested page is capped at 131072 characters.", 256, 65_536),
             ),
             required = listOf("entry_id"),
         )

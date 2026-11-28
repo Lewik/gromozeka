@@ -348,8 +348,9 @@ internal class PostgresCommandJournal(
         callLimit: Int,
         eventLimit: Int,
     ): CommandJournal.Snapshot? = io {
-        require(callLimit in 1..500) { "Command Journal call limit must be between 1 and 500" }
-        require(eventLimit in 1..1000) { "Command Journal event limit must be between 1 and 1000" }
+        require(callLimit in 1..200) { "Command Journal call limit must be between 1 and 200" }
+        require(eventLimit in 1..500) { "Command Journal event limit must be between 1 and 500" }
+        require(callLimit + eventLimit <= 500) { "Command Journal snapshot may request at most 500 records" }
         dataSource.connection.use { connection ->
             val entry = connection.findEntry(entryId, forUpdate = false) ?: return@use null
             val calls = connection.prepareStatement(
