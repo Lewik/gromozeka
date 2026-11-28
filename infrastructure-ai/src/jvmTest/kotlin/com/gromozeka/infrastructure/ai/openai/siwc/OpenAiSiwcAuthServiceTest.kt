@@ -207,6 +207,38 @@ class OpenAiSiwcAuthServiceTest {
     }
 
     @Test
+    fun `refresh without plan scope discards the rotated grant and starts reauthentication`() = runBlocking {
+        val store = OpenAiSiwcCredentialStore(TestSettings(home))
+        val service = service(store)
+        val authorization = service.prepareAuthorization("http://127.0.0.1:14555/auth/callback")
+        nonce = parseQuery(URI.create(authorization.url).rawQuery).getValue("nonce")
+        service.completeAuthorization(authorization, "one-time-code", "issued_client")
+        val browser = OpenAiSiwcBrowserAuthService(service)
+
+        try {
+            now += 3_600_000L
+            tokenScopes = "openid profile email offline_access resource.invoke"
+            val error = assertFailsWith<OpenAiSiwcException> { browser.validAccessToken(Long.MAX_VALUE) }
+
+            assertEquals("sharing_not_enabled", error.code)
+            val reauthentication = assertNotNull(store.read())
+            assertEquals(OpenAiSiwcStoredState.Status.REAUTH_REQUIRED, reauthentication.status)
+            assertTrue(reauthentication.scopes.isEmpty())
+            assertEquals(null, reauthentication.credentials)
+            assertEquals(null, reauthentication.pendingRefresh)
+            assertTrue(browser.isLoginPending())
+            assertEquals(2, tokenCalls.get())
+
+            val restarted = service(OpenAiSiwcCredentialStore(TestSettings(home)))
+            val signedOut = assertFailsWith<OpenAiSiwcException> { restarted.validAccessToken(Long.MAX_VALUE) }
+            assertEquals("sign_in_required", signedOut.code)
+            assertEquals(2, tokenCalls.get(), "Recovery must not retry the consumed refresh token")
+        } finally {
+            browser.shutdown()
+        }
+    }
+
+    @Test
     fun `resource rejection refreshes only the access token that was actually rejected`() = runBlocking {
         val store = OpenAiSiwcCredentialStore(TestSettings(home))
         val service = service(store)

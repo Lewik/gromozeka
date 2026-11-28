@@ -635,6 +635,7 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
         val REAUTH_REQUIRED_ERROR_CODES = setOf(
             "invalid_grant", "invalid_refresh_token", "token_expired", "refresh_token_expired",
             "refresh_token_invalidated", "refresh_token_reused", "invalid_id_token", "account_mismatch",
+            "sharing_not_enabled",
         )
     }
 }
