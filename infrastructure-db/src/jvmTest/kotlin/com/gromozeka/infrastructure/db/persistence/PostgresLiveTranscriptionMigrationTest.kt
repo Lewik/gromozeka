@@ -66,7 +66,7 @@ class PostgresLiveTranscriptionMigrationTest {
     }
 
     private fun migrate(connection: Connection) = connection.createStatement().use {
-        it.execute(requireNotNull(javaClass.classLoader.getResource("db/migration/postgres/V106__live_transcription.sql")).readText())
+        it.execute(requireNotNull(javaClass.classLoader.getResource("db/migration/postgres/V107__live_transcription.sql")).readText())
     }
 
     private fun readSpecs(connection: Connection): Map<Pair<AiProvider, String>, AiModelSpec> =
