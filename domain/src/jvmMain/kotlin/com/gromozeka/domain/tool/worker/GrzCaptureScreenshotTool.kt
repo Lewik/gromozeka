@@ -12,7 +12,7 @@ data class CaptureScreenshotRequest(
         minimum = 1024,
         maximum = 4096,
     )
-    val max_long_edge: Int = 2560,
+    val max_long_edge: Int = 1568,
 ) {
     init {
         require(max_long_edge in 1024..4096) { "max_long_edge must be between 1024 and 4096" }

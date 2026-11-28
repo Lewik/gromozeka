@@ -43,6 +43,16 @@ class GrzCaptureScreenshotToolImplTest {
     }
 
     @Test
+    fun `defaults screenshots to the computer use image size`() {
+        val screenshots = FakeDesktopScreenshotCapture()
+        val tool = GrzCaptureScreenshotToolImpl("worker-local", screenshots)
+
+        tool.execute(CaptureScreenshotRequest(), localContext())
+
+        assertEquals(1568, screenshots.maxLongEdge)
+    }
+
+    @Test
     fun `omits unavailable capture and reports its reason`() {
         val screenshots = FakeDesktopScreenshotCapture().apply { unavailableReason = "Screen Recording denied" }
         val tool = GrzCaptureScreenshotToolImpl("worker-local", screenshots)
