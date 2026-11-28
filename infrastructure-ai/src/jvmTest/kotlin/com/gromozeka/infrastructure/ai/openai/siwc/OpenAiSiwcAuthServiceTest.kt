@@ -3,6 +3,7 @@ package com.gromozeka.infrastructure.ai.openai.siwc
 import com.gromozeka.domain.model.AppMode
 import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.model.UserProfile
+import com.gromozeka.domain.model.ai.AiCallFailure
 import com.gromozeka.domain.service.SettingsProvider
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
@@ -42,7 +43,7 @@ class OpenAiSiwcAuthServiceTest {
     private val tokenCalls = AtomicInteger()
     private var nonce: String? = null
     private var jwksAvailable = true
-    private var tokenFailure: Pair<Int, String>? = null
+    private var tokenFailure: TokenFailure? = null
     private var tokenBodyGate: CountDownLatch? = null
     private var now = 1_800_000_000_000L
     private val server: HttpServer
@@ -128,7 +129,7 @@ class OpenAiSiwcAuthServiceTest {
     }
 
     @Test
-    fun `non-json refresh rejection preserves status and requires reauthorization`() = runBlocking {
+    fun `non-json refresh rejection preserves status and the existing grant`() = runBlocking {
         val store = OpenAiSiwcCredentialStore(TestSettings(home))
         val service = service(store)
         val authorization = service.prepareAuthorization("http://127.0.0.1:14555/auth/callback")
@@ -136,11 +137,47 @@ class OpenAiSiwcAuthServiceTest {
         service.completeAuthorization(authorization, "one-time-code", "issued_client")
 
         now += 3_600_000L
-        tokenFailure = 401 to "unauthorized"
+        tokenFailure = TokenFailure(401, "unauthorized")
         val error = assertFailsWith<OpenAiSiwcException> { service.validAccessToken(Long.MAX_VALUE) }
 
         assertEquals("http_error", error.code)
         assertEquals(401, error.status)
+        assertEquals(OpenAiSiwcStoredState.Status.CONNECTED, store.read()?.status)
+        assertEquals("refresh-1", store.read()?.credentials?.refreshToken)
+    }
+
+    @Test
+    fun `invalid client refresh rejection preserves the grant and request id`() = runBlocking {
+        val store = OpenAiSiwcCredentialStore(TestSettings(home))
+        val service = service(store)
+        val authorization = service.prepareAuthorization("http://127.0.0.1:14555/auth/callback")
+        nonce = parseQuery(URI.create(authorization.url).rawQuery).getValue("nonce")
+        service.completeAuthorization(authorization, "one-time-code", "issued_client")
+
+        now += 3_600_000L
+        tokenFailure = TokenFailure(401, """{"error":"invalid_client"}""", "req_invalid-client-1")
+        val error = assertFailsWith<OpenAiSiwcException> { service.validAccessToken(Long.MAX_VALUE) }
+
+        assertEquals("invalid_client", error.code)
+        assertEquals("req_invalid-client-1", error.requestId)
+        assertEquals(OpenAiSiwcStoredState.Status.CONNECTED, store.read()?.status)
+        assertEquals("refresh-1", store.read()?.credentials?.refreshToken)
+        assertEquals(AiCallFailure.Kind.CONFIGURATION, error.toAiCallException().failure.kind)
+    }
+
+    @Test
+    fun `invalid grant refresh rejection clears unusable credentials`() = runBlocking {
+        val store = OpenAiSiwcCredentialStore(TestSettings(home))
+        val service = service(store)
+        val authorization = service.prepareAuthorization("http://127.0.0.1:14555/auth/callback")
+        nonce = parseQuery(URI.create(authorization.url).rawQuery).getValue("nonce")
+        service.completeAuthorization(authorization, "one-time-code", "issued_client")
+
+        now += 3_600_000L
+        tokenFailure = TokenFailure(400, """{"error":"invalid_grant"}""")
+        val error = assertFailsWith<OpenAiSiwcException> { service.validAccessToken(Long.MAX_VALUE) }
+
+        assertEquals("invalid_grant", error.code)
         assertEquals(OpenAiSiwcStoredState.Status.REAUTH_REQUIRED, store.read()?.status)
         assertEquals(null, store.read()?.credentials)
     }
@@ -236,8 +273,9 @@ class OpenAiSiwcAuthServiceTest {
     }
 
     private fun token(exchange: HttpExchange) {
-        tokenFailure?.let { (status, body) ->
-            exchange.json(status, body)
+        tokenFailure?.let { failure ->
+            failure.requestId?.let { exchange.responseHeaders.set("x-request-id", it) }
+            exchange.json(failure.status, failure.body)
             return
         }
         val form = parseQuery(exchange.requestBody.readAllBytes().toString(StandardCharsets.UTF_8))
@@ -320,6 +358,8 @@ class OpenAiSiwcAuthServiceTest {
 
     private fun unsigned(value: BigInteger): String = base64Url(value.toByteArray().dropWhile { it == 0.toByte() }.toByteArray())
     private fun base64Url(value: ByteArray): String = Base64.getUrlEncoder().withoutPadding().encodeToString(value)
+
+    private data class TokenFailure(val status: Int, val body: String, val requestId: String? = null)
 
     private class TestSettings(override val homeDirectory: String) : SettingsProvider {
         constructor(home: Path) : this(home.toAbsolutePath().toString())

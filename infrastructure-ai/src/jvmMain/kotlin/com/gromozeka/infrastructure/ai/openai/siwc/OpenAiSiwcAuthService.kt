@@ -184,7 +184,7 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
                 }
                 refreshed.accessToken
             } catch (error: OpenAiSiwcException) {
-                if (error.code in TERMINAL_REFRESH_CODES || error.status == 400 || error.status == 401) {
+                if (error.code in UNUSABLE_REFRESH_TOKEN_CODES) {
                     save((state ?: current).copy(
                         status = OpenAiSiwcStoredState.Status.REAUTH_REQUIRED,
                         scopes = emptyList(),
@@ -284,11 +284,12 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
                     retryable = response.status >= 500,
                     status = response.status,
                     cause = error,
+                    requestId = response.requestId,
                 )
             }
             throw error
         }
-        if (response.status !in 200..299) throw apiError(payload, response.status)
+        if (response.status !in 200..299) throw apiError(payload, response.status, response.requestId)
         val scopes = payload.string("scope")?.split(Regex("\\s+"))?.filter(String::isNotBlank) ?: previousScopes
             ?: throw OpenAiSiwcException("invalid_token_response", "ChatGPT did not confirm the granted permissions.")
         val accessToken = payload.string("access_token")
@@ -457,7 +458,11 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
 
     private fun send(request: HttpRequest, deadlineNanos: Long): HttpResult {
         val response = client.sendSiwc(request, deadlineNanos, MAX_HTTP_BODY_BYTES)
-        return HttpResult(response.statusCode(), response.body().toString(StandardCharsets.UTF_8))
+        return HttpResult(
+            status = response.statusCode(),
+            body = response.body().toString(StandardCharsets.UTF_8),
+            requestId = response.headers().firstValue("x-request-id").orElse(null).safeRequestId(),
+        )
     }
 
     private fun parseObject(value: String, description: String): JsonObject = try {
@@ -467,12 +472,13 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
         throw OpenAiSiwcException("invalid_response", "ChatGPT returned an invalid $description.", true, cause = error)
     }
 
-    private fun apiError(payload: JsonObject, status: Int): OpenAiSiwcException {
+    private fun apiError(payload: JsonObject, status: Int, requestId: String?): OpenAiSiwcException {
         val error = payload["error"]
         val nested = error as? JsonObject
-        val code = nested?.string("code") ?: (error as? JsonPrimitive)?.contentOrNull ?: payload.string("code") ?: "http_error"
+        val code = (nested?.string("code") ?: (error as? JsonPrimitive)?.contentOrNull ?: payload.string("code"))
+            .safeErrorCode() ?: "http_error"
         return OpenAiSiwcException(
-            code = code.take(120),
+            code = code,
             message = when (code) {
                 "invalid_grant", "invalid_refresh_token", "token_expired", "refresh_token_expired",
                 "refresh_token_invalidated", "refresh_token_reused" -> "The ChatGPT connection has expired. Sign in again."
@@ -480,8 +486,12 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
             },
             retryable = status >= 500,
             status = status,
+            requestId = requestId,
         )
     }
+
+    private fun String?.safeErrorCode(): String? = this?.takeIf { it.matches(SAFE_ERROR_CODE) }
+    private fun String?.safeRequestId(): String? = this?.takeIf { it.matches(SAFE_REQUEST_ID) }
 
     private fun parseEarliestRefresh(value: kotlinx.serialization.json.JsonElement): Long {
         val primitive = value as? JsonPrimitive
@@ -535,7 +545,7 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
         val idToken: String?,
     )
     private data class VerifiedIdentity(val subject: String, val identity: OpenAiSiwcStoredState.Identity)
-    private data class HttpResult(val status: Int, val body: String)
+    private data class HttpResult(val status: Int, val body: String, val requestId: String?)
 
     private companion object {
         const val DEFAULT_ISSUER = "https://auth.openai.com"
@@ -548,10 +558,11 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
         const val MAX_TOKEN_CHARS = 1024 * 1024
         const val MAX_HTTP_BODY_BYTES = 1024 * 1024
         val SCOPES = listOf("openid", "profile", "email", "offline_access", "resource.invoke", SHARING_SCOPE)
-        val TERMINAL_REFRESH_CODES = setOf(
+        val UNUSABLE_REFRESH_TOKEN_CODES = setOf(
             "invalid_grant", "invalid_refresh_token", "token_expired", "refresh_token_expired",
-            "refresh_token_invalidated", "refresh_token_reused", "invalid_id_token", "invalid_token_response",
-            "account_mismatch", "sharing_not_enabled",
+            "refresh_token_invalidated", "refresh_token_reused",
         )
+        val SAFE_ERROR_CODE = Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,119}")
+        val SAFE_REQUEST_ID = Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
     }
 }

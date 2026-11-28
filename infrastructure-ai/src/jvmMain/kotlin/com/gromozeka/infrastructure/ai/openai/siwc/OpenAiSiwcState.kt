@@ -45,6 +45,7 @@ internal class OpenAiSiwcException(
     val retryable: Boolean = false,
     val status: Int? = null,
     cause: Throwable? = null,
+    val requestId: String? = null,
 ) : RuntimeException(message, cause)
 
 internal fun OpenAiSiwcException.toAiCallException(): AiCallException = AiCallException(
@@ -52,6 +53,7 @@ internal fun OpenAiSiwcException.toAiCallException(): AiCallException = AiCallEx
         kind = when {
             code == "deadline_exceeded" -> AiCallFailure.Kind.DEADLINE_EXCEEDED
             code == "sharing_not_enabled" || status == 403 -> AiCallFailure.Kind.ACCESS_DENIED
+            code == "invalid_client" -> AiCallFailure.Kind.CONFIGURATION
             status == 401 || code in AUTHENTICATION_ERROR_CODES -> AiCallFailure.Kind.AUTHENTICATION
             status == 429 -> AiCallFailure.Kind.RATE_LIMITED
             code in INVALID_RESPONSE_ERROR_CODES -> AiCallFailure.Kind.INVALID_RESPONSE
