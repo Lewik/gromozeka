@@ -1,9 +1,26 @@
 package com.gromozeka.infrastructure.ai.openai.siwc
 
+import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.service.AiConfigurationProvider
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
+import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
 import klog.KLoggers
+import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Service
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -16,10 +33,19 @@ import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 
 @Service
-internal class OpenAiSiwcBrowserAuthService(
+@Primary
+@ConditionalOnProperty(
+    name = ["gromozeka.runtime.server.enabled"],
+    havingValue = "true",
+    matchIfMissing = true,
+)
+internal class OpenAiSiwcBrowserAuthService @Autowired constructor(
     private val authService: OpenAiSiwcAuthService,
-) {
+    private val configuration: AiConfigurationProvider?,
+    @Qualifier("applicationScope") private val applicationScope: CoroutineScope?,
+) : OpenAiSiwcAccessTokenProvider {
     private val log = KLoggers.logger(this)
+    private var catalogJob: Job? = null
     private val scheduler = Executors.newSingleThreadScheduledExecutor { task ->
         Thread(task, "openai-siwc-auth-expiry").apply { isDaemon = true }
     }
@@ -27,9 +53,39 @@ internal class OpenAiSiwcBrowserAuthService(
     @Volatile
     private var pending: Pending? = null
 
+    internal constructor(authService: OpenAiSiwcAuthService) : this(authService, null, null)
+
+    @PostConstruct
+    fun start() {
+        val configuration = checkNotNull(configuration) { "SIWC browser auth requires Server AI configuration" }
+        val scope = checkNotNull(applicationScope) { "SIWC browser auth requires the application scope" }
+        catalogJob = scope.launch(Dispatchers.IO + CoroutineName("openai-siwc-auth")) {
+            configuration.snapshotFlow
+                .filterNotNull()
+                .map { snapshot -> snapshot.catalog.connections.any {
+                    (it.enabled || it.id in snapshot.runtimeEnabledConnectionIds) &&
+                        it.kind == AiConnection.Kind.OPENAI_SIWC
+                } }
+                .distinctUntilChanged()
+                .collect { enabled ->
+                    if (enabled) bootstrapIfNeeded() else cancelLogin()
+                }
+        }
+    }
+
+    override suspend fun validAccessToken(deadlineNanos: Long): String = try {
+        authService.validAccessToken(deadlineNanos)
+    } catch (error: OpenAiSiwcException) {
+        val session = authService.session()
+        if (session?.let { it.status == OpenAiSiwcStoredState.Status.CONNECTED && it.credentials != null } != true) {
+            bootstrapIfNeeded()
+        }
+        throw error
+    }
+
     fun beginLogin(): Result<OpenAiSiwcAuthService.Authorization> = runCatching {
         synchronized(this) {
-            check(pending == null) { "A ChatGPT sign-in is already pending" }
+            pending?.let { return@synchronized it.authorization }
             val server = HttpServer.create(InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
             val callbackExecutor = Executors.newSingleThreadExecutor { task ->
                 Thread(task, "openai-siwc-callback").apply { isDaemon = true }
@@ -58,6 +114,7 @@ internal class OpenAiSiwcBrowserAuthService(
 
     @PreDestroy
     fun shutdown() {
+        runBlocking { catalogJob?.cancelAndJoin() }
         cancelLogin()
         scheduler.shutdownNow()
     }
@@ -74,6 +131,26 @@ internal class OpenAiSiwcBrowserAuthService(
     }
 
     internal fun isLoginPending(): Boolean = pending != null
+
+    private fun bootstrapIfNeeded() {
+        configuration?.snapshot?.let { snapshot ->
+            if (snapshot.catalog.connections.none {
+                    (it.enabled || it.id in snapshot.runtimeEnabledConnectionIds) &&
+                        it.kind == AiConnection.Kind.OPENAI_SIWC
+                }) return
+        }
+        val session = authService.session()
+        if (session?.status == OpenAiSiwcStoredState.Status.CONNECTED && session.credentials != null) {
+            log.info("ChatGPT SIWC connection loaded")
+            return
+        }
+        beginLogin()
+            .onSuccess {
+                log.warn("OPENAI_SIWC is enabled but not authenticated. Open this URL and complete ChatGPT sign-in:")
+                log.warn(it.url)
+            }
+            .onFailure { error -> log.error(error) { "Failed to start ChatGPT SIWC sign-in" } }
+    }
 
     private fun handle(login: Pending, exchange: HttpExchange) {
         try {

@@ -169,17 +169,23 @@ class OpenAiSiwcAuthServiceTest {
     fun `invalid grant refresh rejection clears unusable credentials`() = runBlocking {
         val store = OpenAiSiwcCredentialStore(TestSettings(home))
         val service = service(store)
+        val browser = OpenAiSiwcBrowserAuthService(service)
         val authorization = service.prepareAuthorization("http://127.0.0.1:14555/auth/callback")
         nonce = parseQuery(URI.create(authorization.url).rawQuery).getValue("nonce")
         service.completeAuthorization(authorization, "one-time-code", "issued_client")
 
-        now += 3_600_000L
-        tokenFailure = TokenFailure(400, """{"error":"invalid_grant"}""")
-        val error = assertFailsWith<OpenAiSiwcException> { service.validAccessToken(Long.MAX_VALUE) }
+        try {
+            now += 3_600_000L
+            tokenFailure = TokenFailure(400, """{"error":"invalid_grant"}""")
+            val error = assertFailsWith<OpenAiSiwcException> { browser.validAccessToken(Long.MAX_VALUE) }
 
-        assertEquals("invalid_grant", error.code)
-        assertEquals(OpenAiSiwcStoredState.Status.REAUTH_REQUIRED, store.read()?.status)
-        assertEquals(null, store.read()?.credentials)
+            assertEquals("invalid_grant", error.code)
+            assertEquals(OpenAiSiwcStoredState.Status.REAUTH_REQUIRED, store.read()?.status)
+            assertEquals(null, store.read()?.credentials)
+            assertTrue(browser.isLoginPending())
+        } finally {
+            browser.shutdown()
+        }
     }
 
     @Test
