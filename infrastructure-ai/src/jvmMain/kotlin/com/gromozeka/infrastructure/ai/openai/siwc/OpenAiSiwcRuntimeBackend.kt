@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.ai.openai.siwc
 
+import com.gromozeka.domain.model.ai.AiCallFailure
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiHttpSettings
 import com.gromozeka.domain.model.ai.AiModelConfiguration
@@ -16,6 +17,8 @@ import com.gromozeka.infrastructure.ai.openai.OpenAiSdkClientFactory
 import com.gromozeka.infrastructure.ai.runtime.AiRuntimeBackend
 import com.gromozeka.infrastructure.ai.runtime.ModelGenerationPolicy
 import com.gromozeka.infrastructure.ai.runtime.SdkHttpCallExecutor
+import com.gromozeka.infrastructure.ai.runtime.SdkInferenceClient
+import com.openai.client.OpenAIClient
 import org.springframework.stereotype.Service
 
 @Service
@@ -40,6 +43,7 @@ internal class OpenAiSiwcRuntimeBackend(
             maxAttempts = HTTP_SETTINGS.maxAttempts,
             admission = admission,
             modelConfiguration = modelConfiguration,
+            failureMapper = ::mapResourceFailure,
         ) { deadline ->
             clientFactory.createInferenceClient(
                 connection = connection,
@@ -64,6 +68,28 @@ internal class OpenAiSiwcRuntimeBackend(
             continuationSettingsIdentity = null,
             quotaEnabled = modelConfiguration.tpm != null,
             generation = ModelGenerationPolicy(runtime.modelSpec),
+        )
+    }
+
+    private fun mapResourceFailure(
+        session: SdkInferenceClient<OpenAIClient>,
+        failure: AiCallFailure,
+        cause: Throwable,
+        deadlineNanos: Long,
+    ): AiCallFailure {
+        val error = cause.openAiSiwcResourceError(
+            failure.httpStatus,
+            session.transport.responseHeader("x-request-id"),
+        ) ?: return failure
+        if (failure.outcome == AiCallFailure.Outcome.REJECTED) {
+            session.identity?.credentialFingerprint?.let {
+                accessTokens.resourceRejectedAccessToken(it, error, deadlineNanos)
+            }
+        }
+        return failure.copy(
+            providerErrorCode = error.code,
+            providerErrorParameter = error.parameter,
+            providerRequestId = error.requestId,
         )
     }
 

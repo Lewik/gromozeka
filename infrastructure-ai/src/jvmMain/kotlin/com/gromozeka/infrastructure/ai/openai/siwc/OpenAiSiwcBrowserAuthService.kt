@@ -83,6 +83,12 @@ internal class OpenAiSiwcBrowserAuthService @Autowired constructor(
         throw error
     }
 
+    override fun resourceRejectedAccessToken(
+        credentialFingerprint: String,
+        error: OpenAiSiwcResourceError,
+        deadlineNanos: Long,
+    ) = authService.resourceRejectedAccessToken(credentialFingerprint, error, deadlineNanos)
+
     fun beginLogin(): Result<OpenAiSiwcAuthService.Authorization> = runCatching {
         synchronized(this) {
             pending?.let { return@synchronized it.authorization }

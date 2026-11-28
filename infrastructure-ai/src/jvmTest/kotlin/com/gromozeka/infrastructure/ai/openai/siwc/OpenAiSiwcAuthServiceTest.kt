@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiCallFailure
 import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.infrastructure.ai.runtime.credentialFingerprint
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import java.math.BigInteger
@@ -185,6 +186,43 @@ class OpenAiSiwcAuthServiceTest {
             assertEquals(OpenAiSiwcStoredState.Status.REAUTH_REQUIRED, store.read()?.status)
             assertEquals(null, store.read()?.credentials)
             assertTrue(browser.isLoginPending())
+        } finally {
+            browser.shutdown()
+        }
+    }
+
+    @Test
+    fun `resource rejection refreshes only the access token that was actually rejected`() = runBlocking {
+        val store = OpenAiSiwcCredentialStore(TestSettings(home))
+        val service = service(store)
+        val authorization = service.prepareAuthorization("http://127.0.0.1:14555/auth/callback")
+        nonce = parseQuery(URI.create(authorization.url).rawQuery).getValue("nonce")
+        service.completeAuthorization(authorization, "one-time-code", "issued_client")
+        val originalExpiry = assertNotNull(store.read()?.credentials).expiresAtMillis
+        val rejection = OpenAiSiwcResourceError(
+            status = 401,
+            code = "subscription_sharing_invalid_user",
+            parameter = null,
+            requestId = "req_resource-1",
+        )
+
+        service.resourceRejectedAccessToken(credentialFingerprint("access-from-an-old-call"), rejection, Long.MAX_VALUE)
+        assertEquals(originalExpiry, store.read()?.credentials?.expiresAtMillis)
+
+        service.resourceRejectedAccessToken(
+            credentialFingerprint("access-1"),
+            rejection.copy(status = 403),
+            Long.MAX_VALUE,
+        )
+        assertEquals(originalExpiry, store.read()?.credentials?.expiresAtMillis)
+
+        val browser = OpenAiSiwcBrowserAuthService(service)
+        try {
+            browser.resourceRejectedAccessToken(credentialFingerprint("access-1"), rejection, Long.MAX_VALUE)
+            assertEquals(now, store.read()?.credentials?.expiresAtMillis)
+            assertEquals("access-2", browser.validAccessToken(Long.MAX_VALUE))
+            assertEquals(OpenAiSiwcStoredState.Status.CONNECTED, store.read()?.status)
+            assertEquals("refresh-2", store.read()?.credentials?.refreshToken)
         } finally {
             browser.shutdown()
         }

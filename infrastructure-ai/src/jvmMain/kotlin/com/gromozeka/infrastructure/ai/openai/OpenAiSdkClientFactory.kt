@@ -4,9 +4,11 @@ import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiHttpSettings
 import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.infrastructure.ai.runtime.SdkHttpCallIdentity
 import com.gromozeka.infrastructure.ai.runtime.SdkHttpClientPool
 import com.gromozeka.infrastructure.ai.runtime.SdkHttpSupport
 import com.gromozeka.infrastructure.ai.runtime.SdkInferenceClient
+import com.gromozeka.infrastructure.ai.runtime.credentialFingerprint
 import com.openai.core.LogLevel
 import com.openai.client.OpenAIClient
 import org.springframework.stereotype.Component
@@ -38,8 +40,7 @@ class OpenAiSdkClientFactory(
                 .apply { SdkHttpSupport.headers(settings).forEach { (name, value) -> replaceHeaders(name, value) } }
                 .build()
             val client = com.openai.client.OpenAIClientImpl(options)
-            val identity = com.gromozeka.infrastructure.ai.runtime.SdkHttpCallIdentity(baseUrl,
-                java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(token.toByteArray())))
+            val identity = SdkHttpCallIdentity(baseUrl, credentialFingerprint(token))
             return SdkInferenceClient(client, transport, identity) { client.close() }
         } catch (error: Exception) { transport.close(); throw error }
     }

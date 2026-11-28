@@ -19,7 +19,9 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import java.io.IOException
+import java.security.MessageDigest
 import java.time.Duration
+import java.util.HexFormat
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionException
 import java.util.concurrent.atomic.AtomicReference
@@ -30,6 +32,10 @@ import kotlin.random.Random
 import kotlin.time.Clock
 
 internal data class SdkHttpCallIdentity(val baseUrl: String, val credentialFingerprint: String)
+
+internal fun credentialFingerprint(credential: String): String = HexFormat.of().formatHex(
+    MessageDigest.getInstance("SHA-256").digest(credential.toByteArray()),
+)
 
 internal class SdkInferenceClient<C>(val client: C, val transport: SdkHttpTransport,
     val identity: SdkHttpCallIdentity? = null,
@@ -43,6 +49,7 @@ internal class SdkHttpCallExecutor<C>(
     private val maxAttempts: Int,
     private val admission: AiCallAdmission,
     private val modelConfiguration: AiModelConfiguration? = null,
+    private val failureMapper: ((SdkInferenceClient<C>, AiCallFailure, Throwable, Long) -> AiCallFailure)? = null,
     private val clientFactory: suspend (deadlineNanos: Long) -> SdkInferenceClient<C>,
 ) {
     constructor(
@@ -57,6 +64,7 @@ internal class SdkHttpCallExecutor<C>(
         maxAttempts = SdkHttpSupport.settings(connection).maxAttempts,
         admission = admission,
         modelConfiguration = modelConfiguration,
+        failureMapper = null,
         clientFactory = clientFactory,
     )
 
@@ -118,7 +126,13 @@ internal class SdkHttpCallExecutor<C>(
                                     .firstOrNull()?.let { throw it }
                                 val transport = requireNotNull(transportRef.get()) { "SDK failure has no transport attempt" }
                                 if (end - System.nanoTime() <= 0) throw deadlineFailure(transport)
-                                val failure = classify(error, transport)
+                                val classified = classify(error, transport)
+                                val failure = failureMapper?.invoke(
+                                    requireNotNull(session),
+                                    classified,
+                                    error,
+                                    end,
+                                ) ?: classified
                                 if (requireNotNull(failure.attempts) < maxAttempts &&
                                     recoverFailure?.invoke(failure, error) == true) continue
                                 if (failure.kind != AiCallFailure.Kind.RATE_LIMITED ||

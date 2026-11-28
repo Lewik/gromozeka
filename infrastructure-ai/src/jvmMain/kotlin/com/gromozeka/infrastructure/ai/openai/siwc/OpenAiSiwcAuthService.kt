@@ -1,6 +1,8 @@
 package com.gromozeka.infrastructure.ai.openai.siwc
 
 import com.gromozeka.infrastructure.ai.diagnostics.AiTrafficDumpHttpClient
+import com.gromozeka.infrastructure.ai.runtime.credentialFingerprint
+import klog.KLoggers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -36,6 +38,7 @@ internal const val OPENAI_SIWC_CALLBACK_PATH = "/auth/callback"
 internal class OpenAiSiwcAuthService @Autowired constructor(
     private val store: OpenAiSiwcCredentialStore,
 ) : OpenAiSiwcAccessTokenProvider {
+    private val log = KLoggers.logger(this)
     private var issuer = DEFAULT_ISSUER
     private var nowMillis: () -> Long = System::currentTimeMillis
     private var client = AiTrafficDumpHttpClient(
@@ -212,6 +215,37 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
                     ))
                 }
                 throw error
+            }
+        }
+    }
+
+    override fun resourceRejectedAccessToken(
+        rejectedFingerprint: String,
+        error: OpenAiSiwcResourceError,
+        deadlineNanos: Long,
+    ) {
+        if (error.status != 401) return
+        try {
+            store.lockedState(deadlineNanos) {
+                val current = state ?: return@lockedState
+                val credentials = current.credentials ?: return@lockedState
+                val actualFingerprint = credentialFingerprint(credentials.accessToken)
+                if (!MessageDigest.isEqual(
+                        actualFingerprint.toByteArray(StandardCharsets.US_ASCII),
+                        rejectedFingerprint.toByteArray(StandardCharsets.US_ASCII),
+                    )) return@lockedState
+                val rejectedAt = nowMillis()
+                save(current.copy(
+                    credentials = credentials.copy(
+                        expiresAtMillis = minOf(credentials.expiresAtMillis, rejectedAt),
+                    ),
+                    savedAt = Instant.ofEpochMilli(rejectedAt).toString(),
+                ))
+            }
+        } catch (failure: OpenAiSiwcException) {
+            log.warn(failure) {
+                "Could not record rejected ChatGPT access token" +
+                    error.requestId?.let { " (request $it)" }.orEmpty()
             }
         }
     }
@@ -479,7 +513,7 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
         return HttpResult(
             status = response.statusCode(),
             body = response.body().toString(StandardCharsets.UTF_8),
-            requestId = response.headers().firstValue("x-request-id").orElse(null).safeRequestId(),
+            requestId = response.headers().firstValue("x-request-id").orElse(null).safeSiwcRequestId(),
         )
     }
 
@@ -493,8 +527,9 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
     private fun apiError(payload: JsonObject, status: Int, requestId: String?): OpenAiSiwcException {
         val error = payload["error"]
         val nested = error as? JsonObject
-        val code = (nested?.string("code") ?: (error as? JsonPrimitive)?.contentOrNull ?: payload.string("code"))
-            .safeErrorCode() ?: "http_error"
+        val providerCode = (nested?.string("code") ?: (error as? JsonPrimitive)?.contentOrNull ?: payload.string("code"))
+            .safeSiwcErrorCode()
+        val code = providerCode ?: "http_error"
         return OpenAiSiwcException(
             code = code,
             message = when (code) {
@@ -505,11 +540,10 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
             retryable = status >= 500,
             status = status,
             requestId = requestId,
+            providerCode = providerCode,
+            providerParameter = (nested?.string("param") ?: payload.string("param")).safeSiwcErrorParameter(),
         )
     }
-
-    private fun String?.safeErrorCode(): String? = this?.takeIf { it.matches(SAFE_ERROR_CODE) }
-    private fun String?.safeRequestId(): String? = this?.takeIf { it.matches(SAFE_REQUEST_ID) }
 
     private fun parseEarliestRefresh(value: kotlinx.serialization.json.JsonElement): Long {
         val primitive = value as? JsonPrimitive
@@ -580,7 +614,5 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
             "invalid_grant", "invalid_refresh_token", "token_expired", "refresh_token_expired",
             "refresh_token_invalidated", "refresh_token_reused",
         )
-        val SAFE_ERROR_CODE = Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,119}")
-        val SAFE_REQUEST_ID = Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
     }
 }

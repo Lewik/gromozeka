@@ -46,6 +46,10 @@ internal class OpenAiSiwcException(
     val status: Int? = null,
     cause: Throwable? = null,
     val requestId: String? = null,
+    val providerCode: String? = null,
+    val providerParameter: String? = null,
+    val outcome: AiCallFailure.Outcome = AiCallFailure.Outcome.NOT_STARTED,
+    val attempts: Int = 0,
 ) : RuntimeException(message, cause)
 
 internal fun OpenAiSiwcException.toAiCallException(): AiCallException = AiCallException(
@@ -61,15 +65,42 @@ internal fun OpenAiSiwcException.toAiCallException(): AiCallException = AiCallEx
             status != null -> AiCallFailure.Kind.HTTP_ERROR
             else -> AiCallFailure.Kind.CONFIGURATION
         },
-        outcome = AiCallFailure.Outcome.NOT_STARTED,
-        attempts = 0,
+        outcome = outcome,
+        attempts = attempts,
         httpStatus = status,
+        providerErrorCode = providerCode,
+        providerErrorParameter = providerParameter,
+        providerRequestId = requestId,
     )
 )
 
+internal data class OpenAiSiwcResourceError(
+    val status: Int,
+    val code: String?,
+    val parameter: String?,
+    val requestId: String?,
+) {
+    init {
+        require(status in 100..599) { "Invalid SIWC resource status" }
+        require(code == null || code == code.safeSiwcErrorCode()) { "Invalid SIWC resource error code" }
+        require(parameter == null || parameter == parameter.safeSiwcErrorParameter()) { "Invalid SIWC resource error parameter" }
+        require(requestId == null || requestId == requestId.safeSiwcRequestId()) { "Invalid SIWC resource request id" }
+    }
+}
+
 internal fun interface OpenAiSiwcAccessTokenProvider {
     suspend fun validAccessToken(deadlineNanos: Long): String
+
+    fun resourceRejectedAccessToken(
+        credentialFingerprint: String,
+        error: OpenAiSiwcResourceError,
+        deadlineNanos: Long,
+    ) = Unit
 }
+
+internal fun String?.safeSiwcErrorCode(): String? = this?.takeIf { it.matches(SAFE_SIWC_ERROR_CODE) }
+internal fun String?.safeSiwcErrorParameter(): String? = this?.takeIf { it.matches(SAFE_SIWC_ERROR_PARAMETER) }
+internal fun String?.safeSiwcRequestId(): String? = this?.takeIf { it.matches(SAFE_SIWC_REQUEST_ID) }
 
 private val AUTHENTICATION_ERROR_CODES = setOf(
     "sign_in_required",
@@ -89,3 +120,7 @@ private val INVALID_RESPONSE_ERROR_CODES = setOf(
     "invalid_model_catalog",
     "response_too_large",
 )
+
+private val SAFE_SIWC_ERROR_CODE = Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
+private val SAFE_SIWC_ERROR_PARAMETER = Regex("[A-Za-z0-9][A-Za-z0-9._\\[\\]-]{0,255}")
+private val SAFE_SIWC_REQUEST_ID = Regex("[A-Za-z0-9][A-Za-z0-9._:-]{0,255}")

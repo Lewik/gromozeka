@@ -27,12 +27,24 @@ class AiHttpExecutionPolicyTest {
 
     @Test
     fun `typed failure serializes only allowlisted fields and can represent unknown attempt count`() {
-        val failure = AiCallFailure(AiCallFailure.Kind.WORKER_FAILURE, AiCallFailure.Outcome.UNKNOWN, null, workerRequestId = "request-123")
+        val failure = AiCallFailure(
+            AiCallFailure.Kind.AUTHENTICATION,
+            AiCallFailure.Outcome.REJECTED,
+            1,
+            httpStatus = 401,
+            workerRequestId = "request-123",
+            providerErrorCode = "subscription_sharing_invalid_user",
+            providerErrorParameter = "input[0].account",
+            providerRequestId = "req_provider-123",
+        )
         assertEquals(failure, Json.decodeFromString<AiCallFailure>(Json.encodeToString(failure)))
-        assertContains(AiCallException(failure).message.orEmpty(), "Attempts: unknown")
+        assertContains(AiCallException(failure).message.orEmpty(), "Provider request: req_provider-123")
         assertFailsWith<IllegalArgumentException> { failure.copy(workerRequestId = "private\nvalue") }
         assertFailsWith<IllegalArgumentException> { failure.copy(attempts = -1) }
         assertFailsWith<IllegalArgumentException> { failure.copy(httpStatus = 1000) }
         assertFailsWith<IllegalArgumentException> { failure.copy(retryAfterMillis = -1) }
+        assertFailsWith<IllegalArgumentException> { failure.copy(providerErrorCode = "private\nvalue") }
+        assertFailsWith<IllegalArgumentException> { failure.copy(providerErrorParameter = "private\nvalue") }
+        assertFailsWith<IllegalArgumentException> { failure.copy(providerRequestId = "private\nvalue") }
     }
 }

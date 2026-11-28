@@ -3,6 +3,7 @@ package com.gromozeka.infrastructure.ai.openai.siwc
 import com.gromozeka.domain.model.ai.AiConnectionModels
 import com.gromozeka.domain.model.ai.AiModelCandidate
 import com.gromozeka.infrastructure.ai.diagnostics.AiTrafficDumpHttpClient
+import com.gromozeka.infrastructure.ai.runtime.credentialFingerprint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -50,11 +51,16 @@ internal class OpenAiSiwcModelsClient @Autowired constructor(
         val response = http.sendSiwc(request, deadlineNanos, MAX_BODY_BYTES)
         val bytes = response.body()
         if (response.statusCode() !in 200..299) {
-            throw OpenAiSiwcException(
-                "model_catalog_failed",
-                "ChatGPT model listing failed.",
-                response.statusCode() >= 500,
-                response.statusCode(),
+            val error = openAiSiwcResourceError(
+                status = response.statusCode(),
+                body = bytes,
+                requestId = response.headers().firstValue("x-request-id").orElse(null),
+            )
+            accessTokens.resourceRejectedAccessToken(credentialFingerprint(token), error, deadlineNanos)
+            throw error.toException(
+                fallbackCode = "model_catalog_failed",
+                message = "ChatGPT model listing failed.",
+                retryable = response.statusCode() >= 500,
             )
         }
         val root = try {
