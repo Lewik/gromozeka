@@ -48,6 +48,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -665,6 +666,13 @@ class RemoteProtocolCodecTest {
         val auto = RemoteProtocolCodec.decodeClientText(RemoteProtocolCodec.encodeClientText(autoEnvelope))
             .payload as StartLiveInterpreterRequest
         assertEquals(emptyList(), auto.languages)
+    }
+
+    @Test
+    fun liveNativeTranslationTargetRequiresAnIso6391Code() {
+        assertFailsWith<IllegalArgumentException> {
+            StartLiveInterpreterRequest("regional-target", nativeTranslationLanguage = "pt-br")
+        }
     }
 
     @Test

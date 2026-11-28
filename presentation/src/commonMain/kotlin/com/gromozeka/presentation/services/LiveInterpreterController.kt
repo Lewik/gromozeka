@@ -53,6 +53,13 @@ private fun normalizeLiveLanguage(language: String): String = language.trim().lo
     }
 }
 
+internal fun normalizeSonioxLanguageCode(language: String): String =
+    normalizeLiveLanguage(language).substringBefore('-').also {
+        require(it.matches(Regex("[a-z]{2}"))) {
+            "Soniox requires a two-letter ISO 639-1 language code"
+        }
+    }
+
 enum class LiveInterpreterPhase {
     IDLE, STARTING, LISTENING, RECONNECTING, STOPPING, PAUSED, STOPPED;
 
@@ -110,7 +117,7 @@ class LiveInterpreterController(
     private val log = KLoggers.logger(this)
     internal val translations = LiveTranslationController(client, scope, initialTranslationLanguages)
     private val mutableState = MutableStateFlow(LiveInterpreterState(
-        nativeTranslationLanguage = initialNativeTranslationLanguage?.let(::normalizeLiveLanguage),
+        nativeTranslationLanguage = initialNativeTranslationLanguage?.let(::normalizeSonioxLanguageCode),
         translationSessionId = translations.state.value.sessionId,
     ))
     val state: StateFlow<LiveInterpreterState> = mutableState.asStateFlow()
@@ -136,13 +143,13 @@ class LiveInterpreterController(
             "Cannot change Soniox translation for an active or resumable Live session"
         }
         mutableState.update { current -> current.copy(
-            nativeTranslationLanguage = language?.let(::normalizeLiveLanguage),
+            nativeTranslationLanguage = language?.let(::normalizeSonioxLanguageCode),
             nativeTranslationLanguageExplicit = true,
         ) }
     }
 
     fun useInterfaceNativeTranslationLanguage(language: String) {
-        val normalized = normalizeLiveLanguage(language)
+        val normalized = normalizeSonioxLanguageCode(language)
         mutableState.update { current ->
             if (current.nativeTranslationLanguageExplicit) current
             else current.copy(nativeTranslationLanguage = normalized)
@@ -152,7 +159,7 @@ class LiveInterpreterController(
     fun start(selection: AiRuntimeSelection, nativeTranslationLanguage: String? = null) {
         check(!state.value.phase.isActive && task?.isActive != true) { "Live capture is already active" }
         val languages = parseLiveLanguageHints(state.value.languageHintsText)
-        val nativeLanguage = nativeTranslationLanguage?.let(::normalizeLiveLanguage)
+        val nativeLanguage = nativeTranslationLanguage?.let(::normalizeSonioxLanguageCode)
         val preserveHistory = state.value.phase == LiveInterpreterPhase.PAUSED
         if (preserveHistory) {
             check(state.value.selectedModelId == selection.modelConfigurationId) {

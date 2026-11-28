@@ -807,9 +807,8 @@ data class StartLiveInterpreterRequest(
 ) : ClientRequest {
     init {
         require(liveSessionIdPattern.matches(sessionId)) { "Invalid Live session id" }
-        require(nativeTranslationLanguage == null ||
-            nativeTranslationLanguage.matches(Regex("[a-z]{2,3}(-[a-z0-9]{2,8})*"))) {
-            "Invalid Live native translation language"
+        require(nativeTranslationLanguage == null || nativeTranslationLanguage.matches(Regex("[a-z]{2}"))) {
+            "Live native translation requires a two-letter ISO 639-1 language code"
         }
     }
 }

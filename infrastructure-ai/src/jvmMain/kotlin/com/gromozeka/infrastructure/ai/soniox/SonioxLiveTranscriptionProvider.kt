@@ -60,6 +60,18 @@ import javax.net.ssl.SSLContext
 
 private const val DEFAULT_SONIOX_REALTIME_URL = "https://stt-rt.soniox.com/transcribe-websocket"
 private const val SONIOX_IDLE_TIMEOUT_MILLIS = 20_000
+private val LIVE_LANGUAGE_TAG = Regex("[a-z]{2,3}(-[a-z0-9]{2,8})*")
+private val SONIOX_LANGUAGE_CODE = Regex("[a-z]{2}")
+
+internal fun normalizeSonioxLanguageCode(language: String): String {
+    val normalized = language.trim().lowercase()
+    require(normalized.matches(LIVE_LANGUAGE_TAG)) { "Invalid language tag: $language" }
+    return normalized.substringBefore('-').also { code ->
+        require(code.matches(SONIOX_LANGUAGE_CODE)) {
+            "Soniox requires a two-letter ISO 639-1 language code: $language"
+        }
+    }
+}
 
 @Component
 class SonioxLiveTranscriptionProvider(
@@ -86,8 +98,8 @@ class SonioxLiveTranscriptionProvider(
             baseUrl = connection.baseUrl ?: DEFAULT_SONIOX_REALTIME_URL,
             apiKey = SdkHttpSupport.token(connection, settingsProvider, "SONIOX_API_KEY"),
             model = runtime.modelConfiguration.providerModelId,
-            languages = languages,
-            nativeTranslationLanguage = nativeTranslationLanguage,
+            languages = languages.map(::normalizeSonioxLanguageCode).distinct(),
+            nativeTranslationLanguage = nativeTranslationLanguage?.let(::normalizeSonioxLanguageCode),
             httpSettings = connection.httpSettings,
         )
         val admitted = admission.openSession(runtime.modelConfiguration, "LIVE_TRANSCRIPTION")
@@ -119,12 +131,11 @@ internal class SonioxLiveTranscriptionConfiguration(
     init {
         require(model.isNotBlank()) { "Soniox model must not be blank" }
         require(languages.size <= 32 && languages.distinct().size == languages.size &&
-            languages.all { it.matches(Regex("[a-z]{2,3}(-[a-z0-9]{2,8})*")) }) {
-            "Invalid Soniox language hints"
+            languages.all { it.matches(SONIOX_LANGUAGE_CODE) }) {
+            "Soniox language hints must be distinct two-letter ISO 639-1 codes"
         }
-        require(nativeTranslationLanguage == null ||
-            nativeTranslationLanguage.matches(Regex("[a-z]{2,3}(-[a-z0-9]{2,8})*"))) {
-            "Invalid Soniox native translation language"
+        require(nativeTranslationLanguage == null || nativeTranslationLanguage.matches(SONIOX_LANGUAGE_CODE)) {
+            "Soniox native translation language must be a two-letter ISO 639-1 code"
         }
     }
 
@@ -377,6 +388,7 @@ internal class SonioxTranscriptAssembler(
         check(tokens.isNotEmpty())
         var current = active
         val first = tokens.first()
+        if (current != null) stabilizeInitialMetadata(current, first)
         if (current != null && (current.speakerId != null && first.speaker != null && current.speakerId != first.speaker ||
                 current.flushPending && first.text.firstOrNull()?.isWhitespace() == true)) {
             finalizeActive(events)
@@ -443,8 +455,7 @@ internal class SonioxTranscriptAssembler(
         }
         var current = active ?: newActive(token)
         if (current.stable.isEmpty()) {
-            current.speakerId = token.speaker ?: current.speakerId
-            current.startMillis = token.startMillis ?: current.startMillis
+            stabilizeInitialMetadata(current, token)
         } else if (current.speakerId != null && token.speaker != null && current.speakerId != token.speaker) {
             finalizeActive(events)
             current = newActive(token)
@@ -454,6 +465,12 @@ internal class SonioxTranscriptAssembler(
         }
         appendToActive(current, token)
         if (isSentenceBoundary(token.text)) finalizeActive(events)
+    }
+
+    private fun stabilizeInitialMetadata(current: Active, token: SonioxRealtimeToken) {
+        if (current.stable.isNotEmpty()) return
+        current.speakerId = token.speaker ?: current.speakerId
+        current.startMillis = token.startMillis ?: current.startMillis
     }
 
     private fun appendToActive(current: Active, token: SonioxRealtimeToken) {

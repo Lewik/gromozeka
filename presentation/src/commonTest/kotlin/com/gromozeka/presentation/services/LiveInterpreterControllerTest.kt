@@ -261,6 +261,21 @@ class LiveInterpreterControllerTest {
     }
 
     @Test
+    fun `Soniox native targets use the ISO 639-1 primary language`() = runTest {
+        val controller = LiveInterpreterController(
+            FakeClient(), FakeMicrophone(), backgroundScope,
+            initialNativeTranslationLanguage = "pt-BR",
+        )
+        assertEquals("pt", controller.state.value.nativeTranslationLanguage)
+        controller.useInterfaceNativeTranslationLanguage("zh-Hant")
+        assertEquals("zh", controller.state.value.nativeTranslationLanguage)
+        controller.setNativeTranslationLanguage("pt-PT")
+        controller.useInterfaceNativeTranslationLanguage("en-US")
+        assertEquals("pt", controller.state.value.nativeTranslationLanguage)
+        assertFailsWith<IllegalArgumentException> { controller.setNativeTranslationLanguage("eng-US") }
+    }
+
+    @Test
     fun `native Soniox translation is displayed and suppresses duplicate text translation`() = runTest {
         val client = FakeClient()
         val controller = LiveInterpreterController(

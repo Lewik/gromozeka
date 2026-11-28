@@ -53,6 +53,7 @@ import com.gromozeka.presentation.services.LiveNativeTranslation
 import com.gromozeka.presentation.services.LiveSourceBlock
 import com.gromozeka.presentation.services.LiveTranscriptEntry
 import com.gromozeka.presentation.services.LiveTranslationState
+import com.gromozeka.presentation.services.normalizeSonioxLanguageCode
 import com.gromozeka.presentation.services.parseLiveLanguageHints
 import com.gromozeka.presentation.services.translation.LocalizedText
 import com.gromozeka.presentation.services.translation.data.Translation
@@ -333,7 +334,9 @@ private fun LiveNativeTranslationMenu(
     val translation = LocalTranslation.current
     var open by remember { mutableStateOf(false) }
     var custom by remember { mutableStateOf("") }
-    val customCode = try { parseLiveLanguageHints(custom).singleOrNull() } catch (_: IllegalArgumentException) { null }
+    val customCode = try {
+        parseLiveLanguageHints(custom).singleOrNull()?.let(::normalizeSonioxLanguageCode)
+    } catch (_: IllegalArgumentException) { null }
     Box {
         OutlinedButton(onClick = { open = true }, enabled = enabled) {
             Text(translation.text("interpreter.nativeTranslation") + ": " +

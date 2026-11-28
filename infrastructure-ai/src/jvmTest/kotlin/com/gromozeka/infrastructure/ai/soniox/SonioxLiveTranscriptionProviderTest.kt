@@ -35,6 +35,31 @@ class SonioxLiveTranscriptionProviderTest {
     }
 
     @Test
+    fun `regional language tags map to Soniox ISO 639-1 codes before configuration`() {
+        assertEquals("pt", normalizeSonioxLanguageCode("pt-BR"))
+        assertEquals("zh", normalizeSonioxLanguageCode("zh-Hant"))
+        assertEquals("en", normalizeSonioxLanguageCode("EN"))
+        assertFailsWith<IllegalArgumentException> { normalizeSonioxLanguageCode("eng-US") }
+        assertFailsWith<IllegalArgumentException> {
+            SonioxLiveTranscriptionConfiguration(
+                baseUrl = "https://stt-rt.soniox.com",
+                apiKey = "synthetic",
+                model = "stt-rt-v6",
+                languages = listOf("pt-br"),
+            )
+        }
+        assertFailsWith<IllegalArgumentException> {
+            SonioxLiveTranscriptionConfiguration(
+                baseUrl = "https://stt-rt.soniox.com",
+                apiKey = "synthetic",
+                model = "stt-rt-v6",
+                languages = emptyList(),
+                nativeTranslationLanguage = "zh-hant",
+            )
+        }
+    }
+
+    @Test
     fun `provisional text is replaced by one immutable speaker final`() {
         val assembler = SonioxTranscriptAssembler(maximumSegmentMillis = 8_000)
         val first = assembler.accept(listOf(
@@ -89,6 +114,42 @@ class SonioxLiveTranscriptionProviderTest {
             token(".", true, 300, 400, "2"),
         ))
         assertEquals("2", events.filterIsInstance<LiveTranscriptionEvent.Transcript>().single { it.isFinal }.speakerId)
+    }
+
+    @Test
+    fun `native provisional speaker label is replaced before deciding to split`() {
+        val assembler = SonioxTranscriptAssembler(nativeTranslationLanguage = "en")
+        assembler.accept(listOf(
+            token("draft", false, 0, 300, "1", language = "en", translationStatus = "original"),
+        ))
+
+        val events = assembler.accept(listOf(
+            token("final", true, 0, 300, "2", language = "en", translationStatus = "original"),
+            token(".", true, 300, 400, "2", language = "en", translationStatus = "original"),
+        ))
+        val final = events.filterIsInstance<LiveTranscriptionEvent.Transcript>().single { it.isFinal }
+        assertEquals("soniox-0", final.itemId)
+        assertEquals("final.", final.text)
+        assertEquals("2", final.speakerId)
+        assertTrue(events.none { it is LiveTranscriptionEvent.Committed })
+        assertTrue(assembler.finish().isEmpty())
+    }
+
+    @Test
+    fun `native provisional start time is replaced by the first final token`() {
+        val assembler = SonioxTranscriptAssembler(nativeTranslationLanguage = "en")
+        assembler.accept(listOf(
+            token("draft", false, 0, 300, "1", language = "en", translationStatus = "original"),
+        ))
+
+        val events = assembler.accept(listOf(
+            token("final", true, 500, 800, "1", language = "en", translationStatus = "original"),
+            token(".", true, 800, 900, "1", language = "en", translationStatus = "original"),
+        ))
+        val final = events.filterIsInstance<LiveTranscriptionEvent.Transcript>().single { it.isFinal }
+        assertEquals(500L, final.startMillis)
+        assertEquals(900L, final.endMillis)
+        assertTrue(assembler.finish().isEmpty())
     }
 
     @Test
