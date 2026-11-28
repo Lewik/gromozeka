@@ -1,9 +1,12 @@
 package com.gromozeka.infrastructure.ai.config
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.gromozeka.domain.tool.filesystem.ExecuteCommandRequest
-import com.gromozeka.domain.tool.filesystem.GetCommandTaskRequest
+import com.gromozeka.domain.tool.AiToolResult
 import com.gromozeka.domain.tool.ToolExecutionContext
+import com.gromozeka.domain.tool.filesystem.ExecuteCommandRequest
+import com.gromozeka.domain.tool.filesystem.ExecutePythonRequest
+import com.gromozeka.domain.tool.filesystem.GetCommandTaskRequest
+import com.gromozeka.domain.tool.filesystem.GrzExecuteCommandTool
 import com.gromozeka.domain.tool.skills.ImportAgentSkillFromDirectoryRequest
 import com.gromozeka.domain.tool.skills.ImportAgentSkillFromDirectoryTool
 import com.gromozeka.domain.tool.filesystem.MAX_COMMAND_INITIAL_YIELD_MILLIS
@@ -18,14 +21,30 @@ class JsonSchemaGeneratorTest {
     private val generator = JsonSchemaGenerator(objectMapper)
 
     @Test
-    fun `command description length recommendation is prompt guidance not a fifty character limit`() {
-        val schema = objectMapper.readTree(generator.schemaFor(ExecuteCommandRequest::class))
-        val property = schema.path("properties").path("description")
-        assertTrue(property.path("description").textValue().contains("50 characters"))
-        assertTrue(property.path("description").textValue().contains("1000 characters"))
-        assertTrue(!property.has("maxLength"))
-        assertTrue(schema.path("required").none { it.textValue() == "description" })
-        for (description in listOf(null, "", "Run tests", "x".repeat(75), "x".repeat(1000), "😀".repeat(1000))) {
+    fun `command descriptions request ongoing user-facing status without a fifty character limit`() {
+        val commandSchema = objectMapper.readTree(generator.schemaFor(ExecuteCommandRequest::class))
+        val pythonSchema = objectMapper.readTree(generator.schemaFor(ExecutePythonRequest::class))
+        for (schema in listOf(commandSchema, pythonSchema)) {
+            val property = schema.path("properties").path("description")
+            val guidance = property.path("description").textValue()
+            assertTrue(guidance.contains("what you are doing now"))
+            assertTrue(guidance.contains("50 characters"))
+            assertTrue(guidance.contains("1000 characters"))
+            assertTrue(!property.has("maxLength"))
+            assertTrue(schema.path("required").none { it.textValue() == "description" })
+        }
+        val tool = object : GrzExecuteCommandTool {
+            override fun execute(
+                request: ExecuteCommandRequest,
+                context: ToolExecutionContext?,
+            ): List<AiToolResult> = error("Not invoked")
+        }
+        assertTrue(tool.description.contains("what you are doing now"))
+        assertTrue(tool.description.contains("\"Running unit tests\""))
+        assertTrue(tool.description.contains("\"Finding usages\""))
+        assertTrue(!tool.description.contains("\"Run unit tests\""))
+
+        for (description in listOf(null, "", "Running tests", "x".repeat(75), "x".repeat(1000), "😀".repeat(1000))) {
             val request = ExecuteCommandRequest("echo original", description = description)
             assertEquals(request, objectMapper.readValue(objectMapper.writeValueAsString(request), ExecuteCommandRequest::class.java))
         }

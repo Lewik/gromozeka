@@ -37,7 +37,7 @@ data class ExecutePythonRequest(
     val survive_worker_restart: Boolean = false,
     @property:ToolParameter(description = "Environment variable name to exact secret://name reference. Read values from os.environ; never print them or pass them in process arguments.")
     val secret_env: Map<String, String> = emptyMap(),
-    @property:ToolParameter(description = "Short action label in the user's language, preferably at most 50 characters. Describe the purpose, not a claimed result. No secrets.")
+    @property:ToolParameter(description = "Optional short user-facing phrase in the user's language saying what you are doing now. Aim for at most 50 characters including spaces (guidance only; longer text is accepted up to 1000 characters). Do not claim completion or results, and do not include secrets. This text is never executed.")
     val description: String? = null,
 ) {
     init {
