@@ -47,6 +47,7 @@ class OpenAiSiwcAuthServiceTest {
     private var tokenFailure: TokenFailure? = null
     private var tokenBodyGate: CountDownLatch? = null
     private var tokenScopes = "openid profile email offline_access resource.invoke chatgpt.tokens.use.direct"
+    private var earliestRefreshAtSeconds: Long? = null
     private var now = 1_800_000_000_000L
     private val server: HttpServer
     private val issuer: String
@@ -227,9 +228,49 @@ class OpenAiSiwcAuthServiceTest {
             assertEquals("access-2", browser.validAccessToken(Long.MAX_VALUE))
             assertEquals(OpenAiSiwcStoredState.Status.CONNECTED, store.read()?.status)
             assertEquals("refresh-2", store.read()?.credentials?.refreshToken)
+            assertEquals(null, store.read()?.accessTokenRejection)
         } finally {
             browser.shutdown()
         }
+    }
+
+    @Test
+    fun `rejected access token retains diagnostics until scheduled refresh after restart`() = runBlocking {
+        earliestRefreshAtSeconds = now / 1000 + 60
+        val store = OpenAiSiwcCredentialStore(TestSettings(home))
+        val initial = service(store)
+        val authorization = initial.prepareAuthorization("http://127.0.0.1:14555/auth/callback")
+        nonce = parseQuery(URI.create(authorization.url).rawQuery).getValue("nonce")
+        initial.completeAuthorization(authorization, "one-time-code", "issued_client")
+        val rejection = OpenAiSiwcResourceError(
+            status = 200,
+            code = "subscription_sharing_invalid_user",
+            parameter = "account",
+            requestId = "req_rejected-1",
+        )
+
+        initial.resourceRejectedAccessToken(credentialFingerprint("access-1"), rejection, Long.MAX_VALUE)
+        assertEquals(rejection, store.read()?.accessTokenRejection)
+
+        val restartedStore = OpenAiSiwcCredentialStore(TestSettings(home))
+        val waiting = assertFailsWith<OpenAiSiwcException> {
+            service(restartedStore).validAccessToken(Long.MAX_VALUE)
+        }
+        assertEquals("access_token_rejected", waiting.code)
+        assertEquals(200, waiting.status)
+        assertEquals("subscription_sharing_invalid_user", waiting.providerCode)
+        assertEquals("account", waiting.providerParameter)
+        assertEquals("req_rejected-1", waiting.requestId)
+        val failure = waiting.toAiCallException().failure
+        assertEquals(AiCallFailure.Kind.AUTHENTICATION, failure.kind)
+        assertEquals(AiCallFailure.Outcome.REJECTED, failure.outcome)
+        assertEquals(1, tokenCalls.get(), "Refresh must wait for earliest_refresh_at")
+
+        now += 60_000L
+        assertEquals("access-2", service(restartedStore).validAccessToken(Long.MAX_VALUE))
+        assertEquals(2, tokenCalls.get())
+        assertEquals(null, restartedStore.read()?.accessTokenRejection)
+        assertEquals("refresh-2", restartedStore.read()?.credentials?.refreshToken)
     }
 
     @Test
@@ -384,7 +425,7 @@ class OpenAiSiwcAuthServiceTest {
         exchange.json(200, """{
             "token_type":"Bearer","access_token":"access-$call","refresh_token":"refresh-$call",
             "expires_in":3600,"scope":"$tokenScopes",
-            "id_token":"$idToken"
+            "id_token":"$idToken"${earliestRefreshAtSeconds?.let { ",\"earliest_refresh_at\":$it" }.orEmpty()}
         }""", tokenBodyGate)
     }
 

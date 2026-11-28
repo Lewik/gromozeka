@@ -14,6 +14,7 @@ internal data class OpenAiSiwcStoredState(
     val identity: Identity? = null,
     val credentials: Credentials? = null,
     val pendingRefresh: PendingRefresh? = null,
+    val accessTokenRejection: OpenAiSiwcResourceError? = null,
     val savedAt: String? = null,
 ) {
     @Serializable
@@ -74,6 +75,7 @@ internal fun OpenAiSiwcException.toAiCallException(): AiCallException = AiCallEx
     )
 )
 
+@Serializable
 internal data class OpenAiSiwcResourceError(
     val status: Int,
     val code: String?,
@@ -103,6 +105,7 @@ internal fun String?.safeSiwcErrorParameter(): String? = this?.takeIf { it.match
 internal fun String?.safeSiwcRequestId(): String? = this?.takeIf { it.matches(SAFE_SIWC_REQUEST_ID) }
 
 private val AUTHENTICATION_ERROR_CODES = setOf(
+    "access_token_rejected",
     "sign_in_required",
     "invalid_grant",
     "invalid_refresh_token",

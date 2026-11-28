@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.ai.openai.siwc
 
+import com.gromozeka.domain.model.ai.AiCallFailure
 import com.gromozeka.infrastructure.ai.diagnostics.AiTrafficDumpHttpClient
 import com.gromozeka.infrastructure.ai.runtime.credentialFingerprint
 import klog.KLoggers
@@ -146,6 +147,7 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
                     identity = null,
                     credentials = null,
                     pendingRefresh = null,
+                    accessTokenRejection = null,
                     savedAt = Instant.ofEpochMilli(nowMillis()).toString(),
                 ) to Unit
             }
@@ -166,6 +168,7 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
                 identity = identity.identity,
                 credentials = token.credentials,
                 pendingRefresh = null,
+                accessTokenRejection = null,
                 savedAt = Instant.ofEpochMilli(nowMillis()).toString(),
             )
             connected to connected
@@ -188,9 +191,12 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
                 val credentials = current.credentials
                     ?: throw OpenAiSiwcException("sign_in_required", "The ChatGPT connection has no usable credentials.")
                 val now = nowMillis()
-                if (credentials.expiresAtMillis > now + REFRESH_MARGIN_MILLIS) return@lockedState credentials.accessToken
+                if (current.accessTokenRejection == null && credentials.expiresAtMillis > now + REFRESH_MARGIN_MILLIS) {
+                    return@lockedState credentials.accessToken
+                }
                 val earliest = credentials.earliestRefreshAtMillis
                 if (earliest != null && earliest > now) {
+                    current.accessTokenRejection?.let { throw rejectedAccessToken(it) }
                     if (credentials.expiresAtMillis <= now) {
                         throw OpenAiSiwcException("refresh_not_ready", "The ChatGPT connection cannot refresh yet.", retryable = true)
                     }
@@ -211,6 +217,7 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
                         scopes = emptyList(),
                         credentials = null,
                         pendingRefresh = null,
+                        accessTokenRejection = null,
                         savedAt = Instant.ofEpochMilli(nowMillis()).toString(),
                     ))
                 }
@@ -239,6 +246,7 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
                     credentials = credentials.copy(
                         expiresAtMillis = minOf(credentials.expiresAtMillis, rejectedAt),
                     ),
+                    accessTokenRejection = error,
                     savedAt = Instant.ofEpochMilli(rejectedAt).toString(),
                 ))
             }
@@ -268,6 +276,7 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
         val idToken = token.idToken ?: return current.copy(
             scopes = token.scopes,
             credentials = token.credentials,
+            accessTokenRejection = null,
             savedAt = Instant.ofEpochMilli(nowMillis()).toString(),
         )
         val pending = OpenAiSiwcStoredState.PendingRefresh(
@@ -306,9 +315,22 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
             identity = identity.identity,
             credentials = pending.credentials,
             pendingRefresh = null,
+            accessTokenRejection = null,
             savedAt = Instant.ofEpochMilli(nowMillis()).toString(),
         )
     }
+
+    private fun rejectedAccessToken(error: OpenAiSiwcResourceError) = OpenAiSiwcException(
+        code = "access_token_rejected",
+        message = "ChatGPT rejected the current access token and it cannot refresh yet.",
+        retryable = true,
+        status = error.status,
+        requestId = error.requestId,
+        providerCode = error.code,
+        providerParameter = error.parameter,
+        outcome = AiCallFailure.Outcome.REJECTED,
+        attempts = 1,
+    )
 
     private fun tokenRequest(
         parameters: Map<String, String>,
