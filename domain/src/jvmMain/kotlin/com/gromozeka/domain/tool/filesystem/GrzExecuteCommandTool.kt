@@ -45,7 +45,7 @@ data class ExecuteCommandRequest(
     )
     val secret_env: Map<String, String> = emptyMap(),
     @property:ToolParameter(
-        description = "Optional short user-facing purpose in the user's language. Aim for at most 50 characters including spaces (guidance only; longer text is accepted up to 1000 characters). Describe the action, not a claimed result. Do not include secrets. This label is never executed.",
+        description = "Optional short user-facing phrase in the user's language saying what you are doing now. Aim for at most 50 characters including spaces (guidance only; longer text is accepted up to 1000 characters). Do not claim completion or results, and do not include secrets. This text is never executed.",
     )
     val description: String? = null,
 ) {
@@ -184,7 +184,7 @@ interface GrzExecuteCommandTool : Tool<ExecuteCommandRequest, List<AiToolResult>
     override val description: String
         get() = """
             Execute a shell command as a managed task. Short commands return a terminal result; long commands return status WORKING and task_id after yield_time_ms.
-            Give description a short action label such as "Run unit tests" or "Find usages", preferably at most 50 characters. It is optional display metadata; status and results come from execution.
+            Give description a short phrase saying what you are doing now, such as "Running unit tests" or "Finding usages", preferably at most 50 characters. It is optional display metadata; status and results come from execution.
             The target Worker uses its native shell: /bin/sh on macOS/Linux and cmd.exe on Windows. Match command syntax to the target WorkspaceMount and Worker.
             yield_time_ms is only the initial wait and may be from 0 to $MAX_COMMAND_INITIAL_YIELD_MILLIS; it is not the command timeout.
             Commands stop with the Worker by default. Set survive_worker_restart=true only when uninterrupted execution across a Worker restart is required.

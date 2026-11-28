@@ -1725,12 +1725,14 @@ them together. Stopping processes does not drain durable queued work. Protocol 3
 Workers are rejected during the handshake. Migration V101 also fails closed if an
 executable legacy history mutation remains despite this precondition.
 
-Managed shell commands accept an optional `description`: a short user-facing
-purpose in the user's language, preferably **at most 50 characters including
-spaces**. This is prompt guidance, not an acceptance limit: longer labels remain
-valid and are ellipsized by the UI. A separate 1,000-character payload safety bound
-is enforced before process launch. Labels describe intent ("Run tests"), never
-claim results ("Tests passed"), and must not contain secrets.
+Managed command and Python executions accept an optional `description`: a short
+user-facing phrase in the user's language saying what the agent is doing now,
+preferably **at most 50 characters including spaces**. This is prompt guidance, not
+an acceptance limit: longer labels remain valid and are ellipsized by the UI. A
+separate 1,000-character payload safety bound is enforced before process launch.
+Labels describe ongoing work ("Running tests"), never an instruction or future
+intent ("Run tests") or a claimed result ("Tests passed"), and must not contain
+secrets.
 
 The exact command stays separate and unchanged. Description is persisted with the
 command task, included in get/list/completion metadata, and cannot change during
