@@ -162,12 +162,12 @@ internal class CommandJournalToolContributor(
         }
         val before = input["before"]?.let {
             val cursor = input.requiredObject("before")
-            requireKeys(cursor, setOf("created_at", "entry_id"))
+            requireKeys(cursor, setOf("createdAt", "entryId"))
             CommandJournal.Cursor(
-                createdAt = runCatching { Instant.parse(cursor.requiredString("created_at")) }.getOrElse {
-                    throw ServerToolException("invalid_argument", "'before.created_at' must be an ISO-8601 timestamp")
+                createdAt = runCatching { Instant.parse(cursor.requiredString("createdAt")) }.getOrElse {
+                    throw ServerToolException("invalid_argument", "'before.createdAt' must be an ISO-8601 timestamp")
                 },
-                entryId = CommandJournal.Entry.Id(cursor.requiredString("entry_id")),
+                entryId = CommandJournal.Entry.Id(cursor.requiredString("entryId")),
             )
         }
         val page = reader.search(
@@ -363,7 +363,13 @@ internal class CommandJournalToolContributor(
                 "text" to ServerToolSchemas.string("Optional case-insensitive literal substring in tool name, content or status."),
                 "from" to ServerToolSchemas.string("Optional inclusive entry creation time."),
                 "to" to ServerToolSchemas.string("Optional inclusive entry creation time."),
-                "before" to ServerToolSchemas.objectValue("Cursor object returned by a previous page: created_at and entry_id."),
+                "before" to ServerToolSchemas.objectSchema(
+                    properties = mapOf(
+                        "createdAt" to ServerToolSchemas.string("Cursor creation time returned by the previous page."),
+                        "entryId" to ServerToolSchemas.string("Cursor entry id returned by the previous page."),
+                    ),
+                    required = listOf("createdAt", "entryId"),
+                ),
                 "limit" to ServerToolSchemas.integer("Maximum entries in this page.", 1, 50),
             ),
         )

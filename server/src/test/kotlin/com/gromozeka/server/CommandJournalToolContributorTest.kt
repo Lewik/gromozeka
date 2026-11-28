@@ -125,10 +125,34 @@ class CommandJournalToolContributorTest {
         assertEquals("pod-a Running", journal.content(entry.id).single { it.kind == CommandJournal.Content.Kind.REPORTED_OUTPUT }.text)
         assertEquals(CommandJournal.Event.Kind.REPORTED, journal.events(entry.id).single().kind)
 
-        val search = contributor.callbacks.single { it.definition.name == "grz_command_journal_search" }
-            .callResult("{}", context)
-        assertFalse(search.isError)
-        assertEquals(1, search.structuredContent?.get("result")?.jsonObject?.get("entries")?.let { it as kotlinx.serialization.json.JsonArray }?.size)
+        val secondContext = context.withValue(TOOL_CONTEXT_TOOL_CALL_ID, "report-call-2")
+        val secondReport = report.callResult(
+            buildJsonObject { put("command", "echo second") }.toString(),
+            secondContext,
+        )
+        assertFalse(secondReport.isError)
+
+        val searchTool = contributor.callbacks.single { it.definition.name == "grz_command_journal_search" }
+        val firstSearch = searchTool.callResult(buildJsonObject { put("limit", 1) }.toString(), context)
+        assertFalse(firstSearch.isError)
+        val firstPage = assertNotNull(firstSearch.structuredContent?.get("result")?.jsonObject)
+        val firstEntries = firstPage.getValue("entries") as kotlinx.serialization.json.JsonArray
+        assertEquals(1, firstEntries.size)
+        val cursor = assertNotNull(firstPage["nextCursor"]?.jsonObject)
+        assertEquals(setOf("createdAt", "entryId"), cursor.keys)
+
+        val secondSearch = searchTool.callResult(
+            buildJsonObject {
+                put("limit", 1)
+                put("before", cursor)
+            }.toString(),
+            context,
+        )
+        assertFalse(secondSearch.isError)
+        val secondEntries = assertNotNull(secondSearch.structuredContent?.get("result")?.jsonObject)
+            .getValue("entries") as kotlinx.serialization.json.JsonArray
+        assertEquals(1, secondEntries.size)
+        assertFalse(firstEntries.single() == secondEntries.single())
 
         val get = contributor.callbacks.single { it.definition.name == "grz_command_journal_get" }
             .callResult(buildJsonObject { put("entry_id", entry.id.value) }.toString(), context)
@@ -142,9 +166,10 @@ class CommandJournalToolContributorTest {
         val stats = contributor.callbacks.single { it.definition.name == "grz_command_journal_stats" }
             .callResult("{}", context)
         assertFalse(stats.isError)
-        assertEquals(1L, stats.structuredContent?.get("result")?.jsonObject?.get("entryCount")?.jsonPrimitive?.content?.toLong())
+        assertEquals(2L, stats.structuredContent?.get("result")?.jsonObject?.get("entryCount")?.jsonPrimitive?.content?.toLong())
 
-        Mockito.verify(authorization).requireConversation(user, Conversation.Id("conversation"), ProjectPermission.WRITE)
+        Mockito.verify(authorization, Mockito.times(2))
+            .requireConversation(user, Conversation.Id("conversation"), ProjectPermission.WRITE)
         Mockito.verify(projectAccess, Mockito.atLeast(4)).requirePermission(user.id, Project.Id("project"), ProjectPermission.READ)
     }
 
@@ -210,23 +235,35 @@ class CommandJournalToolContributorTest {
         override suspend fun content(entryId: CommandJournal.Entry.Id) = contentValues.values.filter { it.entryId == entryId }
 
         override suspend fun search(query: CommandJournal.SearchQuery): CommandJournal.SearchPage {
-            val summaries = entries.values
+            val before = query.before
+            val matching = entries.values
                 .filter { it.projectId == query.projectId }
-                .take(query.limit)
-                .map { entry ->
-                    val calls = calls(entry.id)
-                    val events = events(entry.id)
-                    CommandJournal.Summary(
-                        entry = entry,
-                        rootCall = calls.single { it.parentId == null },
-                        latestEvent = events.lastOrNull(),
-                        callCount = calls.size.toLong(),
-                        eventCount = events.size.toLong(),
-                        linkedContentBytes = content(entry.id).sumOf { it.sizeBytes.toLong() },
-                        excerpt = content(entry.id).firstOrNull { it.kind == CommandJournal.Content.Kind.COMMAND }?.text,
-                    )
+                .sortedWith(compareByDescending<CommandJournal.Entry> { it.createdAt }.thenByDescending { it.id.value })
+                .filter { entry ->
+                    before == null || entry.createdAt < before.createdAt ||
+                        (entry.createdAt == before.createdAt && entry.id.value < before.entryId.value)
                 }
-            return CommandJournal.SearchPage(summaries)
+                .take(query.limit + 1)
+            val pageEntries = matching.take(query.limit)
+            val summaries = pageEntries.map { entry ->
+                val calls = calls(entry.id)
+                val events = events(entry.id)
+                CommandJournal.Summary(
+                    entry = entry,
+                    rootCall = calls.single { it.parentId == null },
+                    latestEvent = events.lastOrNull(),
+                    callCount = calls.size.toLong(),
+                    eventCount = events.size.toLong(),
+                    linkedContentBytes = content(entry.id).sumOf { it.sizeBytes.toLong() },
+                    excerpt = content(entry.id).firstOrNull { it.kind == CommandJournal.Content.Kind.COMMAND }?.text,
+                )
+            }
+            return CommandJournal.SearchPage(
+                entries = summaries,
+                nextCursor = if (matching.size > query.limit) pageEntries.lastOrNull()?.let {
+                    CommandJournal.Cursor(it.createdAt, it.id)
+                } else null,
+            )
         }
 
         override suspend fun get(
