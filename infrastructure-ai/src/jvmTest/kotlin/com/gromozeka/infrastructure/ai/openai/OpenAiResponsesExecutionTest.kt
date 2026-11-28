@@ -310,6 +310,29 @@ class OpenAiResponsesExecutionTest {
     }
 
     @Test
+    fun `completed output items survive an empty terminal response output`() = runBlocking {
+        val item = Json.parseToJsonElement(TEXT_OUTPUT).jsonArray.single()
+        val itemDone = "event: response.output_item.done\ndata: " + buildJsonObject {
+            put("type", "response.output_item.done")
+            put("sequence_number", 1)
+            put("output_index", 0)
+            put("item", item)
+        } + "\n\n"
+        val completed = terminal(response("done", output = "[]"))
+        ResponsesServer { exchange, _, _ ->
+            reply(exchange, itemDone + completed, isEventStream = true)
+        }.use { server ->
+            val result = runtime(connection(server.origin, stream = true), OpenAiResponsesContinuations())
+                .call(request(listOf(user("one"))))
+            val text = result.messages.flatMap { it.content }
+                .filterIsInstance<ContentItem.AssistantMessage>()
+                .single()
+                .structured.fullText
+            assertEquals("OK", text)
+        }
+    }
+
+    @Test
     fun `missing-parent recovery shares attempt cap and one credential snapshot`() = runBlocking {
         for (limit in listOf(1, 2, 3)) ResponsesServer { exchange, _, index ->
             if (index == 1) reply(exchange, MISSING_PARENT, status = 400) else reply(exchange, response("parent-$index"))

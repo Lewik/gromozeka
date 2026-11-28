@@ -73,6 +73,8 @@ internal class OpenAiSiwcBrowserAuthService(
         cancelled?.callbackExecutor?.shutdownNow()
     }
 
+    internal fun isLoginPending(): Boolean = pending != null
+
     private fun handle(login: Pending, exchange: HttpExchange) {
         try {
             if (pending !== login || exchange.requestMethod != "GET" ||

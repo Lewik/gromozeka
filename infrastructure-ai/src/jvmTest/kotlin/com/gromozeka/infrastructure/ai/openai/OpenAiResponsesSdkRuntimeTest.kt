@@ -263,6 +263,21 @@ class OpenAiResponsesSdkRuntimeTest {
         assertEquals("test_tool", namespace.tools().single().asFunction().name())
         assertTrue(params.tools().orElseThrow().none { it.isFunction() })
 
+        val required = siwc.toCreateParams(
+            "gpt-test",
+            webSearchEnabled = true,
+            allowed.copy(options = allowed.options.copy(toolChoice = AiToolChoice.RequiredTool("test_tool"))),
+        ).toolChoice().orElseThrow()
+        assertTrue(required.isAllowed())
+        assertEquals(com.openai.models.responses.ToolChoiceAllowed.Mode.REQUIRED, required.asAllowed().mode())
+        assertEquals(
+            mapOf(
+                "type" to com.openai.core.JsonValue.from("function"),
+                "name" to com.openai.core.JsonValue.from("test_tool"),
+            ),
+            required.asAllowed().tools().single()._additionalProperties(),
+        )
+
         val apiOnlyPolicy = allowed.copy(options = allowed.options.copy(
             toolAccess = com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly(setOf(
                 com.gromozeka.domain.tool.ProviderNativeTool.OPENAI_API_WEB_SEARCH.catalogEntry().selector(true),
@@ -299,6 +314,15 @@ class OpenAiResponsesSdkRuntimeTest {
         assertEquals("functions", replay[0].asFunctionCall().namespace().orElseThrow())
         assertEquals("functions", replay[1].asFunctionCallOutput().namespace().orElseThrow())
         assertEquals("test_tool", replay[1].asFunctionCallOutput().name().orElseThrow())
+
+        val flattenedCall = com.openai.core.jsonMapper().readValue("""{
+            "id":"resp-tool","model":"gpt-test","status":"completed","output":[
+                {"type":"function_call","id":"fc-1","call_id":"call-1","name":"test_tool","arguments":"{}","status":"completed"}
+            ]
+        }""", com.openai.models.responses.Response::class.java)
+        val mappedCall = siwc.toRuntimeResponse(flattenedCall, AiModelConfiguration.AssistantResponseFormat.TEXT)
+        assertEquals(AiStepOutcome.TOOL_CALLS, mappedCall.outcome)
+        assertEquals("test_tool", mappedCall.toolCalls.single().call.name)
     }
 
     @Test

@@ -60,6 +60,7 @@ class OpenAiSiwcRealTest {
                 println("Complete ChatGPT sign-in using the URL in $authorizationFile")
                 withTimeout(10.minutes) {
                     while (auth.session()?.status != OpenAiSiwcStoredState.Status.CONNECTED) delay(250)
+                    while (browser.isLoginPending()) delay(25)
                 }
             }
         } finally {

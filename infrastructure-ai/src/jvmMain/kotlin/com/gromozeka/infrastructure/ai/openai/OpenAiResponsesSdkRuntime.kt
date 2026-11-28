@@ -59,6 +59,7 @@ import com.openai.models.responses.ResponseOutputText
 import com.openai.models.responses.ResponseReasoningItem
 import com.openai.models.responses.ResponseTextConfig
 import com.openai.models.responses.ResponseUsage
+import com.openai.models.responses.ToolChoiceAllowed
 import com.openai.models.responses.ToolChoiceFunction
 import com.openai.models.responses.ToolChoiceOptions
 import com.openai.models.responses.WebSearchTool
@@ -720,9 +721,21 @@ internal class OpenAiResponsesMessageMapper(
                 builder.toolChoice(ToolChoiceOptions.REQUIRED)
             }
 
-            is AiToolChoice.RequiredTool -> builder.toolChoice(
-                ToolChoiceFunction.builder().name(toolChoice.name).build()
-            )
+            is AiToolChoice.RequiredTool -> if (functionNamespace == null) {
+                builder.toolChoice(ToolChoiceFunction.builder().name(toolChoice.name).build())
+            } else {
+                builder.toolChoice(
+                    ToolChoiceAllowed.builder()
+                        .mode(ToolChoiceAllowed.Mode.REQUIRED)
+                        .addTool(
+                            ToolChoiceAllowed.Tool.builder()
+                                .putAdditionalProperty("type", JsonValue.from("function"))
+                                .putAdditionalProperty("name", JsonValue.from(toolChoice.name))
+                                .build()
+                        )
+                        .build()
+                )
+            }
         }
     }
 
@@ -817,8 +830,10 @@ internal class OpenAiResponsesMessageMapper(
     }
 
     private fun ResponseFunctionToolCall.toAssistantMessage(): AiAssistantMessage {
-        check(namespace().getOrNull() == functionNamespace) {
-            "OpenAI returned an unexpected function namespace: ${namespace().getOrNull()}"
+        val actualNamespace = namespace().getOrNull()
+        // SIWC currently omits the namespace on calls from the request's single namespace.
+        check(actualNamespace == functionNamespace || actualNamespace == null && functionNamespace != null) {
+            "OpenAI returned an unexpected function namespace: $actualNamespace"
         }
         val input = json.parseToJsonElement(arguments())
         require(input is JsonObject) { "OpenAI function arguments must be a JSON object" }
