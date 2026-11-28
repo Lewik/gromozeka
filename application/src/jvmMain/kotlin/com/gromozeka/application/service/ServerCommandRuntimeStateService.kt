@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
+import com.gromozeka.domain.model.User
 import com.gromozeka.domain.service.CommandJournal
 import com.gromozeka.domain.service.CommandMonitor
 import com.gromozeka.domain.service.CommandMonitorEvent
@@ -31,6 +32,7 @@ class ServerCommandRuntimeStateService(
     private val commandTaskLifecycleEventPublisher: CommandTaskLifecycleEventPublisher,
     private val commandMonitorLifecycleEventPublisher: CommandMonitorLifecycleEventPublisher,
     private val commandJournal: CommandJournal? = null,
+    private val commandJournalWritePolicy: CommandJournalWritePolicy? = null,
 ) : CommandRuntimeStateService {
     override suspend fun upsertCommandTask(task: CommandTask): CommandTaskUpsertResult {
         val result = runtimeCoordinator.upsertCommandTask(task)
@@ -57,10 +59,38 @@ class ServerCommandRuntimeStateService(
         val journal = commandJournal ?: return
         val sourceCallId = task.launchReference?.toolCallId?.let(ContentItem.ToolCall::Id)
             ?: return // An older or non-tool command can legitimately predate the optional journal.
+        var actorUserId: User.Id? = null
+        val write = suspend {
+            writeCommandJournalObservation(journal, task, sourceCallId) { actorUserId = it.actorUserId }
+        }
+        if (commandJournalWritePolicy == null) {
+            write()
+        } else {
+            commandJournalWritePolicy.write(
+                operation = "record command lifecycle",
+                context = {
+                    CommandJournalWritePolicy.Context(
+                        actorUserId = actorUserId,
+                        conversationId = task.conversationId,
+                        correlation = "command-task:${task.id.value}:${task.status.name}",
+                    )
+                },
+                block = write,
+            )
+        }
+    }
+
+    private suspend fun writeCommandJournalObservation(
+        journal: CommandJournal,
+        task: CommandTask,
+        sourceCallId: ContentItem.ToolCall.Id,
+        observeEntry: (CommandJournal.Entry) -> Unit,
+    ) {
         val call = journal.findCallBySource(task.conversationId, sourceCallId) ?: return
         val entry = requireNotNull(journal.findEntry(call.entryId)) {
             "Command Journal call ${call.id.value} lost its entry ${call.entryId.value}"
         }
+        observeEntry(entry)
         val eventKind = when (task.status) {
             CommandTask.Status.WORKING -> CommandJournal.Event.Kind.STARTED
             CommandTask.Status.COMPLETED -> CommandJournal.Event.Kind.COMPLETED

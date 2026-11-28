@@ -1,11 +1,14 @@
 package com.gromozeka.server
 
+import com.gromozeka.application.service.CommandJournalWritePolicy
 import com.gromozeka.application.service.SlotApplicationService
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.UserNotification
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.service.CommandJournal
 import com.gromozeka.domain.service.CommandTask
+import com.gromozeka.domain.service.UserNotificationPublisher
 import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeTaskTarget
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
@@ -17,6 +20,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.mockito.Mockito
 import org.springframework.beans.factory.ObjectProvider
+import java.sql.SQLException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -47,8 +51,8 @@ class CommandJournalRecorderTest {
     }
 
     @Test
-    fun `enabled journal admission failure prevents Worker dispatch`() = runBlocking {
-        val failure = IllegalStateException("journal unavailable")
+    fun `required journal admission failure prevents Worker dispatch`() = runBlocking {
+        val failure = CommandJournal.StorageException(SQLException("journal unavailable"))
         val journal = object : InMemoryJournal() {
             override suspend fun admit(
                 entry: CommandJournal.Entry,
@@ -61,10 +65,16 @@ class CommandJournalRecorderTest {
             requests = requests,
             timeoutMillis = 1_000,
             slots = Mockito.mock(SlotApplicationService::class.java),
-            commandJournal = recorder(journal),
+            commandJournal = recorder(
+                journal,
+                CommandJournalWritePolicy(
+                    CommandJournal.FailureMode.REQUIRED,
+                    UserNotificationPublisher { _, _ -> error("must not publish") },
+                ),
+            ),
         )
 
-        val thrown = assertFailsWith<IllegalStateException> {
+        val thrown = assertFailsWith<CommandJournal.StorageException> {
             gateway.execute(
                 target = ConversationRuntimeWorkerIdentity(
                     ConversationRuntimeWorkerId("worker"),
@@ -79,6 +89,47 @@ class CommandJournalRecorderTest {
 
         assertEquals(failure, thrown)
         Mockito.verifyNoInteractions(requests)
+    }
+
+    @Test
+    fun `best effort admission failure is notified without a recovery attempt`() = runBlocking {
+        val failure = CommandJournal.StorageException(SQLException("journal unavailable"))
+        var attempts = 0
+        val journal = object : InMemoryJournal() {
+            override suspend fun admit(
+                entry: CommandJournal.Entry,
+                rootCall: CommandJournal.Call,
+                content: List<CommandJournal.Content>,
+            ): CommandJournal.Entry {
+                attempts++
+                throw failure
+            }
+        }
+        val notifications = mutableListOf<UserNotification>()
+        val policy = CommandJournalWritePolicy(
+            CommandJournal.FailureMode.BEST_EFFORT,
+            UserNotificationPublisher { user, draft ->
+                UserNotification(
+                    id = UserNotification.Id("journal-failure"),
+                    userId = user,
+                    title = draft.title,
+                    message = draft.message,
+                    level = draft.level,
+                    createdAt = Instant.fromEpochSeconds(1),
+                    conversationId = draft.conversationId,
+                ).also(notifications::add)
+            },
+        )
+
+        recorder(journal, policy).admitManagedCalls(
+            calls = listOf(commandCall("call", "echo ok")),
+            target = target(),
+            context = context(),
+        )
+
+        assertEquals(1, attempts)
+        assertEquals(1, notifications.size)
+        assertEquals(Conversation.Id("conversation"), notifications.single().conversationId)
     }
 
     @Test
@@ -354,8 +405,10 @@ class CommandJournalRecorderTest {
         assertEquals(listOf(CommandJournal.Event.Kind.ACCEPTED), journal.events(entry.id).map { it.kind })
     }
 
-    private fun recorder(journal: CommandJournal): CommandJournalRecorder =
-        CommandJournalRecorder(provider(journal))
+    private fun recorder(
+        journal: CommandJournal,
+        writePolicy: CommandJournalWritePolicy? = null,
+    ): CommandJournalRecorder = CommandJournalRecorder(provider(journal), writePolicy)
 
     @Suppress("UNCHECKED_CAST")
     private fun provider(journal: CommandJournal?): ObjectProvider<CommandJournal> {

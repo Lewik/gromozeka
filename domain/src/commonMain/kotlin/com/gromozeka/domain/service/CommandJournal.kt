@@ -18,6 +18,13 @@ import kotlin.time.Instant
  * continued execution, failure, or an unknown outcome.
  */
 interface CommandJournal {
+    enum class FailureMode {
+        REQUIRED,
+        BEST_EFFORT,
+    }
+
+    class StorageException(cause: Throwable) : RuntimeException("Command Journal storage is unavailable", cause)
+
     suspend fun admit(
         entry: Entry,
         rootCall: Call,

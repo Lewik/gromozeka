@@ -1,5 +1,6 @@
 package com.gromozeka.server
 
+import com.gromozeka.application.service.CommandJournalWritePolicy
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
@@ -34,6 +35,7 @@ import kotlin.time.Instant
 @Service
 class CommandJournalRecorder(
     private val journalProvider: ObjectProvider<CommandJournal>,
+    private val writePolicy: CommandJournalWritePolicy? = null,
 ) {
     suspend fun admitManagedCalls(
         calls: List<Conversation.Message.ContentItem.ToolCall>,
@@ -51,33 +53,38 @@ class CommandJournalRecorder(
             val input = call.call.input as? JsonObject
                 ?: error("Managed command input must be an object")
             if (source.kind == CommandJournal.Source.Kind.COMMAND_SDK_MCP) return@forEach
-            val conversationId = required(context, TOOL_CONTEXT_CONVERSATION_ID).let(Conversation::Id)
-            val existing = journal.findEntryBySource(conversationId, call.id)
-            val entry = existing ?: when (source.kind) {
-                CommandJournal.Source.Kind.CONVERSATION_TOOL_CALL,
-                CommandJournal.Source.Kind.DIRECT_MCP,
-                -> newEntry(call, source, context, at)
+            write(
+                operation = "record command admission",
+                context = writeContext(context, "admit:${call.id.value}"),
+            ) {
+                val conversationId = required(context, TOOL_CONTEXT_CONVERSATION_ID).let(Conversation::Id)
+                val existing = journal.findEntryBySource(conversationId, call.id)
+                val entry = existing ?: when (source.kind) {
+                    CommandJournal.Source.Kind.CONVERSATION_TOOL_CALL,
+                    CommandJournal.Source.Kind.DIRECT_MCP,
+                    -> newEntry(call, source, context, at)
 
-                CommandJournal.Source.Kind.COMMAND_SDK_MCP ->
-                    error("A command SDK source cannot originate a managed root call")
-            }
-            val journalCall = existing?.let {
-                journal.calls(it.id).single { stored -> stored.parentId == null && stored.sourceToolCallId == call.id }
-            } ?: call(call, entry.id, null, target, context, input, entry.createdAt)
-            if (existing == null) {
-                val content = content(entry.id, journalCall.id, call, input, entry.createdAt)
-                journal.admit(entry, journalCall, content)
-            }
-            journal.append(
-                CommandJournal.Event(
-                    id = eventId(entry.id, call.id, "accepted"),
-                    entryId = entry.id,
-                    callId = journalCall.id,
-                    sourceKey = "tool-call:${call.id.value}:accepted",
-                    kind = CommandJournal.Event.Kind.ACCEPTED,
-                    occurredAt = entry.createdAt,
+                    CommandJournal.Source.Kind.COMMAND_SDK_MCP ->
+                        error("A command SDK source cannot originate a managed root call")
+                }
+                val journalCall = existing?.let {
+                    journal.calls(it.id).single { stored -> stored.parentId == null && stored.sourceToolCallId == call.id }
+                } ?: call(call, entry.id, null, target, context, input, entry.createdAt)
+                if (existing == null) {
+                    val content = content(entry.id, journalCall.id, call, input, entry.createdAt)
+                    journal.admit(entry, journalCall, content)
+                }
+                journal.append(
+                    CommandJournal.Event(
+                        id = eventId(entry.id, call.id, "accepted"),
+                        entryId = entry.id,
+                        callId = journalCall.id,
+                        sourceKey = "tool-call:${call.id.value}:accepted",
+                        kind = CommandJournal.Event.Kind.ACCEPTED,
+                        occurredAt = entry.createdAt,
+                    )
                 )
-            )
+            }
         }
     }
 
@@ -205,27 +212,32 @@ class CommandJournalRecorder(
         at: Instant = Clock.System.now(),
     ): RecordedCall? {
         val journal = journalProvider.ifAvailable ?: return null
-        val parent = journal.findCallByCommandTask(parentCommandTaskId) ?: return null
-        val entry = requireNotNull(journal.findEntry(parent.entryId)) {
-            "Command Journal call ${parent.id.value} lost its entry ${parent.entryId.value}"
-        }
         val input = call.call.input as? JsonObject ?: error("MCP tool input must be an object")
-        val journalCall = call(call, entry.id, parent.id, target, context, input, at)
-        journal.append(
-            journalCall,
-            if (logInput) content(entry.id, journalCall.id, call, input, at) else emptyList(),
-        )
-        journal.append(
-            CommandJournal.Event(
-                id = eventId(entry.id, call.id, "accepted"),
-                entryId = entry.id,
-                callId = journalCall.id,
-                sourceKey = "tool-call:${call.id.value}:accepted",
-                kind = CommandJournal.Event.Kind.ACCEPTED,
-                occurredAt = at,
+        return write(
+            operation = "record nested tool call",
+            context = writeContext(context, "nested:${call.id.value}"),
+        ) {
+            val parent = journal.findCallByCommandTask(parentCommandTaskId) ?: return@write null
+            val entry = requireNotNull(journal.findEntry(parent.entryId)) {
+                "Command Journal call ${parent.id.value} lost its entry ${parent.entryId.value}"
+            }
+            val journalCall = call(call, entry.id, parent.id, target, context, input, at)
+            journal.append(
+                journalCall,
+                if (logInput) content(entry.id, journalCall.id, call, input, at) else emptyList(),
             )
-        )
-        return RecordedCall(entry, journalCall)
+            journal.append(
+                CommandJournal.Event(
+                    id = eventId(entry.id, call.id, "accepted"),
+                    entryId = entry.id,
+                    callId = journalCall.id,
+                    sourceKey = "tool-call:${call.id.value}:accepted",
+                    kind = CommandJournal.Event.Kind.ACCEPTED,
+                    occurredAt = at,
+                )
+            )
+            RecordedCall(entry, journalCall)
+        }
     }
 
     suspend fun recordNestedOutcome(
@@ -265,7 +277,12 @@ class CommandJournalRecorder(
                 event.id,
             )
         }
-        journal.append(event, output)
+        write(
+            operation = "record nested tool outcome",
+            context = writeContext(recorded, "outcome:${sourceToolCallId.value}"),
+        ) {
+            journal.append(event, output)
+        }
     }
 
     suspend fun recordNestedFailure(
@@ -276,17 +293,40 @@ class CommandJournalRecorder(
         require(kind in setOf(CommandJournal.Event.Kind.FAILED, CommandJournal.Event.Kind.OUTCOME_UNKNOWN))
         val journal = journalProvider.ifAvailable ?: return
         val sourceToolCallId = requireNotNull(recorded.call.sourceToolCallId)
-        journal.append(
-            CommandJournal.Event(
-                id = eventId(recorded.entry.id, sourceToolCallId, "outcome"),
-                entryId = recorded.entry.id,
-                callId = recorded.call.id,
-                sourceKey = "tool-call:${sourceToolCallId.value}:outcome",
-                kind = kind,
-                occurredAt = at,
+        write(
+            operation = "record nested tool failure",
+            context = writeContext(recorded, "failure:${sourceToolCallId.value}:$kind"),
+        ) {
+            journal.append(
+                CommandJournal.Event(
+                    id = eventId(recorded.entry.id, sourceToolCallId, "outcome"),
+                    entryId = recorded.entry.id,
+                    callId = recorded.call.id,
+                    sourceKey = "tool-call:${sourceToolCallId.value}:outcome",
+                    kind = kind,
+                    occurredAt = at,
+                )
             )
-        )
+        }
     }
+
+    private suspend fun <T> write(
+        operation: String,
+        context: CommandJournalWritePolicy.Context,
+        block: suspend () -> T,
+    ): T? = if (writePolicy == null) block() else writePolicy.write(operation, { context }, block)
+
+    private fun writeContext(context: ToolExecutionContext, correlation: String) = CommandJournalWritePolicy.Context(
+        actorUserId = required(context, TOOL_CONTEXT_USER_ID).let(User::Id),
+        conversationId = required(context, TOOL_CONTEXT_CONVERSATION_ID).let(Conversation::Id),
+        correlation = correlation,
+    )
+
+    private fun writeContext(recorded: RecordedCall, correlation: String) = CommandJournalWritePolicy.Context(
+        actorUserId = recorded.entry.actorUserId,
+        conversationId = recorded.entry.conversationId,
+        correlation = correlation,
+    )
 
     private suspend fun reportedParentEntryId(
         journal: CommandJournal,

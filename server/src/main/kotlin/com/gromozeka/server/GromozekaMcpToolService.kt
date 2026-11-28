@@ -19,7 +19,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
 import org.springframework.stereotype.Service
 import java.util.Base64
-import klog.KLoggers
 
 private class AsyncOriginRequiredException : IllegalArgumentException()
 
@@ -37,8 +36,6 @@ internal class GromozekaMcpToolService(
     private val workers: WorkerToolExecutionClient,
     private val commandJournal: CommandJournalRecorder? = null,
 ) {
-    private val log = KLoggers.logger(this)
-
     suspend fun list(caller: AuthenticatedMcpCaller): List<AiToolDefinition> = currentTools(caller).map { entry ->
         entry.descriptor.withInvocationContext(if (caller is AuthenticatedMcpCaller.CommandScript)
             AiToolContextBindings(setOf(AiToolContextField.USER, AiToolContextField.PROJECT,
@@ -144,13 +141,7 @@ internal class GromozekaMcpToolService(
                     "Tool result identity mismatch"
                 }
                 recordedCall?.let { recorded ->
-                    try {
-                        commandJournal?.recordNestedOutcome(recorded, result)
-                    } catch (journalError: Throwable) {
-                        log.error(journalError) {
-                            "Command Journal could not record completed MCP call ${callId.value}"
-                        }
-                    }
+                    commandJournal?.recordNestedOutcome(recorded, result)
                 }
                 journalOutcomeRecorded = true
                 currentCoroutineContext().ensureActive()

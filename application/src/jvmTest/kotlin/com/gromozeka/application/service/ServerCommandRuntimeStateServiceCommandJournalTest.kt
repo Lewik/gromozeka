@@ -4,11 +4,13 @@ import com.gromozeka.domain.model.BinaryContent
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.User
+import com.gromozeka.domain.model.UserNotification
 import com.gromozeka.domain.model.WorkspaceMount
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.service.*
 import kotlinx.coroutines.runBlocking
 import org.mockito.Mockito
+import java.sql.SQLException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -97,6 +99,71 @@ class ServerCommandRuntimeStateServiceCommandJournalTest {
         assertEquals(false, output.truncatedAfter)
     }
 
+    @Test
+    fun `best effort lifecycle storage failure preserves task upsert and notifies the actor`() = runBlocking {
+        val coordinator = Mockito.mock(ConversationRuntimeCoordinator::class.java)
+        var appendAttempts = 0
+        val journal = object : InMemoryJournal() {
+            override suspend fun append(
+                event: CommandJournal.Event,
+                content: List<CommandJournal.Content>,
+            ): CommandJournal.Event {
+                appendAttempts++
+                throw CommandJournal.StorageException(SQLException("database unavailable"))
+            }
+        }
+        val entry = CommandJournal.Entry(
+            id = CommandJournal.Entry.Id("entry"),
+            origin = CommandJournal.Entry.Origin.CONVERSATION_TOOL_CALL,
+            actorUserId = User.Id("user"),
+            projectId = Project.Id("project"),
+            conversationId = Conversation.Id("conversation"),
+            threadId = Conversation.Thread.Id("thread"),
+            sourceToolCallId = ContentItem.ToolCall.Id("call"),
+            createdAt = Instant.fromEpochSeconds(1),
+        )
+        journal.admit(
+            entry,
+            CommandJournal.Call(
+                id = CommandJournal.Call.Id("call"),
+                entryId = entry.id,
+                sourceToolCallId = entry.sourceToolCallId,
+                kind = CommandJournal.Call.Kind.COMMAND,
+                toolName = "grz_execute_command",
+                target = CommandJournal.Call.Target(),
+                createdAt = entry.createdAt,
+            ),
+        )
+        val working = task(CommandTask.Status.WORKING)
+        Mockito.`when`(coordinator.upsertCommandTask(working)).thenReturn(CommandTaskUpsertResult(working))
+        val notifications = mutableListOf<UserNotification>()
+        val service = ServerCommandRuntimeStateService(
+            runtimeCoordinator = coordinator,
+            runtimeStateSyncService = Mockito.mock(ConversationRuntimeStateSyncService::class.java),
+            commandTaskLifecycleEventPublisher = CommandTaskLifecycleEventPublisher { },
+            commandMonitorLifecycleEventPublisher = CommandMonitorLifecycleEventPublisher { },
+            commandJournal = journal,
+            commandJournalWritePolicy = CommandJournalWritePolicy(
+                CommandJournal.FailureMode.BEST_EFFORT,
+                UserNotificationPublisher { user, draft ->
+                    UserNotification(
+                        id = UserNotification.Id("notification"),
+                        userId = user,
+                        title = draft.title,
+                        message = draft.message,
+                        level = draft.level,
+                        createdAt = Instant.fromEpochSeconds(2),
+                        conversationId = draft.conversationId,
+                    ).also(notifications::add)
+                },
+            ),
+        )
+
+        assertEquals(working, service.upsertCommandTask(working).task)
+        assertEquals(1, appendAttempts)
+        assertEquals(User.Id("user"), notifications.single().userId)
+    }
+
     private fun task(status: CommandTask.Status) = CommandTask(
         id = CommandTask.Id("task"),
         conversationId = Conversation.Id("conversation"),
@@ -116,7 +183,7 @@ class ServerCommandRuntimeStateServiceCommandJournalTest {
         launchReference = BackgroundActivityLaunchReference("request", "call"),
     )
 
-    private class InMemoryJournal : CommandJournal {
+    private open class InMemoryJournal : CommandJournal {
         private val entries = linkedMapOf<CommandJournal.Entry.Id, CommandJournal.Entry>()
         private val calls = linkedMapOf<CommandJournal.Call.Id, CommandJournal.Call>()
         private val events = linkedMapOf<String, CommandJournal.Event>()

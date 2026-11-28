@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service
 import java.sql.Connection
 import java.sql.PreparedStatement
 import java.sql.ResultSet
+import java.sql.SQLException
 import java.sql.Timestamp
 import javax.sql.DataSource
 import kotlin.time.Clock
@@ -632,7 +633,13 @@ internal class PostgresCommandJournal(
         }
     }
 
-    private suspend fun <T> io(block: () -> T): T = withContext(Dispatchers.IO) { block() }
+    private suspend fun <T> io(block: () -> T): T = withContext(Dispatchers.IO) {
+        try {
+            block()
+        } catch (failure: SQLException) {
+            throw CommandJournal.StorageException(failure)
+        }
+    }
 
     private fun requireContentOwners(
         entryId: CommandJournal.Entry.Id,

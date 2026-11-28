@@ -9,6 +9,7 @@ Enable the journal with:
 
 ```properties
 gromozeka.command-journal.enabled=true
+gromozeka.command-journal.failure-mode=BEST_EFFORT
 ```
 
 When the property is absent or false, no journal repository is created and command dispatch follows the
@@ -52,8 +53,17 @@ mean that the command is still running. `WorkerRequest` and `CommandTask` remain
 
 The journal does not infer `FAILED` or `OUTCOME_UNKNOWN` from silence, and Stage 1 does not add retries, backfill,
 or reconciliation to reconstruct missing observations. Such Events are appended only when the existing Runtime
-has established that outcome. Whether an immediate Journal write is required or best-effort is a separate policy
-decision; either choice must not replay an action or invent a lifecycle fact.
+has established that outcome.
+
+`gromozeka.command-journal.failure-mode` controls only the immediate write attempt:
+
+- `BEST_EFFORT` (default) logs a storage failure, publishes a deduplicated user notification when the actor is
+  known, and preserves the original operation;
+- `REQUIRED` propagates the storage failure. A failure before dispatch therefore prevents that dispatch, while a
+  failure after an external effect cannot roll the effect back.
+
+Neither mode retries or replays an action. The explicit self-report tool still fails if its requested Journal write
+cannot be completed because recording the report is the tool's only effect.
 
 ## Journal tools
 
