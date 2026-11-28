@@ -31,6 +31,7 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.time.Instant
 
@@ -128,6 +129,51 @@ class CommandJournalToolContributorTest {
             reportCall,
             journal.findCallBySource(fixture.conversation.id, assertNotNull(reportCall.sourceToolCallId)),
         )
+    }
+
+    @Test
+    fun `repeated direct MCP reports are distinct and are not advertised as idempotent`() = runBlocking {
+        val journal = InMemoryJournal()
+        val recorder = CommandJournalRecorder(provider(journal))
+        var callbacks = emptyList<AiToolCallback>()
+        val fixture = UnifiedMcpTestFixture(
+            object : AiToolProvider {
+                override fun getTools(): List<AiToolCallback> = callbacks
+            },
+            recorder,
+        ).initialize()
+        val authorization = Mockito.mock(GromozekaRemoteAuthorization::class.java)
+        Mockito.`when`(
+            authorization.requireConversation(fixture.user, fixture.conversation.id, ProjectPermission.WRITE)
+        ).thenReturn(fixture.conversation)
+        callbacks = CommandJournalToolContributor(
+            toolFactory = ServerJsonToolFactory(fixture.users),
+            reader = journal,
+            recorder = recorder,
+            projectAccess = fixture.projects,
+            authorization = authorization,
+        ).callbacks
+        val report = callbacks.single { it.definition.name == COMMAND_JOURNAL_REPORT_TOOL_NAME }
+        assertEquals(false, report.definition.annotations?.idempotentHint)
+        val input = buildJsonObject {
+            put("command", "kubectl get pods")
+            put("_grz", buildJsonObject { put("conversation_id", fixture.conversation.id.value) })
+        }
+
+        val first = fixture.service.call(fixture.caller, COMMAND_JOURNAL_REPORT_TOOL_NAME, input)
+        val second = fixture.service.call(fixture.caller, COMMAND_JOURNAL_REPORT_TOOL_NAME, input)
+
+        assertFalse(first.isError)
+        assertFalse(second.isError)
+        val firstEntryId = first.structuredContent?.get("result")?.jsonObject
+            ?.getValue("entry_id")?.jsonPrimitive?.content
+        val secondEntryId = second.structuredContent?.get("result")?.jsonObject
+            ?.getValue("entry_id")?.jsonPrimitive?.content
+        assertNotNull(firstEntryId)
+        assertNotNull(secondEntryId)
+        assertNotEquals(firstEntryId, secondEntryId)
+        assertNotNull(journal.findEntry(CommandJournal.Entry.Id(firstEntryId)))
+        assertNotNull(journal.findEntry(CommandJournal.Entry.Id(secondEntryId)))
     }
 
     @Test

@@ -57,7 +57,7 @@ internal class CommandJournalToolContributor(
         """.trimIndent(),
         inputSchema = REPORT_SCHEMA,
         readOnly = false,
-        idempotent = true,
+        idempotent = false,
         loadingPolicy = AiToolLoadingPolicy.PRELOAD_WHEN_AVAILABLE,
         contextRequirements = AiToolContextRequirements(
             required = setOf(
