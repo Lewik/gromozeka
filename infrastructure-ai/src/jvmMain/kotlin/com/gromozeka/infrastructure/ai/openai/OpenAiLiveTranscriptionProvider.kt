@@ -53,6 +53,7 @@ import java.net.http.WebSocket
 import java.net.http.WebSocketHandshakeException
 import java.security.MessageDigest
 import java.util.Base64
+import java.util.UUID
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -190,6 +191,8 @@ internal class OpenAiLiveTranscriptionSession(
         val acknowledgements: Int = 0,
         val transcripts: Int = 0,
         val automaticCommits: Set<String> = emptySet(),
+        val activeSpeechId: String? = null,
+        val stopFlushEventId: String? = null,
         val failure: Exception? = null,
     )
     private val pendingTurns = MutableStateFlow(PendingTurns())
@@ -198,7 +201,6 @@ internal class OpenAiLiveTranscriptionSession(
     private val messageBuffer = StringBuilder()
     private var uncommittedSamples = 0L
     private var finishingInput = false
-    private var activeSpeechId: String? = null
     private val vadDisableRequested = AtomicBoolean(false)
     private val vadDisabled = CompletableDeferred<Unit>()
     @Volatile private var socket: WebSocket? = null
@@ -275,28 +277,31 @@ internal class OpenAiLiveTranscriptionSession(
                 } else commitPending()
             }
             if (turnDetection == LiveTranscriptionTurnDetection.PROVIDER) {
-                // Freeze automatic boundaries before flushing an unfinished utterance on Stop.
+                // session.updated is not a VAD drain barrier. Always try to commit the remaining input buffer;
+                // an exact empty-buffer error is the successful no-op when VAD already committed everything.
                 vadDisabled.await()
-                pendingTurns.first { it.failure != null || it.automaticCommits.isEmpty() }
                 failure.get()?.let { throw it }
                 writeMutex.withLock {
-                    val flushSpeech = synchronized(pendingLock) {
-                        if (activeSpeechId == null) false else {
-                            val pending = pendingTurns.value
-                            check(pending.transcripts < 8) { "Live transcription has too many uncompleted turns" }
-                            pendingTurns.value = pending.copy(
-                                acknowledgements = pending.acknowledgements + 1,
-                                transcripts = pending.transcripts + 1,
-                            )
-                            activeSpeechId = null
-                            true
-                        }
+                    val eventId = "gromozeka-stop-flush-${UUID.randomUUID()}"
+                    synchronized(pendingLock) {
+                        val pending = pendingTurns.value
+                        check(pending.stopFlushEventId == null) { "Live Stop flush is already pending" }
+                        check(pending.transcripts < 8) { "Live transcription has too many uncompleted turns" }
+                        pendingTurns.value = pending.copy(
+                            acknowledgements = pending.acknowledgements + 1,
+                            transcripts = pending.transcripts + 1,
+                            stopFlushEventId = eventId,
+                        )
                     }
-                    if (flushSpeech) send(buildJsonObject { put("type", "input_audio_buffer.commit") })
+                    send(buildJsonObject {
+                        put("type", "input_audio_buffer.commit")
+                        put("event_id", eventId)
+                    })
                 }
             }
             pendingTurns.first {
-                it.failure != null || (it.acknowledgements == 0 && it.transcripts == 0 && it.automaticCommits.isEmpty())
+                it.failure != null || (it.acknowledgements == 0 && it.transcripts == 0 &&
+                    it.automaticCommits.isEmpty() && it.activeSpeechId == null && it.stopFlushEventId == null)
             }
             failure.get()?.let { throw it }
         }
@@ -346,6 +351,11 @@ internal class OpenAiLiveTranscriptionSession(
         socket?.abort()
     }
 
+    private fun openAiTranscriptionFailure(error: JsonObject?, code: String?) = LiveTranscriptionException(
+        message = error?.get("message")?.jsonPrimitive?.contentOrNull ?: "OpenAI live transcription failed",
+        retryable = code in setOf("server_error", "rate_limit_exceeded", "service_unavailable"),
+    )
+
     private fun requiredString(payload: JsonObject, name: String): String {
         val value = payload[name] as? JsonPrimitive
         require(value?.isString == true) { "OpenAI live event field $name must be a string" }
@@ -369,19 +379,23 @@ internal class OpenAiLiveTranscriptionSession(
                 check(turnDetection == LiveTranscriptionTurnDetection.PROVIDER && !vadDisabled.isCompleted) {
                     "OpenAI detected speech without provider-owned Live turns"
                 }
-                check(activeSpeechId == null) { "OpenAI started an overlapping Live turn" }
-                activeSpeechId = itemId(payload)
+                val pending = pendingTurns.value
+                check(pending.activeSpeechId == null) { "OpenAI started an overlapping Live turn" }
+                pendingTurns.value = pending.copy(activeSpeechId = itemId(payload))
             }
             "input_audio_buffer.speech_stopped" -> synchronized(pendingLock) {
                 val id = itemId(payload)
-                check(turnDetection == LiveTranscriptionTurnDetection.PROVIDER && activeSpeechId == id) {
+                val pending = pendingTurns.value
+                check(turnDetection == LiveTranscriptionTurnDetection.PROVIDER && pending.activeSpeechId == id) {
                     "OpenAI stopped an unknown Live speech turn"
                 }
-                val pending = pendingTurns.value
                 check(id !in pending.automaticCommits && id !in completedItems) { "OpenAI stopped the same Live turn twice" }
                 check(pending.transcripts < 8) { "Live transcription has too many uncompleted turns" }
-                activeSpeechId = null
-                pendingTurns.value = pending.copy(transcripts = pending.transcripts + 1, automaticCommits = pending.automaticCommits + id)
+                pendingTurns.value = pending.copy(
+                    transcripts = pending.transcripts + 1,
+                    automaticCommits = pending.automaticCommits + id,
+                    activeSpeechId = null,
+                )
             }
             "input_audio_buffer.committed" -> synchronized(pendingLock) {
                 val id = itemId(payload)
@@ -392,9 +406,12 @@ internal class OpenAiLiveTranscriptionSession(
                     itemId = id,
                     previousItemId = payload["previous_item_id"]?.jsonPrimitive?.contentOrNull,
                 ))
-                pendingTurns.value = pendingTurns.value.copy(
+                val stopFlush = !automatic && pending.stopFlushEventId != null
+                pendingTurns.value = pending.copy(
                     acknowledgements = pending.acknowledgements - if (automatic) 0 else 1,
                     automaticCommits = pending.automaticCommits - id,
+                    activeSpeechId = if (stopFlush) null else pending.activeSpeechId,
+                    stopFlushEventId = if (stopFlush) null else pending.stopFlushEventId,
                 )
             }
             "conversation.item.input_audio_transcription.delta" -> {
@@ -422,13 +439,31 @@ internal class OpenAiLiveTranscriptionSession(
                     pendingTurns.value = pendingTurns.value.copy(transcripts = pending.transcripts - 1)
                 }
             }
-            "conversation.item.input_audio_transcription.failed", "error" -> {
+            "error" -> {
                 val error = payload["error"]?.jsonObject
                 val code = error?.get("code")?.jsonPrimitive?.contentOrNull
-                fail(LiveTranscriptionException(
-                    message = error?.get("message")?.jsonPrimitive?.contentOrNull ?: "OpenAI live transcription failed",
-                    retryable = code in setOf("server_error", "rate_limit_exceeded", "service_unavailable"),
-                ))
+                val sourceEventId = error?.get("event_id")?.jsonPrimitive?.contentOrNull
+                val emptyStopFlush = synchronized(pendingLock) {
+                    val pending = pendingTurns.value
+                    if (finishingInput && code == "input_audio_buffer_commit_empty" &&
+                        sourceEventId == pending.stopFlushEventId) {
+                        check(pending.acknowledgements > 0 && pending.transcripts > 0) {
+                            "OpenAI rejected a Stop flush without a pending commit"
+                        }
+                        pendingTurns.value = pending.copy(
+                            acknowledgements = pending.acknowledgements - 1,
+                            transcripts = pending.transcripts - 1,
+                            stopFlushEventId = null,
+                        )
+                        true
+                    } else false
+                }
+                if (!emptyStopFlush) fail(openAiTranscriptionFailure(error, code))
+            }
+            "conversation.item.input_audio_transcription.failed" -> {
+                val error = payload["error"]?.jsonObject
+                val code = error?.get("code")?.jsonPrimitive?.contentOrNull
+                fail(openAiTranscriptionFailure(error, code))
             }
         }
     }

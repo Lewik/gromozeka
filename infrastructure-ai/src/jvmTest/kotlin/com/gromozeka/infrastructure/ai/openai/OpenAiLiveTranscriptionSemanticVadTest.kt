@@ -37,13 +37,14 @@ import kotlin.test.assertTrue
 
 class OpenAiLiveTranscriptionSemanticVadTest {
     @Test
-    fun `native VAD owns automatic commits and Stop does not commit an already completed turn`() = runBlocking {
+    fun `native VAD owns automatic commits and Stop tolerates an empty final flush`() = runBlocking {
         withFixture(handler = {
             assertEquals("input_audio_buffer.append", receiveJson()["type"]!!.jsonPrimitive.content)
             sendSpeech("a", stopped = true)
             sendCommit("a", null)
             sendFinal("a", "A complete thought")
             disableVad()
+            rejectEmptyStopFlush()
             expectCloseWithoutCommit()
         }) { session ->
             assertEquals(LiveTranscriptionTurnDetection.PROVIDER, session.turnDetection)
@@ -70,14 +71,13 @@ class OpenAiLiveTranscriptionSemanticVadTest {
     }
 
     @Test
-    fun `Stop disables VAD and flushes an unfinished utterance exactly once`() = runBlocking {
+    fun `Stop flushes buffered audio even when VAD never reported speech`() = runBlocking {
         withFixture(handler = {
             receiveJson()
-            sendSpeech("unfinished", stopped = false)
             disableVad()
-            assertEquals("input_audio_buffer.commit", receiveJson()["type"]!!.jsonPrimitive.content)
-            sendCommit("unfinished", null)
-            sendFinal("unfinished", "Still finishing this thought")
+            receiveStopFlush()
+            sendCommit("quiet", null)
+            sendFinal("quiet", "A quiet final phrase")
             expectCloseWithoutCommit()
         }) { session ->
             coroutineScope {
@@ -87,8 +87,8 @@ class OpenAiLiveTranscriptionSemanticVadTest {
                 session.finishInput()
                 collector.join()
                 assertEquals(listOf(
-                    LiveTranscriptionEvent.Committed("unfinished", null),
-                    LiveTranscriptionEvent.Transcript("unfinished", "Still finishing this thought", true),
+                    LiveTranscriptionEvent.Committed("quiet", null),
+                    LiveTranscriptionEvent.Transcript("quiet", "A quiet final phrase", true),
                 ), observed)
             }
         }
@@ -104,7 +104,7 @@ class OpenAiLiveTranscriptionSemanticVadTest {
             sendSpeech("b", stopped = false)
             disableVad()
             sendCommit("a", null)
-            assertEquals("input_audio_buffer.commit", receiveJson()["type"]!!.jsonPrimitive.content)
+            receiveStopFlush()
             sendCommit("b", "a")
             sendFinal("b", "Second")
             releaseFirstFinal.await()
@@ -133,14 +133,55 @@ class OpenAiLiveTranscriptionSemanticVadTest {
     }
 
     @Test
-    fun `Stop without speech disables VAD but does not send an empty commit`() = runBlocking {
+    fun `empty Stop flush still waits for an automatic turn already in flight`() = runBlocking {
+        val emptyRejected = CompletableDeferred<Unit>()
+        val releaseAutomaticTurn = CompletableDeferred<Unit>()
+        withFixture(handler = {
+            receiveJson()
+            sendSpeech("late", stopped = false)
+            disableVad()
+            rejectEmptyStopFlush()
+            emptyRejected.complete(Unit)
+            releaseAutomaticTurn.await()
+            send("""{"type":"input_audio_buffer.speech_stopped","item_id":"late"}""")
+            sendCommit("late", null)
+            sendFinal("late", "Late automatic final")
+            expectCloseWithoutCommit()
+        }) { session ->
+            coroutineScope {
+                val collector = launch { session.events.collect { } }
+                session.appendAudio(ByteArray(3_200))
+                val stopping = async { session.finishInput() }
+                emptyRejected.await()
+                assertFalse(stopping.isCompleted)
+                releaseAutomaticTurn.complete(Unit)
+                stopping.await()
+                collector.join()
+            }
+        }
+    }
+
+    @Test
+    fun `Stop without audio treats the exact empty flush error as a successful drain`() = runBlocking {
         withFixture(handler = {
             disableVad()
+            rejectEmptyStopFlush()
             expectCloseWithoutCommit()
         }) { session ->
             session.finishInput()
             assertFailsWith<IllegalStateException> { session.appendAudio(ByteArray(3_200)) }
             assertFailsWith<IllegalStateException> { session.finishInput() }
+        }
+    }
+
+    @Test
+    fun `empty commit error for another event is not hidden by Stop`() = runBlocking {
+        withFixture(handler = {
+            disableVad()
+            receiveStopFlush()
+            send("""{"type":"error","error":{"type":"invalid_request_error","code":"input_audio_buffer_commit_empty","message":"Wrong event","event_id":"another-event"}}""")
+        }, expectedOutcome = AiAdmissionOutcome.FAILED) { session ->
+            assertFalse(assertFailsWith<LiveTranscriptionException> { session.finishInput() }.retryable)
         }
     }
 
@@ -188,6 +229,19 @@ class OpenAiLiveTranscriptionSemanticVadTest {
         assertEquals("session.update", update["type"]!!.jsonPrimitive.content)
         assertEquals(JsonNull, update["session"]!!.jsonObject["audio"]!!.jsonObject["input"]!!.jsonObject["turn_detection"])
         send("""{"type":"session.updated","session":{"audio":{"input":{"turn_detection":null}}}}""")
+    }
+
+    private suspend fun DefaultWebSocketServerSession.receiveStopFlush(): String {
+        val commit = receiveJson()
+        assertEquals("input_audio_buffer.commit", commit["type"]!!.jsonPrimitive.content)
+        return commit["event_id"]!!.jsonPrimitive.content.also {
+            assertTrue(it.startsWith("gromozeka-stop-flush-"))
+        }
+    }
+
+    private suspend fun DefaultWebSocketServerSession.rejectEmptyStopFlush() {
+        val eventId = receiveStopFlush()
+        send("""{"type":"error","error":{"type":"invalid_request_error","code":"input_audio_buffer_commit_empty","message":"Buffer is empty","event_id":"$eventId"}}""")
     }
 
     private suspend fun DefaultWebSocketServerSession.expectCloseWithoutCommit() {
