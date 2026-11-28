@@ -1,13 +1,16 @@
 package com.gromozeka.server
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.ProjectPermission
 import com.gromozeka.domain.model.User
+import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.CommandJournal
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.service.ProjectAccessService
 import com.gromozeka.domain.service.UserDirectoryService
+import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolLoadingPolicy
 import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
 import com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID
@@ -40,6 +43,91 @@ class CommandJournalToolContributorTest {
                 assertFalse(context.containsBean("commandJournalToolContributor"))
                 assertFalse(context.startupFailure != null)
             }
+    }
+
+    @Test
+    fun `command SDK self report creates one correlated child entry`() = runBlocking {
+        val journal = InMemoryJournal()
+        val recorder = CommandJournalRecorder(provider(journal))
+        var callbacks = emptyList<AiToolCallback>()
+        val fixture = UnifiedMcpTestFixture(
+            object : AiToolProvider {
+                override fun getTools(): List<AiToolCallback> = callbacks
+            },
+            recorder,
+        ).initialize()
+        val authorization = Mockito.mock(GromozekaRemoteAuthorization::class.java)
+        Mockito.`when`(
+            authorization.requireConversation(fixture.user, fixture.conversation.id, ProjectPermission.WRITE)
+        ).thenReturn(fixture.conversation)
+        callbacks = CommandJournalToolContributor(
+            toolFactory = ServerJsonToolFactory(fixture.users),
+            reader = journal,
+            recorder = recorder,
+            projectAccess = fixture.projects,
+            authorization = authorization,
+        ).callbacks
+        val rootEntry = CommandJournal.Entry(
+            id = CommandJournal.Entry.Id("root-entry"),
+            origin = CommandJournal.Entry.Origin.CONVERSATION_TOOL_CALL,
+            actorUserId = fixture.user.id,
+            projectId = fixture.project.id,
+            conversationId = fixture.conversation.id,
+            threadId = fixture.conversation.currentThread,
+            agentDefinitionId = fixture.agent.id,
+            sourceToolCallId = ContentItem.ToolCall.Id("root-source"),
+            createdAt = Instant.fromEpochSeconds(1),
+        )
+        val rootCall = CommandJournal.Call(
+            id = CommandJournal.Call.Id("root-call"),
+            entryId = rootEntry.id,
+            sourceToolCallId = rootEntry.sourceToolCallId,
+            kind = CommandJournal.Call.Kind.COMMAND,
+            toolName = "grz_execute_command",
+            target = CommandJournal.Call.Target(),
+            createdAt = rootEntry.createdAt,
+        )
+        journal.admit(rootEntry, rootCall)
+        val commandTaskId = CommandTask.Id("script-command")
+        journal.append(
+            CommandJournal.Event(
+                id = CommandJournal.Event.Id("root-started"),
+                entryId = rootEntry.id,
+                callId = rootCall.id,
+                sourceKey = "root-started",
+                kind = CommandJournal.Event.Kind.STARTED,
+                occurredAt = Instant.fromEpochSeconds(2),
+                commandTaskId = commandTaskId,
+            )
+        )
+        val caller = AuthenticatedMcpCaller.CommandScript(
+            CommandScriptPrincipal(
+                fixture.user,
+                commandTaskId,
+                fixture.conversation.id,
+                fixture.project.id,
+                fixture.agent.id,
+            )
+        )
+
+        val result = fixture.service.call(
+            caller,
+            COMMAND_JOURNAL_REPORT_TOOL_NAME,
+            buildJsonObject { put("command", "kubectl get pods") },
+        )
+
+        assertFalse(result.isError)
+        val payload = assertNotNull(result.structuredContent?.get("result")?.jsonObject)
+        val reportEntry = assertNotNull(
+            journal.findEntry(CommandJournal.Entry.Id(payload.getValue("entry_id").jsonPrimitive.content))
+        )
+        val reportCall = journal.calls(reportEntry.id).single()
+        assertEquals(rootEntry.id, reportEntry.parentEntryId)
+        assertEquals(1, journal.calls(rootEntry.id).size, "The report must not also create a generic nested call")
+        assertEquals(
+            reportCall,
+            journal.findCallBySource(fixture.conversation.id, assertNotNull(reportCall.sourceToolCallId)),
+        )
     }
 
     @Test
@@ -271,7 +359,8 @@ class CommandJournalToolContributorTest {
         ) = callValues.values.singleOrNull { call ->
             call.sourceToolCallId == sourceToolCallId && entries[call.entryId]?.conversationId == conversationId
         }
-        override suspend fun findCallByCommandTask(commandTaskId: CommandTask.Id): CommandJournal.Call? = null
+        override suspend fun findCallByCommandTask(commandTaskId: CommandTask.Id): CommandJournal.Call? =
+            eventValues.values.firstOrNull { it.commandTaskId == commandTaskId }?.let { callValues[it.callId] }
         override suspend fun calls(entryId: CommandJournal.Entry.Id) = callValues.values.filter { it.entryId == entryId }
         override suspend fun events(entryId: CommandJournal.Entry.Id) = eventValues.values.filter { it.entryId == entryId }
         override suspend fun content(entryId: CommandJournal.Entry.Id) = contentValues.values.filter { it.entryId == entryId }

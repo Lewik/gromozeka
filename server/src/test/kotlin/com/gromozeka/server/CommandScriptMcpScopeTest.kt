@@ -8,7 +8,6 @@ import com.gromozeka.domain.tool.AiToolContextField.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 import org.mockito.Mockito
-import org.springframework.beans.factory.ObjectProvider
 import kotlin.test.*
 
 class CommandScriptMcpScopeTest {
@@ -88,28 +87,6 @@ class CommandScriptMcpScopeTest {
         assertFalse(f.service.call(caller, "optional", buildJsonObject {}).isError)
         assertNull(observed?.getString(TOOL_CONTEXT_AGENT_DEFINITION_ID))
         assertEquals(f.user.id.value, observed?.getString(TOOL_CONTEXT_USER_ID))
-    }
-
-    @Test fun `command SDK caller report skips the generic nested call while ordinary tools retain it`() = runBlocking<Unit> {
-        val journal = Mockito.mock(CommandJournal::class.java)
-        @Suppress("UNCHECKED_CAST")
-        val journalProvider = Mockito.mock(ObjectProvider::class.java) as ObjectProvider<CommandJournal>
-        Mockito.`when`(journalProvider.ifAvailable).thenReturn(journal)
-        val recorder = CommandJournalRecorder(journalProvider)
-        val f = UnifiedMcpTestFixture(
-            mcpTestProvider(
-                mcpTestTool(COMMAND_JOURNAL_REPORT_TOOL_NAME),
-                mcpTestTool("ordinary"),
-            ),
-            recorder,
-        ).initialize()
-        val caller = caller(f)
-
-        assertFalse(f.service.call(caller, COMMAND_JOURNAL_REPORT_TOOL_NAME, buildJsonObject {}).isError)
-        Mockito.verifyNoInteractions(journal)
-
-        assertFalse(f.service.call(caller, "ordinary", buildJsonObject {}).isError)
-        Mockito.verify(journal).findCallByCommandTask(CommandTask.Id("script-command"))
     }
 
     @Test fun `nested Worker dispatch retains the original calling Agent without SDK selectors`() = runBlocking<Unit> {
