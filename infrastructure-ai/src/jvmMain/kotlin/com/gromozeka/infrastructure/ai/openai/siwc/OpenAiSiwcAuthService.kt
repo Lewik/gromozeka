@@ -18,7 +18,6 @@ import java.net.URI
 import java.net.URLEncoder
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
-import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
 import java.security.KeyFactory
 import java.security.MessageDigest
@@ -152,15 +151,16 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
         }
     }
 
-    override suspend fun validAccessToken(): String = withContext(Dispatchers.IO) {
+    override suspend fun validAccessToken(deadlineNanos: Long): String = withContext(Dispatchers.IO) {
         store.lockedState {
+            remainingNanos(deadlineNanos)
             var current = state ?: throw OpenAiSiwcException("sign_in_required", "Sign in with ChatGPT to continue.")
             if (current.status != OpenAiSiwcStoredState.Status.CONNECTED || current.clientId == null) {
                 throw OpenAiSiwcException("sign_in_required", "Sign in with ChatGPT to continue.")
             }
             try {
                 current.pendingRefresh?.let { pending ->
-                    current = finishPendingRefresh(current, pending)
+                    current = finishPendingRefresh(current, pending, deadlineNanos)
                     save(current)
                 }
                 requireSharingScope(current.scopes)
@@ -175,7 +175,7 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
                     }
                     return@lockedState credentials.accessToken
                 }
-                current = refresh(current)
+                current = refresh(current, deadlineNanos)
                 save(current)
                 val refreshed = current.credentials
                     ?: throw OpenAiSiwcException("sign_in_required", "The ChatGPT connection has no usable credentials.")
@@ -200,7 +200,10 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
 
     fun session(): OpenAiSiwcStoredState? = store.read()
 
-    private fun OpenAiSiwcCredentialStore.LockedState.refresh(current: OpenAiSiwcStoredState): OpenAiSiwcStoredState {
+    private fun OpenAiSiwcCredentialStore.LockedState.refresh(
+        current: OpenAiSiwcStoredState,
+        deadlineNanos: Long,
+    ): OpenAiSiwcStoredState {
         val credentials = current.credentials
             ?: throw OpenAiSiwcException("invalid_grant", "The ChatGPT connection has expired. Sign in again.")
         val token = tokenRequest(linkedMapOf(
@@ -208,7 +211,7 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
             "client_id" to requireNotNull(current.clientId),
             "refresh_token" to credentials.refreshToken,
             "resource" to RESOURCE,
-        ), previousScopes = current.scopes, requireRefresh = true)
+        ), previousScopes = current.scopes, requireRefresh = true, deadlineNanos = deadlineNanos)
         requireSharingScope(token.scopes)
         val idToken = token.idToken ?: return current.copy(
             scopes = token.scopes,
@@ -223,16 +226,23 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
         )
         val checkpoint = current.copy(pendingRefresh = pending, savedAt = Instant.ofEpochMilli(nowMillis()).toString())
         save(checkpoint)
-        return finishPendingRefresh(checkpoint, pending)
+        return finishPendingRefresh(checkpoint, pending, deadlineNanos)
     }
 
     private fun finishPendingRefresh(
         current: OpenAiSiwcStoredState,
         pending: OpenAiSiwcStoredState.PendingRefresh,
+        deadlineNanos: Long,
     ): OpenAiSiwcStoredState {
         val clientId = current.clientId
             ?: throw OpenAiSiwcException("invalid_grant", "The ChatGPT registration is missing. Sign in again.")
-        val identity = verifyIdentity(pending.idToken, clientId, nonce = null, receivedAtMillis = pending.receivedAtMillis)
+        val identity = verifyIdentity(
+            pending.idToken,
+            clientId,
+            nonce = null,
+            receivedAtMillis = pending.receivedAtMillis,
+            deadlineNanos = deadlineNanos,
+        )
         if (current.subject != null && current.subject != identity.subject) {
             throw OpenAiSiwcException("account_mismatch", "The refreshed ChatGPT identity does not match this connection.")
         }
@@ -252,15 +262,17 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
         parameters: Map<String, String>,
         previousScopes: List<String>?,
         requireRefresh: Boolean,
+        deadlineNanos: Long = Long.MAX_VALUE,
     ): TokenFields {
         val response = send(
-            HttpRequest.newBuilder(URI.create(discovery().tokenEndpoint))
+            HttpRequest.newBuilder(URI.create(discovery(deadlineNanos).tokenEndpoint))
                 .timeout(Duration.ofSeconds(60))
                 .header("Accept", "application/json")
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .POST(HttpRequest.BodyPublishers.ofString(parameters.entries.joinToString("&") {
                     (name, value) -> "${encoded(name)}=${encoded(value)}"
                 })).build(),
+            deadlineNanos,
         )
         val payload = try {
             parseObject(response.body, "token response")
@@ -310,6 +322,7 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
         clientId: String,
         nonce: String?,
         receivedAtMillis: Long,
+        deadlineNanos: Long = Long.MAX_VALUE,
     ): VerifiedIdentity {
         try {
             val parts = token.split('.')
@@ -317,14 +330,14 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
             val header = json.parseToJsonElement(decodeUrl(parts[0]).toString(StandardCharsets.UTF_8)).jsonObject
             require(header.string("alg") == "RS256")
             val keyId = requireNotNull(header.string("kid"))
-            val key = signingKey(keyId)
+            val key = signingKey(keyId, deadlineNanos)
             val verifier = Signature.getInstance("SHA256withRSA")
             verifier.initVerify(key)
             verifier.update("${parts[0]}.${parts[1]}".toByteArray(StandardCharsets.US_ASCII))
             require(verifier.verify(decodeUrl(parts[2])))
 
             val claims = json.parseToJsonElement(decodeUrl(parts[1]).toString(StandardCharsets.UTF_8)).jsonObject
-            val provider = discovery()
+            val provider = discovery(deadlineNanos)
             require(claims.string("iss") == provider.issuer)
             val audiences = when (val aud = claims["aud"]) {
                 is JsonPrimitive -> listOf(aud.content)
@@ -360,14 +373,17 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
         }
     }
 
-    private fun signingKey(keyId: String): RSAPublicKey {
+    private fun signingKey(keyId: String, deadlineNanos: Long): RSAPublicKey {
         signingKeys[keyId]?.let { return it }
         synchronized(this) {
             signingKeys[keyId]?.let { return it }
-            val provider = discovery()
+            val provider = discovery(deadlineNanos)
             val response = try {
                 send(HttpRequest.newBuilder(URI.create(provider.jwksUri)).timeout(Duration.ofSeconds(15))
-                    .header("Accept", "application/json").GET().build())
+                    .header("Accept", "application/json").GET().build(), deadlineNanos)
+            } catch (error: OpenAiSiwcException) {
+                if (error.code == "deadline_exceeded") throw error
+                throw OpenAiSiwcException("identity_verification_unavailable", "ChatGPT identity verification is temporarily unavailable.", true, cause = error)
             } catch (error: Exception) {
                 throw OpenAiSiwcException("identity_verification_unavailable", "ChatGPT identity verification is temporarily unavailable.", true, cause = error)
             }
@@ -404,12 +420,12 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
         }
     }
 
-    private fun discovery(): Discovery {
+    private fun discovery(deadlineNanos: Long = Long.MAX_VALUE): Discovery {
         discovered?.let { return it }
         synchronized(this) {
             discovered?.let { return it }
             val response = send(HttpRequest.newBuilder(URI.create("$issuer/.well-known/openid-configuration"))
-                .timeout(Duration.ofSeconds(15)).header("Accept", "application/json").GET().build())
+                .timeout(Duration.ofSeconds(15)).header("Accept", "application/json").GET().build(), deadlineNanos)
             val payload = parseObject(response.body, "discovery document")
             if (response.status != 200 || payload.string("issuer") != issuer) {
                 throw OpenAiSiwcException("discovery_failed", "ChatGPT sign-in configuration could not be verified.", true, response.status)
@@ -439,19 +455,9 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
         }
     }
 
-    private fun send(request: HttpRequest): HttpResult = try {
-        val response = client.send(request, HttpResponse.BodyHandlers.ofInputStream())
-        response.body().use { input ->
-            val body = input.readNBytes(MAX_HTTP_BODY_BYTES + 1)
-            if (body.size > MAX_HTTP_BODY_BYTES) {
-                throw OpenAiSiwcException("response_too_large", "ChatGPT returned an unexpectedly large authentication response.", true)
-            }
-            HttpResult(response.statusCode(), body.toString(StandardCharsets.UTF_8))
-        }
-    } catch (error: OpenAiSiwcException) {
-        throw error
-    } catch (error: Exception) {
-        throw OpenAiSiwcException("network_error", "Could not reach ChatGPT.", true, cause = error)
+    private fun send(request: HttpRequest, deadlineNanos: Long): HttpResult {
+        val response = client.sendSiwc(request, deadlineNanos, MAX_HTTP_BODY_BYTES)
+        return HttpResult(response.statusCode(), response.body().toString(StandardCharsets.UTF_8))
     }
 
     private fun parseObject(value: String, description: String): JsonObject = try {

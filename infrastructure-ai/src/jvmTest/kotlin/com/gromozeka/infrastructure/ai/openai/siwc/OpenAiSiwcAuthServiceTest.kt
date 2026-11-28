@@ -21,6 +21,8 @@ import java.security.Signature
 import java.security.interfaces.RSAPublicKey
 import java.time.Duration
 import java.util.Base64
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.runBlocking
 import kotlin.test.AfterTest
@@ -38,6 +40,7 @@ class OpenAiSiwcAuthServiceTest {
     private var nonce: String? = null
     private var jwksAvailable = true
     private var tokenFailure: Pair<Int, String>? = null
+    private var tokenBodyGate: CountDownLatch? = null
     private var now = 1_800_000_000_000L
     private val server: HttpServer
     private val issuer: String
@@ -79,7 +82,7 @@ class OpenAiSiwcAuthServiceTest {
         assertEquals(OpenAiSiwcStoredState.Status.CONNECTED, connected.status)
         assertEquals("subject-1", connected.subject)
         assertEquals("lev@example.test", connected.identity?.email)
-        assertEquals("access-1", service.validAccessToken())
+        assertEquals("access-1", service.validAccessToken(Long.MAX_VALUE))
         val returning = service.prepareAuthorization("http://127.0.0.1:14555/auth/callback")
         val returningQuery = parseQuery(URI.create(returning.url).rawQuery)
         assertEquals("issued_client", returningQuery["client_id"])
@@ -87,7 +90,7 @@ class OpenAiSiwcAuthServiceTest {
         assertFalse(returningQuery.containsKey("agent_name_hint"))
 
         now += 3_600_000L
-        assertEquals("access-2", service.validAccessToken())
+        assertEquals("access-2", service.validAccessToken(Long.MAX_VALUE))
         val refreshed = assertNotNull(store.read())
         assertEquals("refresh-2", refreshed.credentials?.refreshToken)
         assertEquals(null, refreshed.pendingRefresh)
@@ -109,14 +112,14 @@ class OpenAiSiwcAuthServiceTest {
 
         now += 3_600_000L
         jwksAvailable = false
-        val unavailable = assertFailsWith<OpenAiSiwcException> { service(store).validAccessToken() }
+        val unavailable = assertFailsWith<OpenAiSiwcException> { service(store).validAccessToken(Long.MAX_VALUE) }
         assertEquals("identity_verification_unavailable", unavailable.code)
         val pending = assertNotNull(store.read()?.pendingRefresh)
         assertEquals("refresh-2", pending.credentials.refreshToken)
         assertEquals("refresh-1", store.read()?.credentials?.refreshToken)
 
         jwksAvailable = true
-        assertEquals("access-2", service(store).validAccessToken())
+        assertEquals("access-2", service(store).validAccessToken(Long.MAX_VALUE))
         assertEquals(null, store.read()?.pendingRefresh)
         assertEquals(2, tokenCalls.get(), "Recovery must not reuse the consumed refresh token")
     }
@@ -131,12 +134,39 @@ class OpenAiSiwcAuthServiceTest {
 
         now += 3_600_000L
         tokenFailure = 401 to "unauthorized"
-        val error = assertFailsWith<OpenAiSiwcException> { service.validAccessToken() }
+        val error = assertFailsWith<OpenAiSiwcException> { service.validAccessToken(Long.MAX_VALUE) }
 
         assertEquals("http_error", error.code)
         assertEquals(401, error.status)
         assertEquals(OpenAiSiwcStoredState.Status.REAUTH_REQUIRED, store.read()?.status)
         assertEquals(null, store.read()?.credentials)
+    }
+
+    @Test
+    fun `refresh response body cannot outlive the inference deadline`() = runBlocking {
+        val store = OpenAiSiwcCredentialStore(TestSettings(home))
+        val service = service(store)
+        val authorization = service.prepareAuthorization("http://127.0.0.1:14555/auth/callback")
+        nonce = parseQuery(URI.create(authorization.url).rawQuery).getValue("nonce")
+        service.completeAuthorization(authorization, "one-time-code", "issued_client")
+
+        now += 3_600_000L
+        val gate = CountDownLatch(1)
+        tokenBodyGate = gate
+        val started = System.nanoTime()
+        val error = try {
+            assertFailsWith<OpenAiSiwcException> {
+                service.validAccessToken(System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(250))
+            }
+        } finally {
+            gate.countDown()
+        }
+        val elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)
+
+        assertEquals("deadline_exceeded", error.code)
+        assertTrue(elapsedMillis < 2_000, "Refresh exceeded its call budget: ${elapsedMillis}ms")
+        assertEquals(OpenAiSiwcStoredState.Status.CONNECTED, store.read()?.status)
+        assertEquals("refresh-1", store.read()?.credentials?.refreshToken)
     }
 
     @Test
@@ -215,7 +245,7 @@ class OpenAiSiwcAuthServiceTest {
             "token_type":"Bearer","access_token":"access-$call","refresh_token":"refresh-$call",
             "expires_in":3600,"scope":"openid profile email offline_access resource.invoke chatgpt.tokens.use.direct",
             "id_token":"$idToken"
-        }""")
+        }""", tokenBodyGate)
     }
 
     private fun signedIdToken(clientId: String, nonce: String?): String {
@@ -232,10 +262,11 @@ class OpenAiSiwcAuthServiceTest {
         return "$unsigned.${base64Url(signature)}"
     }
 
-    private fun HttpExchange.json(status: Int, value: String) {
+    private fun HttpExchange.json(status: Int, value: String, bodyGate: CountDownLatch? = null) {
         val body = value.toByteArray(StandardCharsets.UTF_8)
         responseHeaders.set("Content-Type", "application/json")
         sendResponseHeaders(status, body.size.toLong())
+        bodyGate?.await(5, TimeUnit.SECONDS)
         responseBody.use { it.write(body) }
         close()
     }

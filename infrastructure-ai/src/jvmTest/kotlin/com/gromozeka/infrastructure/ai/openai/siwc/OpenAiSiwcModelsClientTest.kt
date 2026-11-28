@@ -44,6 +44,10 @@ class OpenAiSiwcModelsClientTest {
     @Test
     fun `maps model endpoint status without hiding authentication and quota failures`() {
         assertEquals(
+            AiCallFailure.Kind.DEADLINE_EXCEEDED,
+            OpenAiSiwcException("deadline_exceeded", "elapsed").toAiCallException().failure.kind,
+        )
+        assertEquals(
             AiCallFailure.Kind.AUTHENTICATION,
             OpenAiSiwcException("model_catalog_failed", "failed", status = 401).toAiCallException().failure.kind,
         )

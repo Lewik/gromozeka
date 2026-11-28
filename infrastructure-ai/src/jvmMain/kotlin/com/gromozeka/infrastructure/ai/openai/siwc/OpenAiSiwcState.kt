@@ -50,6 +50,7 @@ internal class OpenAiSiwcException(
 internal fun OpenAiSiwcException.toAiCallException(): AiCallException = AiCallException(
     AiCallFailure(
         kind = when {
+            code == "deadline_exceeded" -> AiCallFailure.Kind.DEADLINE_EXCEEDED
             code == "sharing_not_enabled" || status == 403 -> AiCallFailure.Kind.ACCESS_DENIED
             status == 401 || code in AUTHENTICATION_ERROR_CODES -> AiCallFailure.Kind.AUTHENTICATION
             status == 429 -> AiCallFailure.Kind.RATE_LIMITED
@@ -65,7 +66,7 @@ internal fun OpenAiSiwcException.toAiCallException(): AiCallException = AiCallEx
 )
 
 internal fun interface OpenAiSiwcAccessTokenProvider {
-    suspend fun validAccessToken(): String
+    suspend fun validAccessToken(deadlineNanos: Long): String
 }
 
 private val AUTHENTICATION_ERROR_CODES = setOf(

@@ -45,7 +45,7 @@ internal class OpenAiSiwcRuntimeBackend(
                 connection = connection,
                 baseUrl = RESPONSES_BASE_URL,
                 token = try {
-                    accessTokens.validAccessToken()
+                    accessTokens.validAccessToken(deadline)
                 } catch (error: OpenAiSiwcException) {
                     throw error.toAiCallException()
                 },

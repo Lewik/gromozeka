@@ -15,7 +15,6 @@ import org.springframework.stereotype.Component
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
-import java.net.http.HttpResponse
 import java.time.Duration
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -40,74 +39,59 @@ internal class OpenAiSiwcModelsClient @Autowired constructor(
     }
 
     suspend fun list(deadline: Instant): AiConnectionModels = withContext(Dispatchers.IO) {
-        val token = accessTokens.validAccessToken()
-        val remainingMillis = (deadline - Clock.System.now()).inWholeMilliseconds
-        require(remainingMillis > 0) { "ChatGPT model-list deadline has elapsed" }
+        val deadlineNanos = siwcDeadlineNanos(deadline)
+        val token = accessTokens.validAccessToken(deadlineNanos)
         val request = HttpRequest.newBuilder(URI.create(modelsUrl))
-            .timeout(Duration.ofMillis(remainingMillis.coerceAtLeast(1)))
+            .timeout(Duration.ofNanos(remainingNanos(deadlineNanos)))
             .header("Accept", "application/json")
             .header("Authorization", "Bearer $token")
             .GET()
             .build()
-        val response = try {
-            http.send(request, HttpResponse.BodyHandlers.ofInputStream())
+        val response = http.sendSiwc(request, deadlineNanos, MAX_BODY_BYTES)
+        val bytes = response.body()
+        if (response.statusCode() !in 200..299) {
+            throw OpenAiSiwcException(
+                "model_catalog_failed",
+                "ChatGPT model listing failed.",
+                response.statusCode() >= 500,
+                response.statusCode(),
+            )
+        }
+        val root = try {
+            Json.parseToJsonElement(bytes.decodeToString(throwOnInvalidSequence = true)) as? JsonObject
+                ?: error("Expected an object")
         } catch (error: Exception) {
-            throw OpenAiSiwcException("network_error", "Could not load ChatGPT models.", true, cause = error)
+            throw OpenAiSiwcException("invalid_model_catalog", "ChatGPT returned an invalid model catalog.", true, response.statusCode(), error)
         }
-        response.body().use { input ->
-            val bytes = input.readNBytes(MAX_BODY_BYTES + 1)
-            if (bytes.size > MAX_BODY_BYTES) {
-                throw OpenAiSiwcException(
-                    "response_too_large",
-                    "ChatGPT returned an unexpectedly large model catalog.",
-                    true,
-                    response.statusCode(),
-                )
-            }
-            if (response.statusCode() !in 200..299) {
-                throw OpenAiSiwcException(
-                    "model_catalog_failed",
-                    "ChatGPT model listing failed.",
-                    response.statusCode() >= 500,
-                    response.statusCode(),
-                )
-            }
-            val root = try {
-                Json.parseToJsonElement(bytes.decodeToString(throwOnInvalidSequence = true)) as? JsonObject
-                    ?: error("Expected an object")
-            } catch (error: Exception) {
-                throw OpenAiSiwcException("invalid_model_catalog", "ChatGPT returned an invalid model catalog.", true, response.statusCode(), error)
-            }
-            val values = root["models"] as? JsonArray
+        val values = root["models"] as? JsonArray
+            ?: throw OpenAiSiwcException("invalid_model_catalog", "ChatGPT returned an invalid model catalog.", true)
+        if (values.size > 10_000) {
+            throw OpenAiSiwcException("invalid_model_catalog", "ChatGPT model catalog contains too many entries.", true)
+        }
+        val models = values.mapNotNull { element ->
+            val model = element as? JsonObject
                 ?: throw OpenAiSiwcException("invalid_model_catalog", "ChatGPT returned an invalid model catalog.", true)
-            if (values.size > 10_000) {
-                throw OpenAiSiwcException("invalid_model_catalog", "ChatGPT model catalog contains too many entries.", true)
+            if ((model["visibility"] as? JsonPrimitive)?.contentOrNull != "list") return@mapNotNull null
+            val slug = model.string("slug")
+            val displayName = model.string("display_name")
+            if (slug.isNullOrBlank() || displayName.isNullOrBlank()) {
+                throw OpenAiSiwcException("invalid_model_catalog", "ChatGPT returned an incomplete model catalog.", true)
             }
-            val models = values.mapNotNull { element ->
-                val model = element as? JsonObject
-                    ?: throw OpenAiSiwcException("invalid_model_catalog", "ChatGPT returned an invalid model catalog.", true)
-                if ((model["visibility"] as? JsonPrimitive)?.contentOrNull != "list") return@mapNotNull null
-                val slug = model.string("slug")
-                val displayName = model.string("display_name")
-                if (slug.isNullOrBlank() || displayName.isNullOrBlank()) {
-                    throw OpenAiSiwcException("invalid_model_catalog", "ChatGPT returned an incomplete model catalog.", true)
-                }
-                try {
-                    AiModelCandidate(id = slug, displayName = displayName)
-                } catch (error: IllegalArgumentException) {
-                    throw OpenAiSiwcException(
-                        "invalid_model_catalog",
-                        "ChatGPT returned an invalid model catalog.",
-                        true,
-                        cause = error,
-                    )
-                }
+            try {
+                AiModelCandidate(id = slug, displayName = displayName)
+            } catch (error: IllegalArgumentException) {
+                throw OpenAiSiwcException(
+                    "invalid_model_catalog",
+                    "ChatGPT returned an invalid model catalog.",
+                    true,
+                    cause = error,
+                )
             }
-            if (models.map(AiModelCandidate::id).distinct().size != models.size) {
-                throw OpenAiSiwcException("invalid_model_catalog", "ChatGPT model catalog contains duplicate IDs.", true)
-            }
-            AiConnectionModels(models, Clock.System.now())
         }
+        if (models.map(AiModelCandidate::id).distinct().size != models.size) {
+            throw OpenAiSiwcException("invalid_model_catalog", "ChatGPT model catalog contains duplicate IDs.", true)
+        }
+        AiConnectionModels(models, Clock.System.now())
     }
 
     private fun JsonObject.string(name: String): String? =
