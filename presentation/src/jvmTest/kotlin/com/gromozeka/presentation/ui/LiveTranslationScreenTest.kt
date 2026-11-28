@@ -138,6 +138,29 @@ class LiveTranslationScreenTest {
     }
 
     @Test
+    fun `custom interface locale does not require a Soniox target`() = runComposeUiTest {
+        val configuration = configuration()
+        lateinit var controller: LiveInterpreterController
+        setContent {
+            val scope = rememberCoroutineScope()
+            controller = remember {
+                LiveInterpreterController(
+                    FakeClient(), FakeMicrophone(), scope,
+                    initialTranslationLanguages = listOf("fil-PH"),
+                    initialNativeTranslationLanguage = "fil-PH",
+                )
+            }
+            DisposableEffect(controller) { onDispose { controller.cancel() } }
+            TranslationProvider(Translation(BundledTranslations.english)) {
+                MaterialTheme { Box(Modifier.size(1_200.dp, 800.dp)) { LiveInterpreterScreen(controller, configuration) } }
+            }
+        }
+
+        onNodeWithText("Start").assertIsEnabled()
+        runOnIdle { assertEquals(null, controller.state.value.nativeTranslationLanguage) }
+    }
+
+    @Test
     fun `Soniox Live 2 is selectable`() = runComposeUiTest {
         val configuration = configuration(soniox = true)
         lateinit var controller: LiveInterpreterController

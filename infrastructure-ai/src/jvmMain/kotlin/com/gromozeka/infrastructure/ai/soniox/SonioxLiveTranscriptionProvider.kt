@@ -386,31 +386,54 @@ internal class SonioxTranscriptAssembler(
 
     private fun appendOriginalGroup(tokens: List<SonioxRealtimeToken>, events: MutableList<LiveTranscriptionEvent>) {
         check(tokens.isNotEmpty())
-        var current = active
-        val first = tokens.first()
-        if (current != null) stabilizeInitialMetadata(current, first)
-        if (current != null && (current.speakerId != null && first.speaker != null && current.speakerId != first.speaker ||
-                current.flushPending && first.text.firstOrNull()?.isWhitespace() == true)) {
-            finalizeActive(events)
-            current = null
+        var offset = 0
+        while (offset < tokens.size) {
+            val first = tokens[offset]
+            var current = active
+            if (current != null) stabilizeInitialMetadata(current, first)
+            if (current != null && shouldSplitBefore(current, first)) {
+                finalizeActive(events)
+                current = null
+            }
+            if (current == null) current = newActive(first)
+
+            val chunkStart = offset
+            var finalizeAfterChunk = false
+            while (offset < tokens.size) {
+                val token = tokens[offset]
+                if (offset > chunkStart && shouldSplitBefore(current, token)) {
+                    finalizeAfterChunk = true
+                    break
+                }
+                appendToActive(current, token)
+                offset += 1
+                if (isSentenceBoundary(token.text)) {
+                    finalizeAfterChunk = true
+                    break
+                }
+            }
+
+            val sourceTokens = tokens.subList(chunkStart, offset)
+            val itemId = current.id
+            val sourceText = sourceTokens.joinToString(separator = "") { it.text }
+            val sourceLanguage = sourceTokens.mapNotNull { it.language }.distinct().singleOrNull() ?: current.language
+            val speakerId = sourceTokens.mapNotNull { it.speaker }.distinct().singleOrNull() ?: current.speakerId
+            nativeTranslation(itemId, sourceLanguage, speakerId)
+            nativeTranslationChunks += if (sourceLanguage == nativeTranslationLanguage) {
+                NativeTranslationChunk.Direct(itemId, speakerId, sourceLanguage, sourceText)
+            } else {
+                NativeTranslationChunk.Pending(itemId, speakerId, sourceLanguage)
+            }
+            if (sourceLanguage == nativeTranslationLanguage && !finalizeAfterChunk) {
+                publishNativeTranslation(itemId, events)
+            }
+            if (finalizeAfterChunk) finalizeActive(events)
         }
-        if (current == null) current = newActive(first)
-        val itemId = current.id
-        val sourceText = tokens.joinToString(separator = "") { it.text }
-        val sourceLanguage = tokens.mapNotNull { it.language }.distinct().singleOrNull() ?: current.language
-        val speakerId = tokens.mapNotNull { it.speaker }.distinct().singleOrNull() ?: current.speakerId
-        nativeTranslation(itemId, sourceLanguage, speakerId)
-        nativeTranslationChunks += if (sourceLanguage == nativeTranslationLanguage) {
-            NativeTranslationChunk.Direct(itemId, speakerId, sourceLanguage, sourceText)
-        } else {
-            NativeTranslationChunk.Pending(itemId, speakerId, sourceLanguage)
-        }
-        tokens.forEachIndexed { index, token ->
-            appendToActive(current, token)
-            if (index == tokens.lastIndex && isSentenceBoundary(token.text)) finalizeActive(events)
-        }
-        if (sourceLanguage == nativeTranslationLanguage) publishNativeTranslation(itemId, events)
     }
+
+    private fun shouldSplitBefore(current: Active, token: SonioxRealtimeToken): Boolean =
+        (current.speakerId != null && token.speaker != null && current.speakerId != token.speaker) ||
+            (current.flushPending && token.text.firstOrNull()?.isWhitespace() == true)
 
     private fun acceptTranslatedTokens(tokens: List<SonioxRealtimeToken>, events: MutableList<LiveTranscriptionEvent>) {
         val contentTokens = tokens.filter { it.text !in setOf("<end>", "<fin>") }

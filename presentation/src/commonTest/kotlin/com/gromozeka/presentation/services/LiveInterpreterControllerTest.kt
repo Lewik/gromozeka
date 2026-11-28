@@ -261,6 +261,17 @@ class LiveInterpreterControllerTest {
     }
 
     @Test
+    fun `custom interface locale without an ISO 639-1 primary does not require Soniox`() = runTest {
+        val controller = LiveInterpreterController(
+            FakeClient(), FakeMicrophone(), backgroundScope,
+            initialNativeTranslationLanguage = "fil-PH",
+        )
+        assertEquals(null, controller.state.value.nativeTranslationLanguage)
+        controller.useInterfaceNativeTranslationLanguage("abcdef-Custom")
+        assertEquals(null, controller.state.value.nativeTranslationLanguage)
+    }
+
+    @Test
     fun `Soniox native targets use the ISO 639-1 primary language`() = runTest {
         val controller = LiveInterpreterController(
             FakeClient(), FakeMicrophone(), backgroundScope,

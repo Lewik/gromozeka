@@ -53,11 +53,12 @@ private fun normalizeLiveLanguage(language: String): String = language.trim().lo
     }
 }
 
+internal fun sonioxLanguageCodeOrNull(language: String): String? =
+    language.trim().lowercase().substringBefore('-').takeIf { it.matches(Regex("[a-z]{2}")) }
+
 internal fun normalizeSonioxLanguageCode(language: String): String =
-    normalizeLiveLanguage(language).substringBefore('-').also {
-        require(it.matches(Regex("[a-z]{2}"))) {
-            "Soniox requires a two-letter ISO 639-1 language code"
-        }
+    requireNotNull(sonioxLanguageCodeOrNull(language)) {
+        "Soniox requires a two-letter ISO 639-1 language code"
     }
 
 enum class LiveInterpreterPhase {
@@ -117,7 +118,7 @@ class LiveInterpreterController(
     private val log = KLoggers.logger(this)
     internal val translations = LiveTranslationController(client, scope, initialTranslationLanguages)
     private val mutableState = MutableStateFlow(LiveInterpreterState(
-        nativeTranslationLanguage = initialNativeTranslationLanguage?.let(::normalizeSonioxLanguageCode),
+        nativeTranslationLanguage = initialNativeTranslationLanguage?.let(::sonioxLanguageCodeOrNull),
         translationSessionId = translations.state.value.sessionId,
     ))
     val state: StateFlow<LiveInterpreterState> = mutableState.asStateFlow()
@@ -149,7 +150,7 @@ class LiveInterpreterController(
     }
 
     fun useInterfaceNativeTranslationLanguage(language: String) {
-        val normalized = normalizeSonioxLanguageCode(language)
+        val normalized = sonioxLanguageCodeOrNull(language)
         mutableState.update { current ->
             if (current.nativeTranslationLanguageExplicit) current
             else current.copy(nativeTranslationLanguage = normalized)

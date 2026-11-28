@@ -153,6 +153,43 @@ class SonioxLiveTranscriptionProviderTest {
     }
 
     @Test
+    fun `native sentence boundary finalizes source while the continuation remains live`() {
+        val assembler = SonioxTranscriptAssembler(nativeTranslationLanguage = "ru")
+        val source = assembler.accept(listOf(
+            token("Hello", true, 0, 300, "1", language = "en", translationStatus = "original"),
+            token(".", true, 300, 400, "1", language = "en", translationStatus = "original"),
+            token(" continuing", true, 400, 800, "1", language = "en", translationStatus = "original"),
+        ))
+        assertEquals(
+            listOf("Hello."),
+            source.filterIsInstance<LiveTranscriptionEvent.Transcript>().filter { it.isFinal }.map { it.text },
+        )
+        val continuation = source.filterIsInstance<LiveTranscriptionEvent.Transcript>().single { !it.isFinal }
+        assertEquals("soniox-1", continuation.itemId)
+        assertEquals(" continuing", continuation.text)
+
+        val firstTranslation = assembler.accept(listOf(
+            token("Привет.", true, speaker = "1", language = "ru", sourceLanguage = "en",
+                translationStatus = "translation"),
+        )).filterIsInstance<LiveTranscriptionEvent.Translation>().last()
+        assertEquals("soniox-0", firstTranslation.itemId)
+        assertTrue(firstTranslation.isFinal)
+
+        val secondTranslation = assembler.accept(listOf(
+            token(" продолжение", true, speaker = "1", language = "ru", sourceLanguage = "en",
+                translationStatus = "translation"),
+        )).filterIsInstance<LiveTranscriptionEvent.Translation>().last()
+        assertEquals("soniox-1", secondTranslation.itemId)
+        assertFalse(secondTranslation.isFinal)
+        val finished = assembler.finish()
+        assertEquals(
+            listOf(" continuing"),
+            finished.filterIsInstance<LiveTranscriptionEvent.Transcript>().filter { it.isFinal }.map { it.text },
+        )
+        assertEquals("soniox-1", finished.filterIsInstance<LiveTranscriptionEvent.Translation>().single().itemId)
+    }
+
+    @Test
     fun `speaker change creates ordered final segments without endpoint controls`() {
         val assembler = SonioxTranscriptAssembler(maximumSegmentMillis = 8_000)
         val events = assembler.accept(listOf(
@@ -181,6 +218,31 @@ class SonioxLiveTranscriptionProviderTest {
         )) + assembler.finish()
         assertEquals(listOf("one two three", " four"),
             events.filterIsInstance<LiveTranscriptionEvent.Transcript>().filter { it.isFinal }.map { it.text })
+    }
+
+    @Test
+    fun `native long finalized speech uses the same duration segmentation`() {
+        val assembler = SonioxTranscriptAssembler(maximumSegmentMillis = 1_000, nativeTranslationLanguage = "ru")
+        val source = assembler.accept(listOf(
+            token("one ", true, 0, 400, "1", language = "en", translationStatus = "original"),
+            token("two ", true, 400, 800, "1", language = "en", translationStatus = "original"),
+            token("three", true, 800, 1_200, "1", language = "en", translationStatus = "original"),
+            token(" four", true, 1_200, 1_600, "1", language = "en", translationStatus = "original"),
+        ))
+        val firstTranslation = assembler.accept(listOf(
+            token("один два три", true, speaker = "1", language = "ru", sourceLanguage = "en",
+                translationStatus = "translation"),
+        ))
+        val secondTranslation = assembler.accept(listOf(
+            token(" четыре", true, speaker = "1", language = "ru", sourceLanguage = "en",
+                translationStatus = "translation"),
+        ))
+        val events = source + firstTranslation + secondTranslation + assembler.finish()
+        assertEquals(listOf("one two three", " four"),
+            events.filterIsInstance<LiveTranscriptionEvent.Transcript>().filter { it.isFinal }.map { it.text })
+        val translations = events.filterIsInstance<LiveTranscriptionEvent.Translation>().filter { it.isFinal }
+        assertEquals(listOf("soniox-0", "soniox-1"), translations.map { it.itemId })
+        assertEquals(listOf("один два три", " четыре"), translations.map { it.text })
     }
 
     @Test
