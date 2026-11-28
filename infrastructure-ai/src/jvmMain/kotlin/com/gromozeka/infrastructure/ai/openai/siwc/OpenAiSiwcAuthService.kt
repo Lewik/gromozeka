@@ -100,7 +100,7 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
             "ext_agent_host_id" to store.hostId(),
         )
         if (clientId == null) parameters["agent_name_hint"] = APP_NAME
-        else parameters["prompt"] = "consent"
+        else if (saved?.status == OpenAiSiwcStoredState.Status.DISCONNECTED) parameters["prompt"] = "consent"
         val query = parameters.entries.joinToString("&") { (name, value) -> "${encoded(name)}=${encoded(value)}" }
         return Authorization(
             url = "${provider.authorizationEndpoint}?$query",
@@ -211,9 +211,14 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
                 }
                 refreshed.accessToken
             } catch (error: OpenAiSiwcException) {
-                if (error.code in REAUTH_REQUIRED_ERROR_CODES) {
+                val terminalStatus = when {
+                    error.code == "sharing_not_enabled" -> OpenAiSiwcStoredState.Status.DISCONNECTED
+                    error.code in REAUTH_REQUIRED_ERROR_CODES -> OpenAiSiwcStoredState.Status.REAUTH_REQUIRED
+                    else -> null
+                }
+                if (terminalStatus != null) {
                     save((state ?: current).copy(
-                        status = OpenAiSiwcStoredState.Status.REAUTH_REQUIRED,
+                        status = terminalStatus,
                         scopes = emptyList(),
                         credentials = null,
                         pendingRefresh = null,
@@ -635,7 +640,6 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
         val REAUTH_REQUIRED_ERROR_CODES = setOf(
             "invalid_grant", "invalid_refresh_token", "token_expired", "refresh_token_expired",
             "refresh_token_invalidated", "refresh_token_reused", "invalid_id_token", "account_mismatch",
-            "sharing_not_enabled",
         )
     }
 }

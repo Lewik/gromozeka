@@ -97,7 +97,7 @@ class OpenAiSiwcAuthServiceTest {
         assertEquals("issued_client", returningQuery["client_id"])
         assertFalse(returningQuery.containsKey("login_hint"))
         assertFalse(returningQuery.containsKey("agent_name_hint"))
-        assertEquals("consent", returningQuery["prompt"])
+        assertFalse(returningQuery.containsKey("prompt"))
 
         now += 3_600_000L
         assertEquals("access-2", service.validAccessToken(Long.MAX_VALUE))
@@ -201,6 +201,9 @@ class OpenAiSiwcAuthServiceTest {
             assertEquals(OpenAiSiwcStoredState.Status.REAUTH_REQUIRED, store.read()?.status)
             assertEquals(null, store.read()?.credentials)
             assertTrue(browser.isLoginPending())
+            val retry = parseQuery(URI.create(service.prepareAuthorization(
+                "http://127.0.0.1:14555/auth/callback").url).rawQuery)
+            assertFalse(retry.containsKey("prompt"))
         } finally {
             browser.shutdown()
         }
@@ -222,12 +225,15 @@ class OpenAiSiwcAuthServiceTest {
 
             assertEquals("sharing_not_enabled", error.code)
             val reauthentication = assertNotNull(store.read())
-            assertEquals(OpenAiSiwcStoredState.Status.REAUTH_REQUIRED, reauthentication.status)
+            assertEquals(OpenAiSiwcStoredState.Status.DISCONNECTED, reauthentication.status)
             assertTrue(reauthentication.scopes.isEmpty())
             assertEquals(null, reauthentication.credentials)
             assertEquals(null, reauthentication.pendingRefresh)
             assertTrue(browser.isLoginPending())
             assertEquals(2, tokenCalls.get())
+            val retry = parseQuery(URI.create(service.prepareAuthorization(
+                "http://127.0.0.1:14555/auth/callback").url).rawQuery)
+            assertEquals("consent", retry["prompt"])
 
             val restarted = service(OpenAiSiwcCredentialStore(TestSettings(home)))
             val signedOut = assertFailsWith<OpenAiSiwcException> { restarted.validAccessToken(Long.MAX_VALUE) }
