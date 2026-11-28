@@ -5,9 +5,14 @@ import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.model.ai.*
 import com.gromozeka.domain.service.*
 import com.gromozeka.domain.tool.*
+import com.gromozeka.infrastructure.ai.openai.siwc.OpenAiSiwcAccessTokenProvider
+import com.gromozeka.infrastructure.ai.openai.siwc.OpenAiSiwcResourceError
+import com.gromozeka.infrastructure.ai.openai.siwc.mapOpenAiSiwcResourceFailure
 import com.gromozeka.infrastructure.ai.runtime.RoutingAiRuntimeProvider
+import com.gromozeka.infrastructure.ai.runtime.SdkHttpCallExecutor
 import com.gromozeka.infrastructure.ai.runtime.StalledServer
 import com.gromozeka.infrastructure.ai.runtime.TestAiAdmission
+import com.gromozeka.infrastructure.ai.runtime.credentialFingerprint
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import kotlinx.coroutines.*
@@ -231,6 +236,48 @@ data: {"type":"error","sequence_number":1,"code":"subscription_sharing_unsupport
                 )
                 assertEquals("subscription_sharing_unsupported_capability", error.code)
                 assertEquals("input[0].tools", error.parameter)
+            }
+        }
+    }
+
+    @Test
+    fun `SIWC terminal failed response follows structured failure recovery`() = runBlocking {
+        val cases = listOf(
+            Triple("subscription_sharing_usage_limit_exceeded",
+                AiCallFailure.Kind.RATE_LIMITED, AiCallFailure.Outcome.REJECTED),
+            Triple("subscription_sharing_usage_unavailable",
+                AiCallFailure.Kind.TRANSPORT, AiCallFailure.Outcome.UNKNOWN),
+            Triple("subscription_sharing_invalid_user",
+                AiCallFailure.Kind.AUTHENTICATION, AiCallFailure.Outcome.REJECTED),
+        )
+        for ((code, kind, outcome) in cases) {
+            ResponsesServer { exchange, _, _ ->
+                exchange.responseHeaders.set("x-request-id", "req_failed-1")
+                val failed = """{
+                    "id":"failed","object":"response","created_at":1,"status":"failed","model":"$MODEL","output":[],
+                    "error":{"code":"$code","message":"private-stream-marker"}
+                }"""
+                reply(exchange, terminal(failed, "response.failed"), isEventStream = true)
+            }.use { server ->
+                val tokens = RecordingSiwcAccessTokens()
+                val thrown = assertFailsWith<AiCallException> {
+                    siwcRuntime(connection(server.origin, stream = true), OpenAiResponsesContinuations(), tokens)
+                        .call(request(listOf(user("root"))))
+                }
+                val error = thrown.failure
+
+                assertEquals(kind, error.kind, code)
+                assertEquals(outcome, error.outcome, code)
+                assertEquals(200, error.httpStatus, code)
+                assertEquals(code, error.providerErrorCode)
+                assertEquals("req_failed-1", error.providerRequestId)
+                assertFalse(thrown.toString().contains("private-stream-marker"))
+                if (code == "subscription_sharing_invalid_user") {
+                    assertEquals(listOf(credentialFingerprint(TOKEN)), tokens.rejectedFingerprints)
+                    assertEquals(listOf(200), tokens.rejections.map { it.status })
+                } else {
+                    assertTrue(tokens.rejections.isEmpty())
+                }
             }
         }
     }
@@ -539,6 +586,65 @@ data: {"type":"error","sequence_number":1,"code":"subscription_sharing_unsupport
             AiModelSpec.Limits(AiModelSpec.Limits.TextGeneration(128_000, 8192)))
         return RoutingAiRuntimeProvider(listOf(OpenAiSdkRuntimeBackend(OpenAiSdkClientFactory(Sources, httpClients), admission, state)))
             .getRuntime(ResolvedAiRuntime(connection, config, spec), null)
+    }
+
+    private fun siwcRuntime(
+        connection: AiConnection.OpenAiApi,
+        state: OpenAiResponsesContinuations,
+        accessTokens: OpenAiSiwcAccessTokenProvider,
+    ): AiRuntime {
+        val configuration = AiModelConfiguration(
+            AiModelConfiguration.Id("siwc-configuration"),
+            connection.id,
+            MODEL,
+            "Synthetic SIWC",
+        )
+        val executor = SdkHttpCallExecutor(
+            connection = connection,
+            timeoutSeconds = configuration.defaultParameters.timeoutSeconds,
+            maxAttempts = 1,
+            admission = TestAiAdmission(),
+            modelConfiguration = configuration,
+            failureMapper = { session, failure, cause, deadline ->
+                mapOpenAiSiwcResourceFailure(accessTokens, session, failure, cause, deadline)
+            },
+        ) { deadline -> OpenAiSdkClientFactory(Sources, httpClients).createInferenceClient(connection, deadline) }
+        return OpenAiResponsesSdkRuntime(
+            connectionId = connection.id.value,
+            modelConfigurationId = configuration.id.value,
+            modelName = MODEL,
+            webSearchEnabled = false,
+            executor = executor,
+            provider = OpenAiResponsesProvider(
+                providerScope = AiConnection.Kind.OPENAI_SIWC.name,
+                webSearchTool = ProviderNativeTool.OPENAI_SIWC_WEB_SEARCH,
+                functionNamespace = "functions",
+                supportsNativeCompaction = false,
+                supportsDetachedNativeCompaction = false,
+                supportsProviderTokenCount = false,
+                streaming = true,
+                terminalFailuresAsErrors = true,
+                requestFeatures = OpenAiResponsesRequestFeatures(maxOutputTokens = false),
+            ),
+            continuations = state,
+            quotaEnabled = false,
+        )
+    }
+
+    private class RecordingSiwcAccessTokens : OpenAiSiwcAccessTokenProvider {
+        val rejectedFingerprints = mutableListOf<String>()
+        val rejections = mutableListOf<OpenAiSiwcResourceError>()
+
+        override suspend fun validAccessToken(deadlineNanos: Long): String = error("The test supplies the SDK token directly")
+
+        override fun resourceRejectedAccessToken(
+            credentialFingerprint: String,
+            error: OpenAiSiwcResourceError,
+            deadlineNanos: Long,
+        ) {
+            rejectedFingerprints += credentialFingerprint
+            rejections += error
+        }
     }
 
     private fun request(messages: List<Conversation.Message>) = AiRuntimeRequest(listOf("Current instructions"), messages,

@@ -43,7 +43,9 @@ internal class OpenAiSiwcRuntimeBackend(
             maxAttempts = HTTP_SETTINGS.maxAttempts,
             admission = admission,
             modelConfiguration = modelConfiguration,
-            failureMapper = ::mapResourceFailure,
+            failureMapper = { session, failure, cause, deadline ->
+                mapOpenAiSiwcResourceFailure(accessTokens, session, failure, cause, deadline)
+            },
         ) { deadline ->
             clientFactory.createInferenceClient(
                 connection = connection,
@@ -71,25 +73,6 @@ internal class OpenAiSiwcRuntimeBackend(
         )
     }
 
-    private fun mapResourceFailure(
-        session: SdkInferenceClient<OpenAIClient>,
-        failure: AiCallFailure,
-        cause: Throwable,
-        deadlineNanos: Long,
-    ): AiCallFailure {
-        val error = cause.openAiSiwcResourceError(
-            failure.httpStatus,
-            session.transport.responseHeader("x-request-id"),
-        ) ?: return failure
-        val mapped = failure.withOpenAiSiwcResourceError(error)
-        if (mapped.outcome == AiCallFailure.Outcome.REJECTED) {
-            session.identity?.credentialFingerprint?.let {
-                accessTokens.resourceRejectedAccessToken(it, error, deadlineNanos)
-            }
-        }
-        return mapped
-    }
-
     private companion object {
         const val RESPONSES_BASE_URL = "https://api.openai.com/v1"
         val HTTP_SETTINGS = AiHttpSettings(maxAttempts = 1)
@@ -101,9 +84,31 @@ internal class OpenAiSiwcRuntimeBackend(
             supportsDetachedNativeCompaction = false,
             supportsProviderTokenCount = false,
             streaming = true,
+            terminalFailuresAsErrors = true,
             requestFeatures = OpenAiResponsesRequestFeatures(maxOutputTokens = false),
         )
     }
+}
+
+internal fun mapOpenAiSiwcResourceFailure(
+    accessTokens: OpenAiSiwcAccessTokenProvider,
+    session: SdkInferenceClient<OpenAIClient>,
+    failure: AiCallFailure,
+    cause: Throwable,
+    deadlineNanos: Long,
+): AiCallFailure {
+    val error = cause.openAiSiwcResourceError(
+        failure.httpStatus,
+        session.transport.responseHeader("x-request-id"),
+    ) ?: return failure
+    val mapped = failure.withOpenAiSiwcResourceError(error)
+    if (mapped.outcome == AiCallFailure.Outcome.REJECTED &&
+        (error.status == 401 || error.code == "subscription_sharing_invalid_user")) {
+        session.identity?.credentialFingerprint?.let {
+            accessTokens.resourceRejectedAccessToken(it, error, deadlineNanos)
+        }
+    }
+    return mapped
 }
 
 internal fun AiCallFailure.withOpenAiSiwcResourceError(error: OpenAiSiwcResourceError): AiCallFailure {

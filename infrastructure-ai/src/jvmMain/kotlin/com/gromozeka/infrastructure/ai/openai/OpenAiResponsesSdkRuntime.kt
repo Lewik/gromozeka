@@ -185,6 +185,12 @@ internal class OpenAiResponsesSdkRuntime(
                     if (quotaEnabled && provider.streaming) {
                         session.transport.accountForResponse(Json.parseToJsonElement(jsonMapper().writeValueAsString(response)))
                     }
+                    if (provider.terminalFailuresAsErrors && response.status().getOrNull()?.asString() == "failed") {
+                        throw OpenAiResponsesStreamException(
+                            code = response.error().getOrNull()?.code()?.asString(),
+                            parameter = null,
+                        )
+                    }
                     val mapped = messageMapper.toRuntimeResponse(response, request.options.assistantResponseFormat)
                     val replay = if (plan.store && response.status().orElse(null)?.asString() == "completed" &&
                         !mapped.outcome.isFailure && mapped.outcome != AiStepOutcome.REFUSED && response.output().none { it.isCompaction() }) {
@@ -261,6 +267,7 @@ internal data class OpenAiResponsesProvider(
     val supportsDetachedNativeCompaction: Boolean,
     val supportsProviderTokenCount: Boolean,
     val streaming: Boolean,
+    val terminalFailuresAsErrors: Boolean = false,
     val requestFeatures: OpenAiResponsesRequestFeatures = OpenAiResponsesRequestFeatures(),
 ) {
     val nativeCompactionProvider: String? = providerScope.takeIf { supportsNativeCompaction }
