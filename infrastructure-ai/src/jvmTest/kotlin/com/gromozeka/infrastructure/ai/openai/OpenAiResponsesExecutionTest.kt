@@ -203,6 +203,39 @@ class OpenAiResponsesExecutionTest {
     }
 
     @Test
+    fun `stream error preserves a structured parameter path`() {
+        val body = """event: error
+data: {"type":"error","sequence_number":1,"code":"subscription_sharing_unsupported_capability","message":"private-stream-marker","param":"input[0].tools"}
+
+"""
+        ResponsesServer { exchange, _, _ -> reply(exchange, body, isEventStream = true) }.use { server ->
+            val connection = connection(server.origin, stream = true)
+            OpenAiSdkClientFactory(Sources, httpClients).createInferenceClient(
+                connection,
+                System.nanoTime() + TimeUnit.SECONDS.toNanos(5),
+            ).use { inference ->
+                val params = OpenAiResponsesMessageMapper(
+                    connectionId = connection.id.value,
+                    modelConfigurationId = "configuration",
+                    modelName = MODEL,
+                ).toCreateParams(MODEL, false, request(listOf(user("root"))))
+
+                val thrown = assertFails {
+                    collectOpenAiResponsesStream(inference.client, params, java.time.Duration.ofSeconds(5))
+                        .get(5, TimeUnit.SECONDS)
+                }
+                val error = assertNotNull(
+                    generateSequence(thrown) { it.cause }
+                        .filterIsInstance<OpenAiResponsesStreamException>()
+                        .firstOrNull(),
+                )
+                assertEquals("subscription_sharing_unsupported_capability", error.code)
+                assertEquals("input[0].tools", error.parameter)
+            }
+        }
+    }
+
+    @Test
     fun `SSE is consumed progressively but a partial tool call is not returned before completion`() = runBlocking {
         val partialSent = CountDownLatch(1)
         val finish = CountDownLatch(1)

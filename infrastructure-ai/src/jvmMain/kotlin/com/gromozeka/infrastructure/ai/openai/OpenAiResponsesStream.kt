@@ -27,8 +27,8 @@ internal fun collectOpenAiResponsesStream(client: OpenAIClient, params: Response
             if (event.isError()) {
                 val error = event.asError()
                 throw OpenAiResponsesStreamException(
-                    code = error.code().getOrNull().safeErrorField(),
-                    parameter = error.param().getOrNull().safeErrorField(),
+                    code = error.code().getOrNull().safeErrorCode(),
+                    parameter = error.param().getOrNull().safeErrorParameter(),
                 )
             }
             event.outputItemDone().getOrNull()?.let { completedOutput[it.outputIndex()] = it.item() }
@@ -54,8 +54,8 @@ internal fun collectOpenAiResponsesStream(client: OpenAIClient, params: Response
     }
 }
 
-private fun String?.safeErrorField(): String? = this?.takeIf {
-    it.matches(SAFE_ERROR_FIELD)
-}
+private fun String?.safeErrorCode(): String? = this?.takeIf { it.matches(SAFE_ERROR_CODE) }
+private fun String?.safeErrorParameter(): String? = this?.takeIf { it.matches(SAFE_ERROR_PARAMETER) }
 
-private val SAFE_ERROR_FIELD = Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
+private val SAFE_ERROR_CODE = Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
+private val SAFE_ERROR_PARAMETER = Regex("[A-Za-z0-9][A-Za-z0-9._\\[\\]-]{0,255}")
