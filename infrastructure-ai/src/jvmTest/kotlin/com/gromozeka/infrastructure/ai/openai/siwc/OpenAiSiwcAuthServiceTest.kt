@@ -24,6 +24,9 @@ import java.util.Base64
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -170,6 +173,13 @@ class OpenAiSiwcAuthServiceTest {
     }
 
     @Test
+    fun `credential lock acquisition honors each caller deadline`() = runBlocking {
+        val first = OpenAiSiwcCredentialStore(TestSettings(home))
+        assertLockDeadline(first, first)
+        assertLockDeadline(first, OpenAiSiwcCredentialStore(TestSettings(home)))
+    }
+
+    @Test
     fun `loopback callback completes the pending dynamic registration`() {
         val store = OpenAiSiwcCredentialStore(TestSettings(home))
         val browser = OpenAiSiwcBrowserAuthService(service(store))
@@ -262,13 +272,45 @@ class OpenAiSiwcAuthServiceTest {
         return "$unsigned.${base64Url(signature)}"
     }
 
-    private fun HttpExchange.json(status: Int, value: String, bodyGate: CountDownLatch? = null) {
+    private fun HttpExchange.json(
+        status: Int,
+        value: String,
+        bodyGate: CountDownLatch? = null,
+    ) {
         val body = value.toByteArray(StandardCharsets.UTF_8)
         responseHeaders.set("Content-Type", "application/json")
         sendResponseHeaders(status, body.size.toLong())
         bodyGate?.await(5, TimeUnit.SECONDS)
         responseBody.use { it.write(body) }
         close()
+    }
+
+    private suspend fun assertLockDeadline(
+        holderStore: OpenAiSiwcCredentialStore,
+        waiterStore: OpenAiSiwcCredentialStore,
+    ) = coroutineScope {
+        val lockAcquired = CountDownLatch(1)
+        val releaseLock = CountDownLatch(1)
+        val holder = async(Dispatchers.IO) {
+            holderStore.lockedState(System.nanoTime() + TimeUnit.SECONDS.toNanos(5)) {
+                lockAcquired.countDown()
+                releaseLock.await(5, TimeUnit.SECONDS)
+            }
+        }
+        val result = try {
+            assertTrue(lockAcquired.await(2, TimeUnit.SECONDS), "The first caller did not acquire the credential lock")
+            val started = System.nanoTime()
+            val error = assertFailsWith<OpenAiSiwcException> {
+                waiterStore.lockedState(System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(250)) { Unit }
+            }
+            error to TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)
+        } finally {
+            releaseLock.countDown()
+        }
+        holder.await()
+
+        assertEquals("deadline_exceeded", result.first.code)
+        assertTrue(result.second < 2_000, "Credential-lock wait exceeded its call budget: ${result.second}ms")
     }
 
     private fun parseQuery(value: String): Map<String, String> = value.split('&').filter(String::isNotBlank).associate {

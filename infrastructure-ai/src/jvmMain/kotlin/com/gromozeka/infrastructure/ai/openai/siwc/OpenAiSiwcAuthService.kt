@@ -152,7 +152,7 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
     }
 
     override suspend fun validAccessToken(deadlineNanos: Long): String = withContext(Dispatchers.IO) {
-        store.lockedState {
+        store.lockedState(deadlineNanos) {
             remainingNanos(deadlineNanos)
             var current = state ?: throw OpenAiSiwcException("sign_in_required", "Sign in with ChatGPT to continue.")
             if (current.status != OpenAiSiwcStoredState.Status.CONNECTED || current.clientId == null) {

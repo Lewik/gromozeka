@@ -6,6 +6,8 @@ import kotlinx.serialization.json.Json
 import org.springframework.stereotype.Component
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
+import java.nio.channels.FileLock
+import java.nio.channels.OverlappingFileLockException
 import java.nio.charset.StandardCharsets
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
@@ -18,6 +20,9 @@ import java.nio.file.attribute.PosixFilePermission
 import java.security.SecureRandom
 import java.util.Base64
 import java.util.UUID
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.LockSupport
+import java.util.concurrent.locks.ReentrantLock
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
@@ -34,7 +39,7 @@ internal class OpenAiSiwcCredentialStore(
     private val hostPath = directory.resolve("host.json")
     private val random = SecureRandom()
     private val json = Json { encodeDefaults = true; ignoreUnknownKeys = false }
-    private val processLock = Any()
+    private val processLock = ReentrantLock()
 
     fun hostId(): String = locked {
         val existing = readPublic<HostIdentity>(hostPath)
@@ -57,7 +62,7 @@ internal class OpenAiSiwcCredentialStore(
     }
 
     /** The operation may perform a token refresh; the lock deliberately remains held until its rotation is durable. */
-    fun <T> lockedState(operation: LockedState.() -> T): T = locked {
+    fun <T> lockedState(deadlineNanos: Long, operation: LockedState.() -> T): T = locked(deadlineNanos) {
         LockedState(readState()).operation()
     }
 
@@ -68,13 +73,63 @@ internal class OpenAiSiwcCredentialStore(
         }
     }
 
-    private fun <T> locked(operation: () -> T): T = synchronized(processLock) {
-        prepareDirectory()
-        FileChannel.open(lockPath, StandardOpenOption.CREATE, StandardOpenOption.WRITE).use { channel ->
-            restrictFile(lockPath)
-            channel.lock().use { operation() }
+    private fun <T> locked(operation: () -> T): T = locked(null, operation)
+
+    private fun <T> locked(deadlineNanos: Long?, operation: () -> T): T {
+        acquireProcessLock(deadlineNanos)
+        return try {
+            deadlineNanos?.let(::remainingNanos)
+            prepareDirectory()
+            FileChannel.open(lockPath, StandardOpenOption.CREATE, StandardOpenOption.WRITE).use { channel ->
+                restrictFile(lockPath)
+                acquireFileLock(channel, deadlineNanos).use {
+                    deadlineNanos?.let(::remainingNanos)
+                    operation()
+                }
+            }
+        } finally {
+            processLock.unlock()
         }
     }
+
+    private fun acquireProcessLock(deadlineNanos: Long?) {
+        if (deadlineNanos == null) {
+            processLock.lock()
+            return
+        }
+        val acquired = try {
+            processLock.tryLock(remainingNanos(deadlineNanos), TimeUnit.NANOSECONDS)
+        } catch (error: InterruptedException) {
+            Thread.currentThread().interrupt()
+            throw lockInterrupted(error)
+        }
+        if (!acquired) throw siwcDeadlineExceeded()
+    }
+
+    private fun acquireFileLock(channel: FileChannel, deadlineNanos: Long?): FileLock {
+        if (deadlineNanos == null) return channel.lock()
+        while (true) {
+            val remaining = remainingNanos(deadlineNanos)
+            val acquired = try {
+                channel.tryLock()
+            } catch (_: OverlappingFileLockException) {
+                null
+            }
+            acquired?.let { return it }
+            LockSupport.parkNanos(minOf(remaining, FILE_LOCK_POLL_NANOS))
+            if (Thread.interrupted()) {
+                Thread.currentThread().interrupt()
+                throw lockInterrupted(InterruptedException("SIWC credential lock wait was interrupted"))
+            }
+        }
+    }
+
+    private fun lockInterrupted(cause: InterruptedException) = OpenAiSiwcException(
+        code = "credential_lock_interrupted",
+        message = "ChatGPT credential access was interrupted.",
+        retryable = true,
+        cause = cause,
+    )
 
     private fun prepareDirectory() {
         Files.createDirectories(directory)
@@ -214,6 +269,7 @@ internal class OpenAiSiwcCredentialStore(
         const val KEY_BYTES = 32
         const val NONCE_BYTES = 12
         const val TAG_BITS = 128
+        val FILE_LOCK_POLL_NANOS = TimeUnit.MILLISECONDS.toNanos(10)
         const val CIPHER = "AES/GCM/NoPadding"
         val AAD = "gromozeka-openai-siwc-v1".toByteArray(StandardCharsets.UTF_8)
     }

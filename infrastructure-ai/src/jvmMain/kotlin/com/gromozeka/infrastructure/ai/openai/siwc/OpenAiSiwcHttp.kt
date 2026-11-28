@@ -16,7 +16,7 @@ import kotlin.time.Instant
 
 internal fun siwcDeadlineNanos(deadline: Instant): Long {
     val budget = (deadline - Clock.System.now()).inWholeNanoseconds
-    if (budget <= 0) throw deadlineExceeded()
+    if (budget <= 0) throw siwcDeadlineExceeded()
     return try {
         Math.addExact(System.nanoTime(), budget)
     } catch (_: ArithmeticException) {
@@ -45,7 +45,7 @@ internal fun HttpClient.sendSiwc(
         pending.get(remainingNanos(deadlineNanos), TimeUnit.NANOSECONDS)
     } catch (error: TimeoutException) {
         pending.cancel(true)
-        throw deadlineExceeded(error)
+        throw siwcDeadlineExceeded(error)
     } catch (error: InterruptedException) {
         pending.cancel(true)
         Thread.currentThread().interrupt()
@@ -60,7 +60,7 @@ internal fun HttpClient.sendSiwc(
                 cause = cause,
             )
 
-            cause.causedBy<HttpTimeoutException>() && deadlineLimited -> throw deadlineExceeded(cause)
+            cause.causedBy<HttpTimeoutException>() && deadlineLimited -> throw siwcDeadlineExceeded(cause)
             else -> throw networkFailure(cause)
         }
     }
@@ -68,13 +68,13 @@ internal fun HttpClient.sendSiwc(
 
 internal fun remainingNanos(deadlineNanos: Long): Long {
     val remaining = if (deadlineNanos == Long.MAX_VALUE) Long.MAX_VALUE else deadlineNanos - System.nanoTime()
-    if (remaining <= 0) throw deadlineExceeded()
+    if (remaining <= 0) throw siwcDeadlineExceeded()
     return remaining
 }
 
 private fun remainingDuration(deadlineNanos: Long): Duration = Duration.ofNanos(remainingNanos(deadlineNanos))
 
-private fun deadlineExceeded(cause: Throwable? = null) = OpenAiSiwcException(
+internal fun siwcDeadlineExceeded(cause: Throwable? = null) = OpenAiSiwcException(
     code = "deadline_exceeded",
     message = "The ChatGPT request deadline elapsed.",
     cause = cause,
