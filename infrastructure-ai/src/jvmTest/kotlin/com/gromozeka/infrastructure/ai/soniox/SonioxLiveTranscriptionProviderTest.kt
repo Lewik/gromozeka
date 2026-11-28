@@ -135,6 +135,44 @@ class SonioxLiveTranscriptionProviderTest {
     }
 
     @Test
+    fun `native final does not republish the previous provisional source as another segment`() {
+        val assembler = SonioxTranscriptAssembler(nativeTranslationLanguage = "ru")
+        assembler.accept(listOf(
+            token("Hel", false, 0, 200, "1", language = "en", translationStatus = "original"),
+        ))
+
+        val completed = assembler.accept(listOf(
+            token("Hello", true, 0, 400, "1", language = "en", translationStatus = "original"),
+            token(".", true, 400, 500, "1", language = "en", translationStatus = "original"),
+        ))
+
+        assertTrue(completed.none { it is LiveTranscriptionEvent.Committed })
+        assertEquals(
+            listOf("Hello."),
+            completed.filterIsInstance<LiveTranscriptionEvent.Transcript>().filter { it.isFinal }.map { it.text },
+        )
+    }
+
+    @Test
+    fun `mixed source languages keep native translation in source order`() {
+        val assembler = SonioxTranscriptAssembler(nativeTranslationLanguage = "en")
+        val source = assembler.accept(listOf(
+            token("hola ", true, 0, 300, "1", language = "es", translationStatus = "original"),
+            token("world", true, 300, 600, "1", language = "en", translationStatus = "original"),
+            token(".", true, 600, 700, "1", language = "en", translationStatus = "original"),
+        ))
+        assertTrue(source.none { it is LiveTranscriptionEvent.Translation })
+
+        val translated = assembler.accept(listOf(
+            token("hello ", true, speaker = "1", language = "en", sourceLanguage = "es", translationStatus = "translation"),
+        )).filterIsInstance<LiveTranscriptionEvent.Translation>()
+
+        assertEquals("hello world.", translated.last().text)
+        assertTrue(translated.last().isFinal)
+        assertTrue(assembler.finish().isEmpty())
+    }
+
+    @Test
     fun `native translation is bound to the diarized source segment and finalized after it`() {
         val assembler = SonioxTranscriptAssembler(nativeTranslationLanguage = "ru")
         val source = assembler.accept(listOf(

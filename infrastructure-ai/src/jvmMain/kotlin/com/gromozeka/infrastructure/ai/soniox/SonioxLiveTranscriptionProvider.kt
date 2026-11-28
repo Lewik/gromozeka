@@ -244,27 +244,40 @@ internal class SonioxTranscriptAssembler(
 
     private data class NativeTranslationState(
         val targetLanguage: String,
-        val stable: StringBuilder = StringBuilder(),
         var sourceLanguage: String? = null,
         var speakerId: String? = null,
         var sourceClosed: Boolean = false,
         var lastPublishedSignature: String? = null,
     )
 
-    private data class PendingNativeTranslation(
-        val itemId: String,
-        val speakerId: String?,
-        val sourceLanguage: String?,
-        val stable: StringBuilder = StringBuilder(),
-        var draft: String = "",
-    )
+    private sealed interface NativeTranslationChunk {
+        val itemId: String
+        val speakerId: String?
+        val sourceLanguage: String?
+
+        data class Direct(
+            override val itemId: String,
+            override val speakerId: String?,
+            override val sourceLanguage: String?,
+            val text: String,
+        ) : NativeTranslationChunk
+
+        data class Pending(
+            override val itemId: String,
+            override val speakerId: String?,
+            override val sourceLanguage: String?,
+            val stable: StringBuilder = StringBuilder(),
+            var draft: String = "",
+            var completed: Boolean = false,
+        ) : NativeTranslationChunk
+    }
 
     private var active: Active? = null
     private var previousItemId: String? = null
     private var nextItem = 0L
     private var latestDraft: List<SonioxRealtimeToken> = emptyList()
     private val nativeTranslations = mutableMapOf<String, NativeTranslationState>()
-    private val pendingNativeTranslations = mutableListOf<PendingNativeTranslation>()
+    private val nativeTranslationChunks = mutableListOf<NativeTranslationChunk>()
 
     init {
         require(maximumSegmentMillis > 0 && maximumSegmentCharacters > 0) {
@@ -277,7 +290,9 @@ internal class SonioxTranscriptAssembler(
 
     fun finish(): List<LiveTranscriptionEvent> {
         check(latestDraft.isEmpty()) { "Soniox stream ended with provisional transcription tokens" }
-        check(pendingNativeTranslations.isEmpty()) { "Soniox stream ended before native translations were completed" }
+        check(nativeTranslationChunks.none { it is NativeTranslationChunk.Pending && !it.completed }) {
+            "Soniox stream ended before native translations were completed"
+        }
         return mutableListOf<LiveTranscriptionEvent>().also { events ->
             finalizeActive(events)
             nativeTranslations.forEach { (itemId, translation) ->
@@ -325,6 +340,7 @@ internal class SonioxTranscriptAssembler(
             else check(!sawNonFinal) { "Soniox final original token followed a provisional token" }
         }
         val finalized = tokens.filter { it.isFinal }
+        latestDraft = tokens.filterNot { it.isFinal }
         var offset = 0
         while (offset < finalized.size) {
             val first = finalized[offset]
@@ -341,7 +357,6 @@ internal class SonioxTranscriptAssembler(
             appendOriginalGroup(finalized.subList(offset, end), events)
             offset = end
         }
-        latestDraft = tokens.filterNot { it.isFinal }
         publishPartial(events)
     }
 
@@ -359,24 +374,25 @@ internal class SonioxTranscriptAssembler(
         val sourceText = tokens.joinToString(separator = "") { it.text }
         val sourceLanguage = tokens.mapNotNull { it.language }.distinct().singleOrNull() ?: current.language
         val speakerId = tokens.mapNotNull { it.speaker }.distinct().singleOrNull() ?: current.speakerId
-        val translation = nativeTranslation(itemId, sourceLanguage, speakerId)
-        if (sourceLanguage == nativeTranslationLanguage) {
-            translation.stable.append(sourceText)
+        nativeTranslation(itemId, sourceLanguage, speakerId)
+        nativeTranslationChunks += if (sourceLanguage == nativeTranslationLanguage) {
+            NativeTranslationChunk.Direct(itemId, speakerId, sourceLanguage, sourceText)
         } else {
-            pendingNativeTranslations += PendingNativeTranslation(itemId, speakerId, sourceLanguage)
+            NativeTranslationChunk.Pending(itemId, speakerId, sourceLanguage)
         }
         tokens.forEachIndexed { index, token ->
             appendToActive(current, token)
             if (index == tokens.lastIndex && isSentenceBoundary(token.text)) finalizeActive(events)
         }
-        publishPartial(events)
         if (sourceLanguage == nativeTranslationLanguage) publishNativeTranslation(itemId, events)
     }
 
     private fun acceptTranslatedTokens(tokens: List<SonioxRealtimeToken>, events: MutableList<LiveTranscriptionEvent>) {
         val contentTokens = tokens.filter { it.text !in setOf("<end>", "<fin>") }
         if (contentTokens.isEmpty()) return
-        val pending = pendingNativeTranslations.firstOrNull()
+        val pending = nativeTranslationChunks
+            .filterIsInstance<NativeTranslationChunk.Pending>()
+            .firstOrNull { !it.completed }
             ?: error("Soniox returned native translation without a preceding original chunk")
         val target = requireNotNull(nativeTranslationLanguage)
         require(contentTokens.all { it.language == null || it.language == target }) {
@@ -397,13 +413,12 @@ internal class SonioxTranscriptAssembler(
             .joinToString(separator = "") { it.text }
         if (finalText.isNotEmpty()) pending.stable.append(finalText)
         pending.draft = contentTokens.filterNot { it.isFinal }.joinToString(separator = "") { it.text }
-        val translation = nativeTranslation(pending.itemId,
+        nativeTranslation(pending.itemId,
             contentTokens.mapNotNull { it.sourceLanguage }.distinct().singleOrNull() ?: pending.sourceLanguage,
             contentTokens.mapNotNull { it.speaker }.distinct().singleOrNull() ?: pending.speakerId)
         publishNativeTranslation(pending.itemId, events)
         if (pending.draft.isEmpty() && finalText.isNotEmpty()) {
-            translation.stable.append(pending.stable)
-            pendingNativeTranslations.removeAt(0)
+            pending.completed = true
             publishNativeTranslation(pending.itemId, events)
         }
     }
@@ -482,8 +497,8 @@ internal class SonioxTranscriptAssembler(
                 previousItemId = current.id
             }
             nativeTranslations.remove(current.id)
-            check(pendingNativeTranslations.none { it.itemId == current.id }) {
-                "An empty Soniox source item still has pending native translation"
+            check(nativeTranslationChunks.none { it.itemId == current.id }) {
+                "An empty Soniox source item still has native translation chunks"
             }
             active = null
             return
@@ -529,12 +544,19 @@ internal class SonioxTranscriptAssembler(
 
     private fun publishNativeTranslation(itemId: String, events: MutableList<LiveTranscriptionEvent>) {
         val state = nativeTranslations[itemId] ?: return
-        val pending = pendingNativeTranslations.filter { it.itemId == itemId }
+        val chunks = nativeTranslationChunks.filter { it.itemId == itemId }
         val text = buildString {
-            append(state.stable)
-            pending.forEach { chunk -> append(chunk.stable).append(chunk.draft) }
+            for (chunk in chunks) {
+                when (chunk) {
+                    is NativeTranslationChunk.Direct -> append(chunk.text)
+                    is NativeTranslationChunk.Pending -> {
+                        append(chunk.stable).append(chunk.draft)
+                        if (!chunk.completed) break
+                    }
+                }
+            }
         }
-        val final = state.sourceClosed && pending.isEmpty()
+        val final = state.sourceClosed && chunks.all { it !is NativeTranslationChunk.Pending || it.completed }
         if (text.isEmpty() && !final) return
         val signature = "$final\u0000$text"
         if (signature == state.lastPublishedSignature) return
