@@ -1,5 +1,6 @@
 package com.gromozeka.domain.model.ai
 
+import com.gromozeka.domain.model.Artifact
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import kotlinx.serialization.Serializable
@@ -32,7 +33,9 @@ interface AiRequestTokenEstimator {
 
 /** Portable estimate when a route has no preflight counting API. UTF-8/4 includes non-ASCII input. */
 object AiRequestTokenEstimate : AiRequestTokenEstimator {
-    override val id: String = "portable-visible-context-v2"
+    override val id: String = "portable-visible-context-v3"
+    /** Conservative modality cost when the portable request has no model-specific image detail. */
+    const val IMAGE_INPUT_TOKENS: Int = 10_000
     private val json = Json { encodeDefaults = false }
 
     override fun input(request: AiRuntimeRequest): Int = checked(
@@ -60,8 +63,54 @@ object AiRequestTokenEstimate : AiRequestTokenEstimator {
             is ContentItem.ContextCompactionResult.Payload.ReadableSummary -> text(payload.text)
             is ContentItem.ContextCompactionResult.Payload.OpaqueProviderState -> checked(opaqueTokens(payload.state))
         }
+        is ContentItem.ImageItem -> imageTokens(item)
+        is ContentItem.ArtifactItem -> checked(
+            serializedTokens(item).toLong() + if (item.artifact.kind == Artifact.Kind.IMAGE) {
+                IMAGE_INPUT_TOKENS
+            } else {
+                0
+            }
+        )
+        is ContentItem.ToolResult -> toolResultTokens(item)
         else -> text(json.encodeToString(ContentItem.serializer(), item))
     }
+
+    private fun imageTokens(item: ContentItem.ImageItem): Int {
+        val source = when (val source = item.source) {
+            is Conversation.Message.ImageSource.Base64ImageSource -> source.copy(data = "")
+            is Conversation.Message.ImageSource.UrlImageSource -> source.copy(url = "")
+            is Conversation.Message.ImageSource.FileImageSource -> source.copy(fileId = "")
+        }
+        return checked(serializedTokens(item.copy(source = source)).toLong() + IMAGE_INPUT_TOKENS)
+    }
+
+    private fun toolResultTokens(item: ContentItem.ToolResult): Int {
+        var imageCount = 0L
+        val result = item.result.map { data ->
+            when (data) {
+                is ContentItem.ToolResult.Data.Base64Data -> if (data.mediaType.type == "image") {
+                    imageCount++
+                    data.copy(data = "")
+                } else {
+                    data
+                }
+                is ContentItem.ToolResult.Data.UrlData -> if (data.mediaType?.type == "image") {
+                    imageCount++
+                    data.copy(url = "")
+                } else {
+                    data
+                }
+                is ContentItem.ToolResult.Data.ArtifactData -> data.also {
+                    if (data.artifact.kind == Artifact.Kind.IMAGE) imageCount++
+                }
+                is ContentItem.ToolResult.Data.Text -> data
+            }
+        }
+        return checked(serializedTokens(item.copy(result = result)).toLong() + imageCount * IMAGE_INPUT_TOKENS)
+    }
+
+    private fun serializedTokens(item: ContentItem): Int =
+        text(json.encodeToString(ContentItem.serializer(), item))
 
     private fun opaqueTokens(value: JsonElement): Long = when (value) {
         is JsonObject -> value.entries.sumOf { (key, child) ->

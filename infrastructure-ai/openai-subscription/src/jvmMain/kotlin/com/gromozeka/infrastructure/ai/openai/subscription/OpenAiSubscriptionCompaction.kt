@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.isFullContextCompaction
 import com.gromozeka.domain.model.ai.AiContextInspection
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiRequestTokenEstimate
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiStepOutcome
@@ -173,7 +174,7 @@ class OpenAiSubscriptionCompaction(
         is JsonPrimitive -> value.content.toByteArray(Charsets.UTF_8).size.toLong()
         is JsonArray -> value.sumOf(::estimateVisibleBytes)
         is JsonObject -> when (value["type"]?.jsonPrimitive?.contentOrNull) {
-            "input_image" -> 40_000L
+            "input_image" -> AiRequestTokenEstimate.IMAGE_INPUT_TOKENS * 4L
             else -> value.entries.sumOf { (key, child) ->
                 if (key in setOf("id", "call_id", "type")) 0L else estimateVisibleBytes(child)
             }
