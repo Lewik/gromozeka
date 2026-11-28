@@ -175,7 +175,6 @@ class OpenAiSubscriptionCompaction(
         is JsonArray -> value.sumOf(::estimateVisibleBytes)
         is JsonObject -> when (value["type"]?.jsonPrimitive?.contentOrNull) {
             "input_image" -> AiRequestTokenEstimate.IMAGE_INPUT_TOKENS * 4L
-            "input_file" -> AiRequestTokenEstimate.FILE_INPUT_TOKENS * 4L
             else -> value.entries.sumOf { (key, child) ->
                 if (key in setOf("id", "call_id", "type")) 0L else estimateVisibleBytes(child)
             }

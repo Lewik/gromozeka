@@ -228,12 +228,6 @@ class OpenAiSubscriptionCompactionTest {
                 model = profile.slug, input = listOf(image),
             ))
             assertEquals(10_000L, estimate)
-            val file = Json.parseToJsonElement(
-                """{"type":"input_file","filename":"document.pdf","file_data":"data:application/pdf;base64,${"a".repeat(100_000)}"}"""
-            ).jsonObject
-            assertEquals(50_000L, fixture.compaction.estimateRequestTokens(OpenAiSubscriptionResponsesRequest(
-                model = profile.slug, input = listOf(file),
-            )))
             val userWithImage = JsonObject(userItem("Describe the screenshot") + ("content" to JsonArray(
                 userItem("Describe the screenshot").getValue("content").jsonArray + image,
             )))
