@@ -8,7 +8,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
@@ -91,44 +90,7 @@ class LiveTranslationScreenTest {
     }
 
     @Test
-    fun `manual control toggle and commit button submit without stopping capture`() = runComposeUiTest {
-        val client = FakeClient()
-        val microphone = FakeMicrophone()
-        val configuration = configuration()
-        lateinit var controller: LiveInterpreterController
-        setContent {
-            val scope = rememberCoroutineScope()
-            controller = remember { LiveInterpreterController(client, microphone, scope) }
-            DisposableEffect(controller) { onDispose { controller.cancel() } }
-            TranslationProvider(Translation(BundledTranslations.english)) {
-                MaterialTheme { Box(Modifier.size(1_200.dp, 800.dp)) { LiveInterpreterScreen(controller, configuration) } }
-            }
-        }
-        onNodeWithText("Manual commits").performClick()
-        onNodeWithText("Commit").assertIsNotEnabled()
-        onNodeWithText("Start").assertIsEnabled().performClick()
-        waitUntil(timeoutMillis = 5_000) { controller.state.value.phase == LiveInterpreterPhase.LISTENING }
-        onNodeWithText("Commit").assertIsEnabled().performClick()
-        waitUntil(timeoutMillis = 5_000) { client.commits == 1 && !controller.state.value.commitPending }
-        runOnIdle {
-            assertTrue(client.manualMode)
-            assertEquals(LiveInterpreterPhase.LISTENING, controller.state.value.phase)
-            assertEquals(0, microphone.stops)
-            assertEquals(0, microphone.cancels)
-        }
-        waitForIdle()
-        onNodeWithText("Stop").assertIsEnabled().performClick()
-        waitUntil(timeoutMillis = 5_000) { controller.state.value.phase == LiveInterpreterPhase.STOPPED }
-        runOnIdle {
-            assertEquals(1, client.stops)
-            assertEquals(1, client.closes)
-            assertEquals(1, microphone.stops)
-        }
-        onNodeWithText("Commit").assertIsNotEnabled()
-    }
-
-    @Test
-    fun `Soniox Live 2 is selectable without exposing manual commit controls`() = runComposeUiTest {
+    fun `Soniox Live 2 is selectable`() = runComposeUiTest {
         val configuration = configuration(soniox = true)
         lateinit var controller: LiveInterpreterController
         setContent {
@@ -141,7 +103,6 @@ class LiveTranslationScreenTest {
         }
 
         onNodeWithText("Transcription model: Soniox model").assertIsEnabled()
-        onNodeWithText("Manual commits").assertDoesNotExist()
         onNodeWithText("Start").assertIsEnabled()
     }
 
@@ -185,21 +146,18 @@ class LiveTranslationScreenTest {
     private class FakeClient : LiveInterpreterClient {
         val output = Channel<ServerPayload>(Channel.UNLIMITED)
         val requests = mutableListOf<TranslateLiveTextRequest>()
-        var commits = 0
         var stops = 0
         var closes = 0
-        var manualMode = false
-        override suspend fun start(languages: List<String>, selection: AiRuntimeSelection, manualTurnControl: Boolean): LiveInterpreterRemoteSession {
-            manualMode = manualTurnControl
+        override suspend fun start(
+            languages: List<String>,
+            selection: AiRuntimeSelection,
+            nativeTranslationLanguage: String?,
+        ): LiveInterpreterRemoteSession {
             output.trySend(LiveInterpreterStatusEvent("ui-session", "interpreter.status.listening"))
             return object : LiveInterpreterRemoteSession {
                 override val sessionId = "ui-session"
                 override val events = output.receiveAsFlow()
                 override suspend fun sendAudioChunk(chunk: RemotePcmAudioChunk) = Unit
-                override suspend fun commit() {
-                    commits += 1
-                    output.send(LiveInterpreterStatusEvent(sessionId, "interpreter.commitSent"))
-                }
                 override suspend fun stop() { stops += 1; output.send(LiveInterpreterStoppedEvent(sessionId)); output.close() }
                 override suspend fun close() { closes += 1; output.close() }
             }

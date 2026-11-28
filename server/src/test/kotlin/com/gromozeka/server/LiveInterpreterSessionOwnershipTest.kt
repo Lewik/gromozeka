@@ -11,7 +11,6 @@ import com.gromozeka.domain.service.LiveTranscriptionProvider
 import com.gromozeka.domain.service.LiveTranscriptionSession
 import com.gromozeka.domain.service.LiveTranscriptionTurnDetection
 import com.gromozeka.remote.protocol.LiveInterpreterAudioChunkCommand
-import com.gromozeka.remote.protocol.CommitLiveInterpreterCommand
 import com.gromozeka.remote.protocol.LiveInterpreterFailedEvent
 import com.gromozeka.remote.protocol.LiveInterpreterStatusEvent
 import com.gromozeka.remote.protocol.LiveInterpreterStoppedEvent
@@ -61,7 +60,6 @@ class LiveInterpreterSessionOwnershipTest {
         service.start(owner, request("live-1")) {}
         listOf(owner("user-1", "connection-2"), owner("user-2", "connection-1")).forEach { foreign ->
             assertFalse(service.append(foreign, audio("live-1")))
-            assertFalse(service.commit(foreign, CommitLiveInterpreterCommand("live-1")))
             assertFalse(service.stop(foreign, StopLiveInterpreterCommand("live-1")))
         }
         assertTrue(service.stop(owner, StopLiveInterpreterCommand("live-1")))
@@ -228,59 +226,6 @@ class LiveInterpreterSessionOwnershipTest {
         }
     }
 
-    @Test
-    fun `manual mode disables automatic boundaries and keeps accepting audio after commit`() = runBlocking {
-        val owner = owner("user-1", "manual-connection")
-        val events = Channel<ServerPayload>(Channel.UNLIMITED)
-        service.start(owner, request("manual-1").copy(manualTurnControl = true)) { events.send(it) }
-        val upstream = withTimeout(3_000) { provider.opened.receive() }
-        events.next<LiveInterpreterStatusEvent>()
-        assertEquals(true, provider.lastManualTurnControl)
-        repeat(21) { index ->
-            val bytes = ByteArray(32_000)
-            assertTrue(service.append(owner, LiveInterpreterAudioChunkCommand("manual-1", RemotePcmAudioChunk(index, bytes))))
-            assertContentEquals(bytes, withTimeout(3_000) { upstream.audio.receive() })
-        }
-        assertTrue(upstream.commits.tryReceive().isFailure, "Manual input must not auto-commit at 20 seconds")
-        assertTrue(service.commit(owner, CommitLiveInterpreterCommand("manual-1")))
-        withTimeout(3_000) { upstream.commits.receive() }
-        assertEquals("interpreter.commitSent", events.next<LiveInterpreterStatusEvent>().messageKey)
-        val tail = byteArrayOf(0, 1)
-        assertTrue(service.append(owner, LiveInterpreterAudioChunkCommand("manual-1", RemotePcmAudioChunk(21, tail))))
-        assertContentEquals(tail, withTimeout(3_000) { upstream.audio.receive() })
-        assertTrue(service.stop(owner, StopLiveInterpreterCommand("manual-1")))
-        events.next<LiveInterpreterStoppedEvent>()
-        assertEquals(AiAdmissionOutcome.SUCCEEDED, upstream.closed.await())
-    }
-
-    @Test
-    fun `manual commit with no new audio is explicit and does not call the provider`() = runBlocking {
-        val owner = owner("user-1", "empty-manual")
-        val events = Channel<ServerPayload>(Channel.UNLIMITED)
-        service.start(owner, request("manual-empty").copy(manualTurnControl = true)) { events.send(it) }
-        val upstream = withTimeout(3_000) { provider.opened.receive() }
-        events.next<LiveInterpreterStatusEvent>()
-        assertTrue(service.commit(owner, CommitLiveInterpreterCommand("manual-empty")))
-        assertEquals("interpreter.nothingToCommit", events.next<LiveInterpreterStatusEvent>().messageKey)
-        assertTrue(upstream.commits.tryReceive().isFailure)
-        assertTrue(service.stop(owner, StopLiveInterpreterCommand("manual-empty")))
-        events.next<LiveInterpreterStoppedEvent>()
-        assertFalse(service.commit(owner, CommitLiveInterpreterCommand("manual-empty")))
-    }
-
-    @Test
-    fun `manual request cannot silently retain provider owned boundaries and releases its session`() = runBlocking {
-        provider.turnDetection = LiveTranscriptionTurnDetection.PROVIDER
-        val owner = owner("user-1", "wrong-boundaries")
-        val events = Channel<ServerPayload>(Channel.UNLIMITED)
-        service.start(owner, request("wrong-boundaries").copy(manualTurnControl = true)) { events.send(it) }
-        val upstream = withTimeout(3_000) { provider.opened.receive() }
-        val failure = events.next<LiveInterpreterFailedEvent>()
-        assertTrue(failure.message.contains("client-owned"))
-        assertEquals(AiAdmissionOutcome.FAILED, upstream.closed.await())
-        events.next<LiveInterpreterStoppedEvent>()
-    }
-
     private fun request(id: String) = StartLiveInterpreterRequest(id, transcriptionRuntimeSelection = selection)
     private fun owner(user: String, connection: String) = LiveInterpreterSessionOwner(User.Id(user), connection)
     private fun audio(id: String, bytes: ByteArray = ByteArray(3_200)) =
@@ -296,12 +241,15 @@ class LiveInterpreterSessionOwnershipTest {
         val opened = Channel<FakeSession>(Channel.UNLIMITED)
         var lastLanguages: List<String>? = null
         var lastSelection: AiRuntimeSelection? = null
-        var lastManualTurnControl: Boolean? = null
         var turnDetection = LiveTranscriptionTurnDetection.CLIENT
-        override suspend fun open(userStableId: String, selection: AiRuntimeSelection, languages: List<String>, manualTurnControl: Boolean): LiveTranscriptionSession {
+        override suspend fun open(
+            userStableId: String,
+            selection: AiRuntimeSelection,
+            languages: List<String>,
+            nativeTranslationLanguage: String?,
+        ): LiveTranscriptionSession {
             lastLanguages = languages
             lastSelection = selection
-            lastManualTurnControl = manualTurnControl
             return FakeSession(turnDetection).also { opened.send(it) }
         }
     }

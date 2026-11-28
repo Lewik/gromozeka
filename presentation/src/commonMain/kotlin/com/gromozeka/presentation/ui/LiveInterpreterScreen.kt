@@ -1,8 +1,6 @@
 package com.gromozeka.presentation.ui
 
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -20,9 +18,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -93,12 +91,6 @@ fun LiveInterpreterScreen(
     val nativeColumnLanguage = state.activeNativeTranslationLanguage
         ?: state.nativeTranslationLanguage.takeIf { nativeTranslationSupported }
     val textLanguages = textState.languages.filterNot { it == nativeColumnLanguage }
-    val manualTurnControlSupported = selectedModel?.providerModelId in setOf("gpt-live-transcribe", "gpt-transcribe")
-    LaunchedEffect(manualTurnControlSupported, state.manualTurnControl, state.phase) {
-        if (!manualTurnControlSupported && state.manualTurnControl && !state.phase.isActive) {
-            controller.setManualTurnControl(false)
-        }
-    }
     val languageHintsValid = remember(state.languageHintsText) {
         try { parseLiveLanguageHints(state.languageHintsText); true } catch (_: IllegalArgumentException) { false }
     }
@@ -119,13 +111,6 @@ fun LiveInterpreterScreen(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             Text(translation.text("interpreter.title"), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-            if (manualTurnControlSupported && state.manualTurnControl) {
-                OutlinedButton(onClick = controller::commit,
-                    enabled = state.phase == LiveInterpreterPhase.LISTENING && !state.commitPending,
-                    modifier = Modifier.padding(end = 8.dp)) {
-                    Text(translation.text("interpreter.commit"))
-                }
-            }
             if (state.phase.isActive) {
                 OutlinedButton(onClick = controller::stop, enabled = state.phase != LiveInterpreterPhase.STOPPING) {
                     Text(translation.text("interpreter.stop"))
@@ -134,8 +119,7 @@ fun LiveInterpreterScreen(
                 Button(onClick = { selectedModel?.let {
                     controller.start(AiRuntimeSelection(it.id), state.nativeTranslationLanguage.takeIf { nativeTranslationSupported })
                 } },
-                    enabled = selectedModel != null && languageHintsValid && controller.unavailableReason == null &&
-                        (!state.manualTurnControl || manualTurnControlSupported)) {
+                    enabled = selectedModel != null && languageHintsValid && controller.unavailableReason == null) {
                     Text(translation.text(if (state.phase == LiveInterpreterPhase.PAUSED) "interpreter.resume" else "interpreter.start"))
                 }
             }
@@ -158,17 +142,6 @@ fun LiveInterpreterScreen(
             }
             LiveModelMenu(translation.text("interpreter.translationModel"), textModels, selectedTextModel, true, controller.translations::selectModel)
             LiveLanguageMenu(textState.languages, names, controller.translations::toggleLanguage, controller.translations::addLanguage)
-        }
-        if (manualTurnControlSupported) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.toggleable(
-                value = state.manualTurnControl, enabled = !state.phase.isActive, role = Role.Checkbox,
-                onValueChange = controller::setManualTurnControl)) {
-                Checkbox(checked = state.manualTurnControl, onCheckedChange = null,
-                    enabled = !state.phase.isActive)
-                Text(translation.text("interpreter.manualTurns"))
-            }
-            if (state.manualTurnControl) Text(translation.text("interpreter.manualTurnsHint"),
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (models.isEmpty()) Text(translation.text("interpreter.noModel"), color = MaterialTheme.colorScheme.error)
         if (textModels.isEmpty() && textLanguages.isNotEmpty()) {

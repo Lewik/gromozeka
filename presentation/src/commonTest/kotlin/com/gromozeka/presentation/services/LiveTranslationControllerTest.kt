@@ -343,8 +343,11 @@ class LiveTranslationControllerTest {
         var timeout = false
         var active = 0
         var maximumActive = 0
-        override suspend fun start(languages: List<String>, selection: AiRuntimeSelection, manualTurnControl: Boolean): LiveInterpreterRemoteSession =
-            error("Unexpected ASR start")
+        override suspend fun start(
+            languages: List<String>,
+            selection: AiRuntimeSelection,
+            nativeTranslationLanguage: String?,
+        ): LiveInterpreterRemoteSession = error("Unexpected ASR start")
         override suspend fun translate(request: TranslateLiveTextRequest): LiveTextTranslatedResponse {
             requests += request
             active += 1

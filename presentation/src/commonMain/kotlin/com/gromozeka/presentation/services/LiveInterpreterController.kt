@@ -23,8 +23,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -92,8 +90,6 @@ data class LiveInterpreterState(
     val phase: LiveInterpreterPhase = LiveInterpreterPhase.IDLE,
     val languageHintsText: String = "he, en, ru",
     val selectedModelId: AiModelConfiguration.Id? = null,
-    val manualTurnControl: Boolean = false,
-    val commitPending: Boolean = false,
     val nativeTranslationLanguage: String? = null,
     val nativeTranslationLanguageExplicit: Boolean = false,
     val activeNativeTranslationLanguage: String? = null,
@@ -122,7 +118,6 @@ class LiveInterpreterController(
     private var task: Job? = null
     private var stopRequested = CompletableDeferred<Unit>()
     private var epoch = 0
-    private val commitRequests = Channel<Unit>(Channel.RENDEZVOUS)
 
     fun setLanguages(text: String) {
         check(!state.value.phase.isActive) { "Cannot change languages during Live capture" }
@@ -132,11 +127,6 @@ class LiveInterpreterController(
     fun selectModel(id: AiModelConfiguration.Id) {
         check(!state.value.phase.isActive) { "Cannot change the model during Live capture" }
         mutableState.update { it.copy(selectedModelId = id) }
-    }
-
-    fun setManualTurnControl(enabled: Boolean) {
-        check(!state.value.phase.isActive) { "Cannot change Live boundaries during capture" }
-        mutableState.update { it.copy(manualTurnControl = enabled) }
     }
 
     fun setNativeTranslationLanguage(language: String?) {
@@ -156,19 +146,9 @@ class LiveInterpreterController(
         }
     }
 
-    fun commit() {
-        while (true) {
-            val current = state.value
-            if (current.phase != LiveInterpreterPhase.LISTENING || !current.manualTurnControl || current.commitPending) return
-            if (mutableState.compareAndSet(current, current.copy(commitPending = true))) break
-        }
-        if (commitRequests.trySend(Unit).isFailure) mutableState.update { it.copy(commitPending = false) }
-    }
-
     fun start(selection: AiRuntimeSelection, nativeTranslationLanguage: String? = null) {
         check(!state.value.phase.isActive && task?.isActive != true) { "Live capture is already active" }
         val languages = parseLiveLanguageHints(state.value.languageHintsText)
-        val manualTurnControl = state.value.manualTurnControl
         val nativeLanguage = nativeTranslationLanguage?.let(::normalizeLiveLanguage)
         val preserveHistory = state.value.phase == LiveInterpreterPhase.PAUSED
         if (preserveHistory) {
@@ -183,7 +163,6 @@ class LiveInterpreterController(
         mutableState.update { it.copy(
             phase = LiveInterpreterPhase.STARTING,
             selectedModelId = selection.modelConfigurationId,
-            commitPending = false,
             activeNativeTranslationLanguage = nativeLanguage,
             nativeTranslations = if (preserveHistory) it.nativeTranslations else emptyMap(),
             entries = if (preserveHistory) it.entries else emptyList(),
@@ -197,7 +176,7 @@ class LiveInterpreterController(
                     epoch += 1
                     try {
                         unavailableReason?.let { throw LocalizedTextException(it) }
-                        runPipeline(selection, languages, manualTurnControl, nativeLanguage, epoch) { attempts = 0 }
+                        runPipeline(selection, languages, nativeLanguage, epoch) { attempts = 0 }
                         return@launch
                     } catch (error: Exception) {
                         if (error is CancellationException && !currentCoroutineContext().isActive) throw error
@@ -232,7 +211,6 @@ class LiveInterpreterController(
 
     fun cancel() {
         translations.cancel()
-        commitRequests.close()
         stopRequested.complete(Unit)
         task?.cancel()
         if (!state.value.phase.isActive) mutableState.update {
@@ -256,7 +234,6 @@ class LiveInterpreterController(
     private suspend fun runPipeline(
         selection: AiRuntimeSelection,
         languages: List<String>,
-        manualTurnControl: Boolean,
         nativeTranslationLanguage: String?,
         epoch: Int,
         onFinalTranscript: () -> Unit,
@@ -267,27 +244,17 @@ class LiveInterpreterController(
             coroutineScope {
                 translations.beginEpoch(epoch)
                 val connected = withTimeout(25_000) {
-                    client.start(languages, selection, manualTurnControl, nativeTranslationLanguage)
+                    client.start(languages, selection, nativeTranslationLanguage)
                 }
                 remote = connected
                 val ready = CompletableDeferred<Unit>()
                 val stopped = CompletableDeferred<Unit>()
-                val commitAcknowledgement = MutableStateFlow<CompletableDeferred<Unit>?>(null)
                 val reader = launch {
                     connected.events.collect { event ->
                         when (event) {
                             is LiveInterpreterStatusEvent -> {
                                 check(event.sessionId == connected.sessionId) { "Live status session mismatch" }
                                 if (event.messageKey == "interpreter.status.listening") ready.complete(Unit)
-                                else if (event.messageKey in setOf("interpreter.commitSent", "interpreter.nothingToCommit")) {
-                                    val acknowledgement = commitAcknowledgement.value
-                                    check(acknowledgement != null || stopRequested.isCompleted) { "Unrequested Live commit status" }
-                                    acknowledgement?.complete(Unit)
-                                    mutableState.update { current ->
-                                        if (current.phase == LiveInterpreterPhase.LISTENING && !stopRequested.isCompleted)
-                                            current.copy(status = localizedText(event.messageKey)) else current
-                                    }
-                                }
                             }
                             is LiveInterpreterTranscriptEvent -> {
                                 check(event.sessionId == connected.sessionId) { "Live transcript session mismatch" }
@@ -323,32 +290,9 @@ class LiveInterpreterController(
                     }
                 }
                 if (canCapture && !stopRequested.isCompleted) {
-                    val controls = if (manualTurnControl) launch(start = CoroutineStart.UNDISPATCHED) {
-                        for (request in commitRequests) {
-                            val acknowledged = CompletableDeferred<Unit>()
-                            commitAcknowledgement.value = acknowledged
-                            try {
-                                withTimeout(15_000) {
-                                    connected.commit()
-                                    acknowledged.await()
-                                }
-                            } catch (error: TimeoutCancellationException) {
-                                if (!currentCoroutineContext().isActive) throw error
-                                throw LiveTranscriptionException("Live commit acknowledgement timed out", retryable = true, cause = error)
-                            } finally {
-                                commitAcknowledgement.value = null
-                                mutableState.update { it.copy(commitPending = false) }
-                            }
-                        }
-                    } else null
-                    try {
-                        audio = audioStreamer.start(this) { connected.sendAudioChunk(it) }
-                        mutableState.update { it.copy(phase = LiveInterpreterPhase.LISTENING, status = localizedText("interpreter.status.listening")) }
-                        stopRequested.await()
-                    } finally {
-                        controls?.cancelAndJoin()
-                        mutableState.update { it.copy(commitPending = false) }
-                    }
+                    audio = audioStreamer.start(this) { connected.sendAudioChunk(it) }
+                    mutableState.update { it.copy(phase = LiveInterpreterPhase.LISTENING, status = localizedText("interpreter.status.listening")) }
+                    stopRequested.await()
                 }
                 withTimeout(20_000) {
                     audio?.stop()

@@ -15593,43 +15593,6 @@
       "error"
     ]
   },
-  "interpreter.manualTurns": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
-    ],
-    "description": "Toggle for client-controlled audio boundaries in the Live tab. Off preserves normal automatic VAD; locked during capture.",
-    "args": []
-  },
-  "interpreter.manualTurnsHint": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
-    ],
-    "description": "Help text in Live manual mode: no automatic boundaries, Commit submits audio without stopping the microphone.",
-    "args": []
-  },
-  "interpreter.commit": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
-    ],
-    "description": "Live button which submits the current audio fragment for ASR without stopping capture or opening a new API session.",
-    "args": []
-  },
-  "interpreter.commitSent": {
-    "source": [
-      "server/src/main/kotlin/com/gromozeka/server/LiveInterpreterApplicationService.kt",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/services/LiveInterpreterController.kt"
-    ],
-    "description": "Status after the server sent a nonempty audio fragment for recognition. Does not claim that transcription has completed.",
-    "args": []
-  },
-  "interpreter.nothingToCommit": {
-    "source": [
-      "server/src/main/kotlin/com/gromozeka/server/LiveInterpreterApplicationService.kt",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/services/LiveInterpreterController.kt"
-    ],
-    "description": "Status when Commit was clicked with no new audio since the previous boundary. Microphone capture continues.",
-    "args": []
-  },
   "ai.provider.soniox": {
     "source": [
       "domain/src/commonMain/kotlin/com/gromozeka/domain/model/AIProvider.kt",

@@ -309,134 +309,10 @@ class LiveInterpreterControllerTest {
     }
 
     @Test
-    fun `manual commit leaves microphone session and prior originals running`() = runTest {
-        val client = FakeClient()
-        val microphone = FakeMicrophone()
-        val controller = LiveInterpreterController(client, microphone, backgroundScope)
-        controller.setManualTurnControl(true)
-        controller.start(selection)
-        runCurrent()
-        assertEquals(listOf(true), client.manualModes)
-        val remote = client.sessions.single()
-        remote.transcript("first", 0, "Already confirmed.", true)
-        runCurrent()
-        controller.commit()
-        runCurrent()
-        assertEquals(1, remote.commits)
-        assertFalse(controller.state.value.commitPending)
-        assertEquals(LiveInterpreterPhase.LISTENING, controller.state.value.phase)
-        assertEquals("Already confirmed.", controller.state.value.segments.single().text)
-        assertFalse(remote.closed)
-        assertFalse(microphone.captures.single().stopped)
-        assertFalse(microphone.captures.single().cancelled)
-        assertFailsWith<IllegalStateException> { controller.setManualTurnControl(false) }
-        controller.stop()
-        runCurrent()
-        assertEquals(LiveInterpreterPhase.STOPPED, controller.state.value.phase)
-    }
-
-    @Test
-    fun `unacknowledged manual commit times out visibly and is not replayed after reconnect`() = runTest {
-        val client = FakeClient()
-        val controller = LiveInterpreterController(client, FakeMicrophone(), backgroundScope, listOf(100))
-        controller.setManualTurnControl(true)
-        controller.start(selection)
-        runCurrent()
-        val old = client.sessions.single()
-        old.transcript("first", 0, "Retained original.", true)
-        runCurrent()
-        old.suppressCommitStatus = true
-        controller.commit()
-        runCurrent()
-        assertTrue(controller.state.value.commitPending)
-        controller.commit()
-        runCurrent()
-        assertEquals(1, old.commits)
-        advanceTimeBy(15_001)
-        runCurrent()
-        assertEquals(LiveInterpreterPhase.RECONNECTING, controller.state.value.phase)
-        advanceTimeBy(100)
-        runCurrent()
-        assertEquals(2, client.starts)
-        assertEquals(0, client.sessions.last().commits)
-        assertFalse(controller.state.value.commitPending)
-        assertEquals("Retained original.", controller.state.value.segments.single().text)
-        assertTrue(controller.state.value.entries.any { it is LiveTranscriptEntry.Gap })
-        controller.stop()
-        runCurrent()
-    }
-
-    @Test
-    fun `automatic mode and inactive capture do not send manual commits`() = runTest {
-        val client = FakeClient()
-        val controller = LiveInterpreterController(client, FakeMicrophone(), backgroundScope)
-        controller.commit()
-        controller.start(selection)
-        runCurrent()
-        controller.commit()
-        runCurrent()
-        assertEquals(listOf(false), client.manualModes)
-        assertEquals(0, client.sessions.single().commits)
-        assertFalse(controller.state.value.commitPending)
-        controller.stop()
-        runCurrent()
-    }
-
-    @Test
-    fun `stop cancels a pending commit wait without replaying it in a new session`() = runTest {
-        val client = FakeClient()
-        val controller = LiveInterpreterController(client, FakeMicrophone(), backgroundScope)
-        controller.setManualTurnControl(true)
-        controller.start(selection)
-        runCurrent()
-        client.sessions.single().suppressCommitStatus = true
-        controller.commit()
-        runCurrent()
-        controller.stop()
-        runCurrent()
-        assertEquals(LiveInterpreterPhase.STOPPED, controller.state.value.phase)
-        assertFalse(controller.state.value.commitPending)
-        controller.start(selection)
-        runCurrent()
-        assertEquals(0, client.sessions.last().commits)
-        controller.commit()
-        runCurrent()
-        assertEquals(1, client.sessions.last().commits)
-        controller.stop()
-        runCurrent()
-    }
-
-    @Test
-    fun `late commit acknowledgement cannot replace the stopping status`() = runTest {
-        val client = FakeClient()
-        val controller = LiveInterpreterController(client, FakeMicrophone(), backgroundScope)
-        controller.setManualTurnControl(true)
-        controller.start(selection)
-        runCurrent()
-        val remote = client.sessions.single()
-        remote.suppressCommitStatus = true
-        remote.suppressStopEvent = true
-        controller.commit()
-        runCurrent()
-        controller.stop()
-        runCurrent()
-        assertEquals(LiveInterpreterPhase.STOPPING, controller.state.value.phase)
-        val flushing = controller.state.value.status
-        remote.output.send(LiveInterpreterStatusEvent(remote.sessionId, "interpreter.commitSent"))
-        runCurrent()
-        assertEquals(flushing, controller.state.value.status)
-        remote.output.send(LiveInterpreterStoppedEvent(remote.sessionId))
-        remote.output.close()
-        runCurrent()
-        assertEquals(LiveInterpreterPhase.STOPPED, controller.state.value.phase)
-    }
-
-    @Test
     fun `synchronously completed Stop cannot be overwritten with stopping state`() = runTest {
         val client = FakeClient()
         val immediateScope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         val controller = LiveInterpreterController(client, FakeMicrophone(), immediateScope)
-        controller.setManualTurnControl(true)
         controller.start(selection)
         assertEquals(LiveInterpreterPhase.LISTENING, controller.state.value.phase)
         controller.stop()
@@ -454,20 +330,15 @@ class LiveInterpreterControllerTest {
         var startFailure: Exception? = null
         val sessions = mutableListOf<FakeRemote>()
         val languages = mutableListOf<List<String>>()
-        val manualModes = mutableListOf<Boolean>()
         val nativeTranslationLanguages = mutableListOf<String?>()
-        override suspend fun start(languages: List<String>, selection: AiRuntimeSelection, manualTurnControl: Boolean): LiveInterpreterRemoteSession =
-            start(languages, selection, manualTurnControl, null)
 
         override suspend fun start(
             languages: List<String>,
             selection: AiRuntimeSelection,
-            manualTurnControl: Boolean,
             nativeTranslationLanguage: String?,
         ): LiveInterpreterRemoteSession {
             starts += 1
             this.languages += languages.toList()
-            manualModes += manualTurnControl
             nativeTranslationLanguages += nativeTranslationLanguage
             startFailure?.let { throw it }
             return FakeRemote("session-${sessions.size}").also { sessions += it }
@@ -479,12 +350,6 @@ class LiveInterpreterControllerTest {
         override val events = output.receiveAsFlow()
         var closed = false
         var suppressStopEvent = false
-        var suppressCommitStatus = false
-        var commits = 0
-        override suspend fun commit() {
-            commits += 1
-            if (!suppressCommitStatus) output.send(LiveInterpreterStatusEvent(sessionId, "interpreter.commitSent"))
-        }
         private var stopped = false
         init { output.trySend(LiveInterpreterStatusEvent(sessionId, "interpreter.status.listening")) }
         suspend fun transcript(id: String, position: Int?, text: String, final: Boolean) {

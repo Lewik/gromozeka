@@ -1,7 +1,5 @@
 package com.gromozeka.infrastructure.ai.openai
 
-import com.gromozeka.domain.service.LiveTranscriptionTurnDetection
-
 import com.gromozeka.domain.model.ai.AiHttpSettings
 import java.net.InetSocketAddress
 import java.net.Proxy
@@ -58,17 +56,6 @@ class OpenAiLiveTranscriptionConfigurationTest {
             val stopping = configured.sessionUpdate(disableTurnDetection = true)["session"]!!.jsonObject["audio"]!!.jsonObject["input"]!!.jsonObject
             assertEquals(JsonNull, stopping["turn_detection"])
         }
-    }
-
-    @Test
-    fun `manual GPT transcribe uses client boundaries while default semantic mode remains available`() {
-        val configured = OpenAiLiveTranscriptionConfiguration("https://api.openai.com/v1", "synthetic-test-key",
-            "gpt-transcribe", listOf("he", "en", "ru"), manualTurnControl = true)
-        assertEquals(LiveTranscriptionTurnDetection.CLIENT, configured.turnDetection)
-        val input = configured.sessionUpdate()["session"]!!.jsonObject["audio"]!!.jsonObject["input"]!!.jsonObject
-        assertEquals(JsonNull, input["turn_detection"])
-        assertFalse("delay" in input["transcription"]!!.jsonObject)
-        assertEquals("gpt-transcribe", input["transcription"]!!.jsonObject["model"]!!.jsonPrimitive.content)
     }
 
     @Test

@@ -1,7 +1,5 @@
 package com.gromozeka.server
 
-import com.gromozeka.remote.protocol.CommitLiveInterpreterCommand
-
 import com.gromozeka.domain.model.SpeechAvailabilityException
 
 import com.gromozeka.application.service.AiUserCredentialApplicationService
@@ -264,8 +262,6 @@ class GromozekaRemoteServer(
                             }
                             is LiveInterpreterAudioChunkCommand ->
                                 liveInterpreterApplicationService.append(liveInterpreterOwner, payload)
-                            is CommitLiveInterpreterCommand ->
-                                liveInterpreterApplicationService.commit(liveInterpreterOwner, payload)
                             is StopLiveInterpreterCommand ->
                                 liveInterpreterApplicationService.stop(liveInterpreterOwner, payload)
                             is LiveVoiceProviderVadAudioChunkCommand ->

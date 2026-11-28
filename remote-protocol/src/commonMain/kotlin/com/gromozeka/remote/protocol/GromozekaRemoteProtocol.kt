@@ -803,7 +803,6 @@ data class StartLiveInterpreterRequest(
     val sessionId: String,
     val languages: List<String> = listOf("he", "en", "ru"),
     val transcriptionRuntimeSelection: AiRuntimeSelection? = null,
-    val manualTurnControl: Boolean = false,
     val nativeTranslationLanguage: String? = null,
 ) : ClientRequest {
     init {
@@ -1041,16 +1040,6 @@ data class SynthesizeSpeechStreamCommand(
 data class LiveInterpreterAudioChunkCommand(
     val sessionId: String,
     val chunk: RemotePcmAudioChunk,
-) : ClientPayload {
-    init {
-        require(liveSessionIdPattern.matches(sessionId)) { "Invalid Live session id" }
-    }
-}
-
-@Serializable
-@SerialName("commit_live_interpreter")
-data class CommitLiveInterpreterCommand(
-    val sessionId: String,
 ) : ClientPayload {
     init {
         require(liveSessionIdPattern.matches(sessionId)) { "Invalid Live session id" }

@@ -189,70 +189,15 @@ class OpenAiLiveTranscriptionSocketTest {
         }
     }
 
-    @Test
-    fun `manual GPT transcribe commits continue in one socket and short commit or stop tails reach protocol minimum`() = runBlocking {
-        withSocket(handler = {
-            val configured = receiveJson()["session"]!!.jsonObject["audio"]!!.jsonObject["input"]!!.jsonObject
-            assertEquals(JsonNull, configured["turn_detection"])
-            assertEquals("gpt-transcribe", configured["transcription"]!!.jsonObject["model"]!!.jsonPrimitive.content)
-            send("""{"type":"session.updated"}""")
-            for (index in 0 until 3) {
-                val first = receiveJson()
-                assertEquals("input_audio_buffer.append", first["type"]!!.jsonPrimitive.content)
-                val bytes = Base64.getDecoder().decode(first["audio"]!!.jsonPrimitive.content)
-                var size = bytes.size
-                if (index > 0) {
-                    assertContentEquals(byteArrayOf(2, 1), bytes)
-                    val padding = receiveJson()
-                    assertEquals("input_audio_buffer.append", padding["type"]!!.jsonPrimitive.content)
-                    val silence = Base64.getDecoder().decode(padding["audio"]!!.jsonPrimitive.content)
-                    assertTrue(silence.all { it == 0.toByte() })
-                    size += silence.size
-                }
-                assertEquals(4_800, size, "Each item must contain 100 ms of PCM24k")
-                assertEquals("input_audio_buffer.commit", receiveJson()["type"]!!.jsonPrimitive.content)
-                val previous = if (index == 0) "null" else "\"item-${index-1}\""
-                send("""{"type":"input_audio_buffer.committed","item_id":"item-$index","previous_item_id":$previous}""")
-            }
-            for (index in listOf(2, 0, 1)) {
-                send("""{"type":"conversation.item.input_audio_transcription.completed","item_id":"item-$index","transcript":"Final $index"}""")
-            }
-            for (frame in incoming) check(frame !is Frame.Text) { "Unexpected control after the final drain" }
-        }) { baseUrl ->
-            val session = session(baseUrl, RecordingAdmission(), "gpt-transcribe", manualTurnControl = true)
-            try {
-                withTimeout(10_000) {
-                    session.start()
-                    val observed = mutableListOf<LiveTranscriptionEvent>()
-                    coroutineScope {
-                        val collector = launch { session.events.collect { observed += it } }
-                        session.appendAudio(ByteArray(3_200))
-                        session.commit()
-                        session.appendAudio(byteArrayOf(1, 2))
-                        session.commit()
-                        session.commit()
-                        session.appendAudio(byteArrayOf(1, 2))
-                        session.finishInput()
-                        collector.join()
-                    }
-                    assertEquals(listOf("item-0", "item-1", "item-2"),
-                        observed.filterIsInstance<LiveTranscriptionEvent.Committed>().map { it.itemId })
-                    assertEquals(3, observed.filterIsInstance<LiveTranscriptionEvent.Transcript>().count { it.isFinal })
-                }
-            } finally { session.close(AiAdmissionOutcome.SUCCEEDED) }
-        }
-    }
-
-    private suspend fun session(baseUrl: String, admission: RecordingAdmission,
-                                modelId: String = "gpt-live-transcribe", manualTurnControl: Boolean = false): OpenAiLiveTranscriptionSession {
+    private suspend fun session(baseUrl: String, admission: RecordingAdmission): OpenAiLiveTranscriptionSession {
         val model = AiModelConfiguration(
             id = AiModelConfiguration.Id("live-test"),
             connectionId = AiConnection.Id("openai-test"),
-            providerModelId = modelId,
+            providerModelId = "gpt-live-transcribe",
             displayName = "Synthetic fixture",
         )
         return OpenAiLiveTranscriptionSession(
-            OpenAiLiveTranscriptionConfiguration(baseUrl, "synthetic-test-key", model.providerModelId, listOf("he", "en", "ru"), manualTurnControl = manualTurnControl),
+            OpenAiLiveTranscriptionConfiguration(baseUrl, "synthetic-test-key", model.providerModelId, listOf("he", "en", "ru")),
             "synthetic-user",
             admission.openSession(model, "LIVE_TRANSCRIPTION_TEST"),
         )

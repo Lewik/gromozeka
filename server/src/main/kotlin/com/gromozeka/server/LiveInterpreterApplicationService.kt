@@ -10,7 +10,6 @@ import com.gromozeka.domain.service.LiveTranscriptionProvider
 import com.gromozeka.domain.service.LiveTranscriptionSession
 import com.gromozeka.domain.service.LiveTranscriptionTurnDetection
 import com.gromozeka.remote.protocol.LiveInterpreterAudioChunkCommand
-import com.gromozeka.remote.protocol.CommitLiveInterpreterCommand
 import com.gromozeka.remote.protocol.LiveInterpreterFailedEvent
 import com.gromozeka.remote.protocol.LiveInterpreterNativeTranslationEvent
 import com.gromozeka.remote.protocol.LiveInterpreterStartedResponse
@@ -56,11 +55,6 @@ internal class LiveInterpreterSessionOwner(val userId: User.Id, val connectionId
     }
 }
 
-private sealed interface LiveInterpreterInput {
-    data class Audio(val chunk: RemotePcmAudioChunk) : LiveInterpreterInput
-    data object Commit : LiveInterpreterInput
-}
-
 @Service
 class LiveInterpreterApplicationService(
     private val transcriptionProvider: LiveTranscriptionProvider,
@@ -91,11 +85,6 @@ class LiveInterpreterApplicationService(
     internal fun append(owner: LiveInterpreterSessionOwner, command: LiveInterpreterAudioChunkCommand): Boolean = synchronized(owner.lock) {
         if (owner.closed) return@synchronized false
         sessions[command.sessionId]?.takeIf { it.owner === owner }?.append(command.chunk) ?: false
-    }
-
-    internal fun commit(owner: LiveInterpreterSessionOwner, command: CommitLiveInterpreterCommand): Boolean = synchronized(owner.lock) {
-        if (owner.closed) return@synchronized false
-        sessions[command.sessionId]?.takeIf { it.owner === owner }?.commit() ?: false
     }
 
     internal fun stop(owner: LiveInterpreterSessionOwner, command: StopLiveInterpreterCommand): Boolean = synchronized(owner.lock) {
@@ -129,7 +118,7 @@ class LiveInterpreterApplicationService(
         private val eventSink: suspend (ServerPayload) -> Unit,
     ) {
         val id = request.sessionId
-        private val input = Channel<LiveInterpreterInput>(64)
+        private val input = Channel<RemotePcmAudioChunk>(64)
         private val accepting = AtomicBoolean(true)
         private val listening = AtomicBoolean(false)
         private val inputFailure = AtomicReference<Exception?>(null)
@@ -154,12 +143,10 @@ class LiveInterpreterApplicationService(
                 abort(IllegalArgumentException("Live microphone chunks must not exceed one second of PCM audio"))
                 return false
             }
-            return enqueue(LiveInterpreterInput.Audio(chunk))
+            return enqueue(chunk)
         }
 
-        fun commit(): Boolean = enqueue(LiveInterpreterInput.Commit)
-
-        private fun enqueue(value: LiveInterpreterInput): Boolean {
+        private fun enqueue(value: RemotePcmAudioChunk): Boolean {
             if (!accepting.get()) return false
             val result = input.trySend(value)
             if (result.isSuccess) return true
@@ -192,12 +179,10 @@ class LiveInterpreterApplicationService(
             try {
                 val selection = request.transcriptionRuntimeSelection
                     ?: aiConfigurationProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.LIVE_TRANSCRIPTION)
-                val connection = transcriptionProvider.open(owner.userId.value, selection, request.languages,
-                    request.manualTurnControl, request.nativeTranslationLanguage)
+                val connection = transcriptionProvider.open(
+                    owner.userId.value, selection, request.languages, request.nativeTranslationLanguage,
+                )
                 upstream = connection
-                check(!request.manualTurnControl || connection.turnDetection == LiveTranscriptionTurnDetection.CLIENT) {
-                    "Manual Live input requires client-owned turn boundaries"
-                }
                 listening.set(true)
                 if (!accepting.get()) return
                 emit(LiveInterpreterStatusEvent(id, "interpreter.status.listening"))
@@ -207,35 +192,17 @@ class LiveInterpreterApplicationService(
                         connection.events.collect { event -> timeline.accept(event).forEach { emit(it) } }
                         if (accepting.get()) throw LiveTranscriptionException("Live transcription stream ended unexpectedly", retryable = true)
                     }
-                    val detector = if (!request.manualTurnControl && connection.turnDetection == LiveTranscriptionTurnDetection.CLIENT)
+                    val detector = if (connection.turnDetection == LiveTranscriptionTurnDetection.CLIENT)
                         LiveAudioTurnDetector() else null
                     var nextSequence = 0
-                    var hasUncommittedAudio = false
-                    for (value in input) {
-                        when (value) {
-                            is LiveInterpreterInput.Audio -> {
-                                val chunk = value.chunk
-                                require(chunk.sequenceNumber == nextSequence) { "Live audio chunk sequence is not contiguous" }
-                                require(chunk.sampleRate == 16_000 && chunk.channels == 1 && chunk.byteOrder == RemotePcmByteOrder.BIG_ENDIAN) {
-                                    "Live requires mono 16 kHz big-endian PCM16 microphone audio"
-                                }
-                                nextSequence += 1
-                                connection.appendAudio(chunk.data)
-                                if (chunk.data.isNotEmpty()) hasUncommittedAudio = true
-                                if (detector?.accept(chunk.data) == true) {
-                                    connection.commit()
-                                    hasUncommittedAudio = false
-                                }
-                            }
-                            LiveInterpreterInput.Commit -> {
-                                check(request.manualTurnControl) { "Manual commit is not enabled for this Live session" }
-                                if (hasUncommittedAudio) {
-                                    connection.commit()
-                                    hasUncommittedAudio = false
-                                    emit(LiveInterpreterStatusEvent(id, "interpreter.commitSent"))
-                                } else emit(LiveInterpreterStatusEvent(id, "interpreter.nothingToCommit"))
-                            }
+                    for (chunk in input) {
+                        require(chunk.sequenceNumber == nextSequence) { "Live audio chunk sequence is not contiguous" }
+                        require(chunk.sampleRate == 16_000 && chunk.channels == 1 && chunk.byteOrder == RemotePcmByteOrder.BIG_ENDIAN) {
+                            "Live requires mono 16 kHz big-endian PCM16 microphone audio"
                         }
+                        nextSequence += 1
+                        connection.appendAudio(chunk.data)
+                        if (detector?.accept(chunk.data) == true) connection.commit()
                     }
                     connection.finishInput()
                     collector.join()

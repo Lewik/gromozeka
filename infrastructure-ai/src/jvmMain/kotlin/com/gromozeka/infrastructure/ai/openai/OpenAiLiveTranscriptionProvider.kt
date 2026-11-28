@@ -71,7 +71,6 @@ class OpenAiLiveTranscriptionProvider(
         userStableId: String,
         runtime: ResolvedAiRuntime,
         languages: List<String>,
-        manualTurnControl: Boolean,
         nativeTranslationLanguage: String?,
     ): LiveTranscriptionSession {
         require(nativeTranslationLanguage == null) { "OpenAI Live does not provide native translation" }
@@ -84,7 +83,6 @@ class OpenAiLiveTranscriptionProvider(
             model = model,
             languages = languages,
             httpSettings = SdkHttpSupport.settings(runtime.connection),
-            manualTurnControl = manualTurnControl,
         )
         val admitted = admission.openSession(runtime.modelConfiguration, "LIVE_TRANSCRIPTION")
         val session = OpenAiLiveTranscriptionSession(configuration, userStableId, admitted)
@@ -104,7 +102,6 @@ internal class OpenAiLiveTranscriptionConfiguration(
     val model: String,
     val languages: List<String>,
     val httpSettings: AiHttpSettings = AiHttpSettings(),
-    val manualTurnControl: Boolean = false,
 ) {
     init {
         require(model.isNotBlank()) { "Live transcription model must not be blank" }
@@ -146,7 +143,7 @@ internal class OpenAiLiveTranscriptionConfiguration(
     }
 
     val turnDetection: LiveTranscriptionTurnDetection
-        get() = if (model == "gpt-transcribe" && !manualTurnControl) LiveTranscriptionTurnDetection.PROVIDER else LiveTranscriptionTurnDetection.CLIENT
+        get() = if (model == "gpt-transcribe") LiveTranscriptionTurnDetection.PROVIDER else LiveTranscriptionTurnDetection.CLIENT
 
     fun sessionUpdate(disableTurnDetection: Boolean = false): JsonObject = buildJsonObject {
         put("type", "session.update")
@@ -255,7 +252,7 @@ internal class OpenAiLiveTranscriptionSession(
 
     private suspend fun commitPending() {
         if (uncommittedSamples == 0L) return
-        // OpenAI requires 100 ms per item, including a short tail immediately after a manual commit.
+        // OpenAI requires at least 100 ms in every client-committed audio item.
         if (uncommittedSamples < 2_400) appendConverted(ByteArray(((2_400 - uncommittedSamples) * 2).toInt()))
         synchronized(pendingLock) {
             val pending = pendingTurns.value

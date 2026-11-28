@@ -14,17 +14,11 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.receiveAsFlow
 
 interface LiveInterpreterClient {
-    suspend fun start(languages: List<String>, selection: AiRuntimeSelection, manualTurnControl: Boolean = false): LiveInterpreterRemoteSession
-
     suspend fun start(
         languages: List<String>,
         selection: AiRuntimeSelection,
-        manualTurnControl: Boolean,
-        nativeTranslationLanguage: String?,
-    ): LiveInterpreterRemoteSession {
-        require(nativeTranslationLanguage == null) { "This Live client does not support native translation" }
-        return start(languages, selection, manualTurnControl)
-    }
+        nativeTranslationLanguage: String? = null,
+    ): LiveInterpreterRemoteSession
 
     suspend fun translate(request: TranslateLiveTextRequest): LiveTextTranslatedResponse
 }
@@ -33,7 +27,6 @@ interface LiveInterpreterRemoteSession {
     val sessionId: String
     val events: Flow<ServerPayload>
     suspend fun sendAudioChunk(chunk: RemotePcmAudioChunk)
-    suspend fun commit()
     suspend fun stop()
     suspend fun close()
 }
@@ -45,13 +38,6 @@ class RemoteLiveInterpreterService internal constructor(private val client: Grom
     override suspend fun start(
         languages: List<String>,
         selection: AiRuntimeSelection,
-        manualTurnControl: Boolean,
-    ): LiveInterpreterRemoteSession = start(languages, selection, manualTurnControl, null)
-
-    override suspend fun start(
-        languages: List<String>,
-        selection: AiRuntimeSelection,
-        manualTurnControl: Boolean,
         nativeTranslationLanguage: String?,
     ): LiveInterpreterRemoteSession {
         val session = try {
@@ -59,7 +45,6 @@ class RemoteLiveInterpreterService internal constructor(private val client: Grom
                 sessionId = uuid7(),
                 languages = languages,
                 transcriptionRuntimeSelection = selection,
-                manualTurnControl = manualTurnControl,
                 nativeTranslationLanguage = nativeTranslationLanguage,
             ))
         } catch (error: RemoteConnectionLostException) {
@@ -77,11 +62,6 @@ class RemoteLiveInterpreterService internal constructor(private val client: Grom
 
             override suspend fun sendAudioChunk(chunk: RemotePcmAudioChunk) =
                 client.sendLiveInterpreterAudioChunk(sessionId, chunk)
-
-            override suspend fun commit() {
-                check(!stopped) { "Live remote input is already stopping" }
-                client.commitLiveInterpreter(sessionId)
-            }
 
             override suspend fun stop() {
                 if (stopped) return

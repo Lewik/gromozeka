@@ -441,30 +441,6 @@ verifies provisional text, ordered immutable originals and translations, timesta
 languages, speaker labels, and admission cleanup. It does not record a hardware
 microphone.
 
-### Manual Live fragment commits
-
-Live exposes an explicit `Manual commits` option before Start only for the supported
-OpenAI Realtime models. It defaults off, preserving the selected model's existing
-automatic turn policy. When enabled,
-`turn_detection` is `null` and neither semantic VAD nor the local timed detector
-creates boundaries. Only Commit and Stop complete fragments. This does not affect
-ordinary dictation or continuous voice input in conversation tabs.
-
-The Commit button keeps the microphone, original transcript, translation worker
-and upstream API session running. Audio and commit controls are serialized through
-the same connection-bound Server queue. The originating client receives an explicit
-sent/no-new-audio status; sent does not mean the transcript is already complete.
-A lost acknowledgement is visible, and the old command is not replayed on reconnect.
-An empty request does not send an empty provider commit. A nonempty audio tail under
-100 ms is padded with silence to meet OpenAI's item minimum; that padding is sent
-and can count toward provider usage.
-
-This is a manual quality experiment, not an automatic segmentation policy. Synthetic
-whole-versus-two-second tests confirmed the wire protocol but exposed Hebrew word
-errors and unnatural sentence breaks. Do not treat aggressive periodic commits as
-quality-neutral without representative testing. No retrospective pause selection,
-audio overlap, or LLM reconstruction of the original is involved.
-
 ### Contextual Live text translation
 
 `LIVE_TRANSLATION` is a separate optional runtime purpose requiring `TEXT_GENERATION`

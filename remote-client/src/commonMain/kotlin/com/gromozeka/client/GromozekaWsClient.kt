@@ -27,7 +27,6 @@ import com.gromozeka.remote.protocol.ErrorResponse
 import com.gromozeka.remote.protocol.GromozekaClientEnvelope
 import com.gromozeka.remote.protocol.GromozekaServerEnvelope
 import com.gromozeka.remote.protocol.LiveInterpreterAudioChunkCommand
-import com.gromozeka.remote.protocol.CommitLiveInterpreterCommand
 import com.gromozeka.remote.protocol.LiveInterpreterFailedEvent
 import com.gromozeka.remote.protocol.LiveInterpreterNativeTranslationEvent
 import com.gromozeka.remote.protocol.LiveInterpreterStartedResponse
@@ -550,18 +549,15 @@ internal class GromozekaWsClient(
         }
     }
 
-    suspend fun sendLiveInterpreterAudioChunk(sessionId: String, chunk: RemotePcmAudioChunk) =
-        sendLiveInterpreterInput(sessionId, LiveInterpreterAudioChunkCommand(sessionId, chunk))
-
-    suspend fun commitLiveInterpreter(sessionId: String) =
-        sendLiveInterpreterInput(sessionId, CommitLiveInterpreterCommand(sessionId))
-
-    private suspend fun sendLiveInterpreterInput(sessionId: String, payload: ClientPayload) {
+    suspend fun sendLiveInterpreterAudioChunk(sessionId: String, chunk: RemotePcmAudioChunk) {
         val registered = registryMutex.withLock { liveInterpreterSessions[sessionId] }
             ?: throw LiveTranscriptionException("Live remote session is no longer connected", retryable = true)
         try {
             withTimeout(10_000) {
-                sendEnvelope(registered.connection, GromozekaClientEnvelope(uuid7(), payload))
+                sendEnvelope(
+                    registered.connection,
+                    GromozekaClientEnvelope(uuid7(), LiveInterpreterAudioChunkCommand(sessionId, chunk)),
+                )
             }
         } catch (error: CancellationException) {
             if (error is TimeoutCancellationException && currentCoroutineContext().isActive) {

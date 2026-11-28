@@ -9,19 +9,8 @@ interface LiveTranscriptionProvider {
         userStableId: String,
         selection: AiRuntimeSelection,
         languages: List<String>,
-        manualTurnControl: Boolean = false,
+        nativeTranslationLanguage: String? = null,
     ): LiveTranscriptionSession
-
-    suspend fun open(
-        userStableId: String,
-        selection: AiRuntimeSelection,
-        languages: List<String>,
-        manualTurnControl: Boolean,
-        nativeTranslationLanguage: String?,
-    ): LiveTranscriptionSession {
-        require(nativeTranslationLanguage == null) { "The selected Live provider does not support native translation" }
-        return open(userStableId, selection, languages, manualTurnControl)
-    }
 }
 
 enum class LiveTranscriptionTurnDetection { CLIENT, PROVIDER }

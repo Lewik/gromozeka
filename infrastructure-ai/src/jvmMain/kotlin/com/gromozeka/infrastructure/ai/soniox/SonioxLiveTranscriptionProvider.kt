@@ -72,7 +72,6 @@ class SonioxLiveTranscriptionProvider(
         userStableId: String,
         runtime: ResolvedAiRuntime,
         languages: List<String>,
-        manualTurnControl: Boolean,
         nativeTranslationLanguage: String?,
     ): LiveTranscriptionSession {
         val connection = runtime.connection as? AiConnection.SonioxApi
@@ -83,7 +82,6 @@ class SonioxLiveTranscriptionProvider(
         require(AiModelCapability.SPEAKER_DIARIZATION in runtime.modelSpec.capabilities) {
             "Soniox Live 2 requires speaker diarization"
         }
-        require(!manualTurnControl) { "Soniox owns Live token finalization" }
         val configuration = SonioxLiveTranscriptionConfiguration(
             baseUrl = connection.baseUrl ?: DEFAULT_SONIOX_REALTIME_URL,
             apiKey = SdkHttpSupport.token(connection, settingsProvider, "SONIOX_API_KEY"),

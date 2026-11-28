@@ -5,7 +5,6 @@ import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.LiveTranscriptionException
 import com.gromozeka.remote.protocol.ClientInstanceId
 import com.gromozeka.remote.protocol.ClientPayload
-import com.gromozeka.remote.protocol.CommitLiveInterpreterCommand
 import com.gromozeka.remote.protocol.LiveInterpreterAudioChunkCommand
 import com.gromozeka.remote.protocol.ErrorResponse
 import com.gromozeka.remote.protocol.GetSettingsRequest
@@ -80,7 +79,7 @@ class RemoteLiveInterpreterTransportTest {
         try {
             withTimeout(10_000) {
                 val session = RemoteLiveInterpreterService(client).start(
-                    listOf("he", "en", "ru"), selection, manualTurnControl = false, nativeTranslationLanguage = "ru",
+                    listOf("he", "en", "ru"), selection, nativeTranslationLanguage = "ru",
                 )
                 val status = session.events.first() as LiveInterpreterStatusEvent
                 assertEquals("interpreter.status.listening", status.messageKey)
@@ -138,7 +137,6 @@ class RemoteLiveInterpreterTransportTest {
                 client.request(GetSettingsRequest)
                 assertEquals(2, connections.get())
                 assertFailsWith<LiveTranscriptionException> { old.sendAudioChunk(RemotePcmAudioChunk(0, byteArrayOf(0, 0))) }
-                assertFailsWith<LiveTranscriptionException> { old.commit() }
                 old.close()
                 client.request(GetSettingsRequest)
                 assertTrue(foreignCommands.tryReceive().isFailure)
@@ -177,7 +175,7 @@ class RemoteLiveInterpreterTransportTest {
     }
 
     @Test
-    fun `manual start audio commit and following audio retain their WebSocket order`() = testApplication {
+    fun `audio chunks and stop retain their WebSocket order`() = testApplication {
         val observed = CompletableDeferred<List<ClientPayload>>()
         application {
             install(WebSockets)
@@ -185,10 +183,9 @@ class RemoteLiveInterpreterTransportTest {
                 incoming.receive()
                 val request = incoming.receive().envelope()
                 val start = request.payload as StartLiveInterpreterRequest
-                assertTrue(start.manualTurnControl)
                 sendPayload(request.id, LiveInterpreterStartedResponse(start.sessionId))
                 sendPayload("ready", LiveInterpreterStatusEvent(start.sessionId, "interpreter.status.listening"))
-                observed.complete((0 until 4).map { incoming.receive().envelope().payload })
+                observed.complete((0 until 3).map { incoming.receive().envelope().payload })
             } }
         }
         val owner = SupervisorJob()
@@ -199,26 +196,24 @@ class RemoteLiveInterpreterTransportTest {
         )
         try {
             withTimeout(10_000) {
-                val session = RemoteLiveInterpreterService(client).start(listOf("en"), selection, manualTurnControl = true)
+                val session = RemoteLiveInterpreterService(client).start(listOf("en"), selection)
                 session.events.first()
                 val first = RemotePcmAudioChunk(0, byteArrayOf(0, 1))
                 val second = RemotePcmAudioChunk(1, byteArrayOf(0, 2))
                 session.sendAudioChunk(first)
-                session.commit()
                 session.sendAudioChunk(second)
                 session.stop()
                 val commands = observed.await()
-                assertEquals(4, commands.size)
+                assertEquals(3, commands.size)
                 val a = commands[0] as LiveInterpreterAudioChunkCommand
-                val b = commands[2] as LiveInterpreterAudioChunkCommand
+                val b = commands[1] as LiveInterpreterAudioChunkCommand
                 assertEquals(session.sessionId, a.sessionId)
                 assertEquals(session.sessionId, b.sessionId)
                 assertEquals(0, a.chunk.sequenceNumber)
                 assertEquals(1, b.chunk.sequenceNumber)
                 assertContentEquals(first.data, a.chunk.data)
                 assertContentEquals(second.data, b.chunk.data)
-                assertEquals(CommitLiveInterpreterCommand(session.sessionId), commands[1])
-                assertEquals(StopLiveInterpreterCommand(session.sessionId), commands[3])
+                assertEquals(StopLiveInterpreterCommand(session.sessionId), commands[2])
                 session.close()
             }
         } finally { client.close(); owner.cancelAndJoin() }

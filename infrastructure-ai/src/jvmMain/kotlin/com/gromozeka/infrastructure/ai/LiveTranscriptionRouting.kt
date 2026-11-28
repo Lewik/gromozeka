@@ -17,7 +17,6 @@ interface LiveTranscriptionBackend {
         userStableId: String,
         runtime: ResolvedAiRuntime,
         languages: List<String>,
-        manualTurnControl: Boolean,
         nativeTranslationLanguage: String?,
     ): LiveTranscriptionSession
 }
@@ -31,14 +30,6 @@ class RoutingLiveTranscriptionProvider(
         userStableId: String,
         selection: AiRuntimeSelection,
         languages: List<String>,
-        manualTurnControl: Boolean,
-    ): LiveTranscriptionSession = open(userStableId, selection, languages, manualTurnControl, null)
-
-    override suspend fun open(
-        userStableId: String,
-        selection: AiRuntimeSelection,
-        languages: List<String>,
-        manualTurnControl: Boolean,
         nativeTranslationLanguage: String?,
     ): LiveTranscriptionSession {
         val runtime = configurations.resolveAiRuntime(selection)
@@ -52,6 +43,6 @@ class RoutingLiveTranscriptionProvider(
         require(matching.size == 1) {
             "Expected one Live transcription backend for ${runtime.connection.kind}, found ${matching.size}"
         }
-        return matching.single().open(userStableId, runtime, languages, manualTurnControl, nativeTranslationLanguage)
+        return matching.single().open(userStableId, runtime, languages, nativeTranslationLanguage)
     }
 }
