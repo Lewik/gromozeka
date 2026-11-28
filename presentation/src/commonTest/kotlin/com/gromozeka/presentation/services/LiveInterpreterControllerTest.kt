@@ -130,7 +130,8 @@ class LiveInterpreterControllerTest {
         val replacement = AiRuntimeSelection(AiModelConfiguration.Id("replacement-model"))
         assertFailsWith<IllegalStateException> { controller.selectModel(replacement.modelConfigurationId) }
         controller.useInterfaceNativeTranslationLanguage("ru")
-        assertEquals("en", controller.state.value.nativeTranslationLanguage)
+        assertEquals("ru", controller.state.value.nativeTranslationLanguage)
+        assertEquals("en", controller.state.value.activeNativeTranslationLanguage)
         assertFailsWith<IllegalStateException> { controller.start(replacement, "en") }
         controller.setLanguages("")
         controller.start(selection, "en")
@@ -139,6 +140,13 @@ class LiveInterpreterControllerTest {
         assertEquals(emptyList(), client.languages.last())
         assertEquals("en", client.nativeTranslationLanguages.last())
         assertEquals("kept original", controller.state.value.segments.single().text)
+        controller.stop()
+        runCurrent()
+        assertEquals(LiveInterpreterPhase.STOPPED, controller.state.value.phase)
+        controller.start(selection, controller.state.value.nativeTranslationLanguage)
+        runCurrent()
+        assertEquals("ru", client.nativeTranslationLanguages.last())
+        assertTrue(controller.state.value.segments.isEmpty())
         controller.stop()
         runCurrent()
     }

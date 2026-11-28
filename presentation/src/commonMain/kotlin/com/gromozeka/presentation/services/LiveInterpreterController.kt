@@ -144,8 +144,7 @@ class LiveInterpreterController(
     fun useInterfaceNativeTranslationLanguage(language: String) {
         val normalized = normalizeLiveLanguage(language)
         mutableState.update { current ->
-            if (current.nativeTranslationLanguageExplicit || current.phase.isActive ||
-                current.phase == LiveInterpreterPhase.PAUSED) current
+            if (current.nativeTranslationLanguageExplicit) current
             else current.copy(nativeTranslationLanguage = normalized)
         }
     }

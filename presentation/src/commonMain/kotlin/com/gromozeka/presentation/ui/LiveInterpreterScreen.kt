@@ -88,6 +88,12 @@ fun LiveInterpreterScreen(
     val selectedTextModel = textModels.firstOrNull { it.id == preferredTextId }
     val selectedRuntime = selectedModel?.let { catalog?.resolveRuntimeIfAvailable(AiRuntimeSelection(it.id)) }
     val nativeTranslationSupported = selectedRuntime?.connection?.kind == AiConnection.Kind.SONIOX_API
+    val resuming = state.phase == LiveInterpreterPhase.PAUSED
+    val nativeTranslationSelection = if (state.phase.isActive || resuming) {
+        state.activeNativeTranslationLanguage
+    } else {
+        state.nativeTranslationLanguage
+    }
     val nativeColumnLanguage = state.activeNativeTranslationLanguage
         ?: state.nativeTranslationLanguage.takeIf { nativeTranslationSupported }
     val textLanguages = textState.languages.filterNot { it == nativeColumnLanguage }
@@ -123,7 +129,7 @@ fun LiveInterpreterScreen(
                         }
                     }
                     Button(onClick = { selectedModel?.let {
-                        controller.start(AiRuntimeSelection(it.id), state.nativeTranslationLanguage.takeIf { nativeTranslationSupported })
+                        controller.start(AiRuntimeSelection(it.id), nativeTranslationSelection.takeIf { nativeTranslationSupported })
                     } },
                         enabled = selectedModel != null && languageHintsValid && controller.unavailableReason == null) {
                         Text(translation.text(if (state.phase == LiveInterpreterPhase.PAUSED) "interpreter.resume" else "interpreter.start"))
@@ -144,7 +150,7 @@ fun LiveInterpreterScreen(
             LiveModelMenu(translation.text("interpreter.model"), models, selectedModel,
                 !state.phase.isActive && state.phase != LiveInterpreterPhase.PAUSED, controller::selectModel)
             if (nativeTranslationSupported) {
-                LiveNativeTranslationMenu(state.nativeTranslationLanguage, names,
+                LiveNativeTranslationMenu(nativeTranslationSelection, names,
                     !state.phase.isActive && state.phase != LiveInterpreterPhase.PAUSED,
                     controller::setNativeTranslationLanguage)
             }

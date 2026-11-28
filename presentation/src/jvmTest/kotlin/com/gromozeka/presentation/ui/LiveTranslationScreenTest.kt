@@ -92,13 +92,15 @@ class LiveTranslationScreenTest {
     }
 
     @Test
-    fun `paused session freezes its model and exposes Stop beside Resume`() = runComposeUiTest {
+    fun `paused session keeps its active target and applies a pending interface default after Stop`() = runComposeUiTest {
         val client = FakeClient()
-        val configuration = configuration()
+        val configuration = configuration(soniox = true)
         lateinit var controller: LiveInterpreterController
         setContent {
             val scope = rememberCoroutineScope()
-            controller = remember { LiveInterpreterController(client, FakeMicrophone(), scope) }
+            controller = remember {
+                LiveInterpreterController(client, FakeMicrophone(), scope, initialNativeTranslationLanguage = "en")
+            }
             DisposableEffect(controller) { onDispose { controller.cancel() } }
             TranslationProvider(Translation(BundledTranslations.english)) {
                 MaterialTheme { Box(Modifier.size(1_200.dp, 800.dp)) { LiveInterpreterScreen(controller, configuration) } }
@@ -111,13 +113,28 @@ class LiveTranslationScreenTest {
             client.output.trySend(LiveInterpreterFailedEvent("ui-session", "Synthetic failure", retryable = false))
         }
         waitUntil(timeoutMillis = 5_000) { controller.state.value.phase == LiveInterpreterPhase.PAUSED }
+        runOnIdle { controller.useInterfaceNativeTranslationLanguage("ru") }
+        runOnIdle {
+            assertEquals("ru", controller.state.value.nativeTranslationLanguage)
+            assertEquals("en", controller.state.value.activeNativeTranslationLanguage)
+        }
 
-        onNodeWithText("Transcription model: UI model").assertIsNotEnabled()
-        onNodeWithText("Resume").assertIsEnabled()
+        onNodeWithText("Transcription model: Soniox model").assertIsNotEnabled()
+        onNodeWithText("Resume").assertIsEnabled().performClick()
+        waitUntil(timeoutMillis = 5_000) {
+            controller.state.value.phase == LiveInterpreterPhase.LISTENING && client.nativeTranslationLanguages.size == 2
+        }
+        runOnIdle { assertEquals(listOf<String?>("en", "en"), client.nativeTranslationLanguages) }
+
         onNodeWithText("Stop").assertIsEnabled().performClick()
         waitUntil(timeoutMillis = 5_000) { controller.state.value.phase == LiveInterpreterPhase.STOPPED }
-        onNodeWithText("Transcription model: UI model").assertIsEnabled()
-        onNodeWithText("Start").assertIsEnabled()
+        onNodeWithText("Transcription model: Soniox model").assertIsEnabled()
+        onNodeWithText("Start").assertIsEnabled().performClick()
+        waitUntil(timeoutMillis = 5_000) {
+            controller.state.value.phase == LiveInterpreterPhase.LISTENING && client.nativeTranslationLanguages.size == 3
+        }
+        runOnIdle { assertEquals(listOf<String?>("en", "en", "ru"), client.nativeTranslationLanguages) }
+        onNodeWithText("Stop").performClick()
     }
 
     @Test
@@ -175,8 +192,10 @@ class LiveTranslationScreenTest {
     }
 
     private class FakeClient : LiveInterpreterClient {
-        val output = Channel<ServerPayload>(Channel.UNLIMITED)
+        var output = Channel<ServerPayload>(Channel.UNLIMITED)
+            private set
         val requests = mutableListOf<TranslateLiveTextRequest>()
+        val nativeTranslationLanguages = mutableListOf<String?>()
         var stops = 0
         var closes = 0
         override suspend fun start(
@@ -184,13 +203,20 @@ class LiveTranslationScreenTest {
             selection: AiRuntimeSelection,
             nativeTranslationLanguage: String?,
         ): LiveInterpreterRemoteSession {
-            output.trySend(LiveInterpreterStatusEvent("ui-session", "interpreter.status.listening"))
+            nativeTranslationLanguages += nativeTranslationLanguage
+            val sessionOutput = Channel<ServerPayload>(Channel.UNLIMITED)
+            output = sessionOutput
+            sessionOutput.trySend(LiveInterpreterStatusEvent("ui-session", "interpreter.status.listening"))
             return object : LiveInterpreterRemoteSession {
                 override val sessionId = "ui-session"
-                override val events = output.receiveAsFlow()
+                override val events = sessionOutput.receiveAsFlow()
                 override suspend fun sendAudioChunk(chunk: RemotePcmAudioChunk) = Unit
-                override suspend fun stop() { stops += 1; output.send(LiveInterpreterStoppedEvent(sessionId)); output.close() }
-                override suspend fun close() { closes += 1; output.close() }
+                override suspend fun stop() {
+                    stops += 1
+                    sessionOutput.send(LiveInterpreterStoppedEvent(sessionId))
+                    sessionOutput.close()
+                }
+                override suspend fun close() { closes += 1; sessionOutput.close() }
             }
         }
         override suspend fun translate(request: TranslateLiveTextRequest): LiveTextTranslatedResponse {
