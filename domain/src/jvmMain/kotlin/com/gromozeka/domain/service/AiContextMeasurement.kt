@@ -105,6 +105,7 @@ data class AiContextMeasurement(
             put("nativeWebSearch", when (val connection = runtime.connection) {
                 is AiConnection.OpenAiApi -> connection.webSearchEnabled
                 is AiConnection.OpenAiSubscription -> connection.webSearchEnabled
+                is AiConnection.OpenAiSiwc -> connection.webSearchEnabled
                 else -> false
             })
         }.toString())

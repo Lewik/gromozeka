@@ -164,7 +164,7 @@ Provider-emitted checkpoints are not arbitrarily rewritten to manufacture a
 retained tail. Native checkpoints must identify an actual prefix of the captured
 provider input, and signed/opaque state keeps its established replay contract.
 
-Server and Workers must be updated together to Gateway protocol **37**. This work
+Server and Workers must be updated together to Gateway protocol **38**. This work
 adds no deployment or automatic update operation.
 
 ## Diagnostics and verification

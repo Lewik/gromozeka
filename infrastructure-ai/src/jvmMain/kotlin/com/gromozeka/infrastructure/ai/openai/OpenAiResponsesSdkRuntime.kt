@@ -25,6 +25,7 @@ import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.model.ai.AiUsage
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.ProviderNativeTool
 import com.gromozeka.infrastructure.ai.parsers.AssistantResponseParser
 import com.openai.client.OpenAIClient
 import com.openai.core.JsonValue
@@ -36,6 +37,7 @@ import com.openai.models.responses.FunctionTool
 import com.openai.models.responses.Response
 import com.openai.models.responses.ResponseCompactParams
 import com.openai.models.responses.CompactedResponse
+import com.openai.models.responses.NamespaceTool
 import com.openai.models.responses.inputtokens.InputTokenCountParams
 import com.gromozeka.domain.model.ai.AiContextInspection
 import com.openai.models.responses.ResponseCreateParams
@@ -57,6 +59,7 @@ import com.openai.models.responses.ResponseOutputText
 import com.openai.models.responses.ResponseReasoningItem
 import com.openai.models.responses.ResponseTextConfig
 import com.openai.models.responses.ResponseUsage
+import com.openai.models.responses.ToolChoiceAllowed
 import com.openai.models.responses.ToolChoiceFunction
 import com.openai.models.responses.ToolChoiceOptions
 import com.openai.models.responses.WebSearchTool
@@ -84,22 +87,33 @@ internal class OpenAiResponsesSdkRuntime(
     private val modelName: String,
     private val webSearchEnabled: Boolean,
     private val executor: SdkHttpCallExecutor<OpenAIClient>,
-    private val connection: AiConnection.OpenAiApi,
+    private val provider: OpenAiResponsesProvider,
     private val continuations: OpenAiResponsesContinuations,
+    private val continuationSettingsIdentity: String? = null,
     private val quotaEnabled: Boolean,
     generation: ModelGenerationPolicy = ModelGenerationPolicy(),
     private val messageMapper: OpenAiResponsesMessageMapper = OpenAiResponsesMessageMapper(
         connectionId = connectionId,
         modelConfigurationId = modelConfigurationId,
         modelName = modelName,
+        provider = provider.providerScope,
+        nativeCompactionProvider = provider.nativeCompactionProvider,
+        requestFeatures = provider.requestFeatures,
+        webSearchTool = provider.webSearchTool,
+        functionNamespace = provider.functionNamespace,
         generation = generation,
     ),
 ) : AiRuntime {
-    override val capabilities = com.gromozeka.domain.model.ai.AiRuntimeCapabilities(supportsNativeCompaction = true, supportsDetachedNativeCompaction = true)
+    override val capabilities = com.gromozeka.domain.model.ai.AiRuntimeCapabilities(
+        supportsNativeCompaction = provider.supportsNativeCompaction,
+        supportsDetachedNativeCompaction = provider.supportsDetachedNativeCompaction,
+    )
     private val log = KLoggers.logger(this)
 
     override suspend fun inspectContext(request: AiRuntimeRequest, allowProviderCount: Boolean): AiContextInspection {
-        if (!allowProviderCount) return super.inspectContext(request, false).copy(nativeCompactionAvailable = true)
+        if (!allowProviderCount || !provider.supportsProviderTokenCount) {
+            return super.inspectContext(request, false).copy(nativeCompactionAvailable = provider.supportsNativeCompaction)
+        }
         val body = messageMapper.toCreateParams(modelName, webSearchEnabled, request)._body()
         val fields = Json.parseToJsonElement(jsonMapper().writeValueAsString(body)).jsonObject
         val countBody = jsonMapper().readValue(JsonObject(fields.filterKeys {
@@ -115,6 +129,7 @@ internal class OpenAiResponsesSdkRuntime(
     }
 
     override suspend fun compact(request: AiRuntimeRequest): AiRuntimeResponse {
+        check(provider.supportsNativeCompaction) { "${provider.providerScope} does not support native Responses compaction" }
         val body = messageMapper.toCreateParams(modelName, webSearchEnabled, request)._body()
         val fields = Json.parseToJsonElement(jsonMapper().writeValueAsString(body)).jsonObject
         // Custom compaction instructions can invalidate subsequent preserved reasoning.
@@ -139,7 +154,7 @@ internal class OpenAiResponsesSdkRuntime(
         var recoveredMissingParent = false
         var outcome = "failed"
         try {
-            val result = executor.call(options, recoverRejected = { _, error ->
+            val result = executor.call(options, recoverFailure = { _, error ->
                 if (!recoveredMissingParent && prepared?.previousResponseId != null && isMissingPreviousResponse(error)) {
                     val original = checkNotNull(prepared) { "Missing-parent recovery has no request plan" }
                     // Recovery must not acquire the right to overwrite a cursor created by a concurrent call.
@@ -150,9 +165,11 @@ internal class OpenAiResponsesSdkRuntime(
                 } else false
             }) { client, remaining, session ->
                 val plan = prepared ?: continuations.plan(
-                    if (connection.responsesStoredContinuationEnabled) continuations.scope(connection, modelConfigurationId,
-                        modelName, request, checkNotNull(session.identity) { "Responses client has no call identity" }) else null,
-                    fullInput, connection.responsesStoredContinuationEnabled,
+                    continuationSettingsIdentity?.let { settingsIdentity ->
+                        continuations.scope(connectionId, settingsIdentity, modelConfigurationId,
+                            modelName, request, checkNotNull(session.identity) { "Responses client has no call identity" })
+                    },
+                    fullInput, continuationSettingsIdentity != null,
                 ).also { prepared = it }
                 val params = fullParams.toBuilder().store(plan.store).inputOfResponse(plan.input)
                     .apply { plan.previousResponseId?.let(::previousResponseId) }.build()
@@ -161,12 +178,18 @@ internal class OpenAiResponsesSdkRuntime(
                     session.transport.accountForRequest(Json.parseToJsonElement(jsonMapper().writeValueAsString(wireBody(accounting))))
                 }
                 logRequestPlan(accounting, params, plan)
-                val pending = if (connection.responsesStreamingEnabled) collectOpenAiResponsesStream(client, params, remaining)
+                val pending = if (provider.streaming) collectOpenAiResponsesStream(client, params, remaining)
                     else client.async().responses().create(params,
                         com.openai.core.RequestOptions.builder().timeout(remaining).build())
                 pending.thenApply { response ->
-                    if (quotaEnabled && connection.responsesStreamingEnabled) {
+                    if (quotaEnabled && provider.streaming) {
                         session.transport.accountForResponse(Json.parseToJsonElement(jsonMapper().writeValueAsString(response)))
+                    }
+                    if (provider.terminalFailuresAsErrors && response.status().getOrNull()?.asString() == "failed") {
+                        throw OpenAiResponsesStreamException(
+                            code = response.error().getOrNull()?.code()?.asString(),
+                            parameter = null,
+                        )
                     }
                     val mapped = messageMapper.toRuntimeResponse(response, request.options.assistantResponseFormat)
                     val replay = if (plan.store && response.status().orElse(null)?.asString() == "completed" &&
@@ -188,7 +211,7 @@ internal class OpenAiResponsesSdkRuntime(
             prepared?.let(continuations::forget)
             throw error
         } finally {
-            safeMetricLog { "RESPONSES_HTTP outcome=$outcome streaming=${connection.responsesStreamingEnabled} " +
+            safeMetricLog { "RESPONSES_HTTP outcome=$outcome streaming=${provider.streaming} " +
                 "mapping_ms=${mappedNanos / 1_000_000} logical_ms=${(System.nanoTime() - started) / 1_000_000}" }
         }
     }
@@ -204,7 +227,7 @@ internal class OpenAiResponsesSdkRuntime(
         }
     }
 
-    private fun wireBody(params: ResponseCreateParams) = if (connection.responsesStreamingEnabled) params._body().toBuilder()
+    private fun wireBody(params: ResponseCreateParams) = if (provider.streaming) params._body().toBuilder()
         .putAdditionalProperty("stream", JsonValue.from(true)).build() else params._body()
 
     private fun safeMetricLog(debug: Boolean = false, message: () -> String) {
@@ -218,11 +241,16 @@ internal class OpenAiResponsesSdkRuntime(
     }
 
     private fun isMissingPreviousResponse(error: Throwable): Boolean = generateSequence(error) { it.cause }
-        .take(16).filterIsInstance<com.openai.errors.OpenAIServiceException>().any {
-            runCatching {
-                it.statusCode() in setOf(400, 404) && it.code().orElse(null) == "previous_response_not_found" &&
-                    it.param().orElse("previous_response_id") == "previous_response_id"
-            }.getOrDefault(false)
+        .take(16).any {
+            when (it) {
+                is OpenAiResponsesStreamException ->
+                    it.code == "previous_response_not_found" && it.parameter == "previous_response_id"
+                is com.openai.errors.OpenAIServiceException -> runCatching {
+                    it.statusCode() in setOf(400, 404) && it.code().orElse(null) == "previous_response_not_found" &&
+                        it.param().orElse("previous_response_id") == "previous_response_id"
+                }.getOrDefault(false)
+                else -> false
+            }
         }
 
     override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = flow {
@@ -230,11 +258,45 @@ internal class OpenAiResponsesSdkRuntime(
     }
 }
 
+/** Fixed protocol characteristics selected by a provider adapter, not user-facing feature flags. */
+internal data class OpenAiResponsesProvider(
+    val providerScope: String,
+    val webSearchTool: ProviderNativeTool,
+    val functionNamespace: String? = null,
+    val supportsNativeCompaction: Boolean,
+    val supportsDetachedNativeCompaction: Boolean,
+    val supportsProviderTokenCount: Boolean,
+    val streaming: Boolean,
+    val terminalFailuresAsErrors: Boolean = false,
+    val requestFeatures: OpenAiResponsesRequestFeatures = OpenAiResponsesRequestFeatures(),
+) {
+    val nativeCompactionProvider: String? = providerScope.takeIf { supportsNativeCompaction }
+
+    init {
+        require(providerScope.isNotBlank()) { "Responses provider scope must not be blank" }
+        require(functionNamespace == null || functionNamespace.matches(Regex("[A-Za-z0-9_-]{1,64}"))) {
+            "Responses function namespace is invalid"
+        }
+        require(!supportsDetachedNativeCompaction || supportsNativeCompaction) {
+            "Detached Responses compaction requires native compaction"
+        }
+    }
+}
+
+internal data class OpenAiResponsesRequestFeatures(
+    val maxOutputTokens: Boolean = true,
+)
+
 internal class OpenAiResponsesMessageMapper(
     private val connectionId: String,
     private val modelConfigurationId: String,
     private val modelName: String,
     private val generation: ModelGenerationPolicy = ModelGenerationPolicy(),
+    private val provider: String = "OPENAI_API",
+    private val nativeCompactionProvider: String? = provider,
+    private val requestFeatures: OpenAiResponsesRequestFeatures = OpenAiResponsesRequestFeatures(),
+    private val webSearchTool: ProviderNativeTool = ProviderNativeTool.OPENAI_API_WEB_SEARCH,
+    private val functionNamespace: String? = null,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -243,7 +305,7 @@ internal class OpenAiResponsesMessageMapper(
         webSearchEnabled: Boolean,
         request: AiRuntimeRequest,
     ): ResponseCreateParams {
-        val input = request.projectedMessages("OPENAI_API").flatMap(::toInputItems)
+        val input = request.projectedMessages(nativeCompactionProvider, provider).flatMap(::toInputItems)
         require(input.isNotEmpty()) { "OpenAI Responses request must contain at least one input item" }
 
         val builder = ResponseCreateParams.builder()
@@ -253,7 +315,7 @@ internal class OpenAiResponsesMessageMapper(
             .store(false)
             .addInclude(ResponseIncludable.REASONING_ENCRYPTED_CONTENT)
 
-        request.options.maxOutputTokens?.let { builder.maxOutputTokens(it.toLong()) }
+        if (requestFeatures.maxOutputTokens) request.options.maxOutputTokens?.let { builder.maxOutputTokens(it.toLong()) }
 
         request.systemPrompts
             .filter(String::isNotBlank)
@@ -264,8 +326,7 @@ internal class OpenAiResponsesMessageMapper(
             ?.takeIf(String::isNotBlank)
             ?.let(builder::promptCacheKey)
 
-        val nativeWebSearch = webSearchEnabled &&
-            com.gromozeka.domain.tool.ProviderNativeTool.OPENAI_API_WEB_SEARCH.isAllowed(request.options.toolAccess)
+        val nativeWebSearch = webSearchEnabled && webSearchTool.isAllowed(request.options.toolAccess)
         val reasoning = generation.reasoning(request.options, request.tools.isNotEmpty() || nativeWebSearch)
         applyTools(builder, request.tools, request.options.toolChoice, nativeWebSearch)
         applyReasoning(builder, reasoning)
@@ -279,6 +340,7 @@ internal class OpenAiResponsesMessageMapper(
     ): AiRuntimeResponse {
         val outputItems = response.output()
         val status = response.status().getOrNull()?.asString()
+        val errorCode = response.error().getOrNull()?.code()?.asString()
         val outcome = when {
             status == "incomplete" -> AiStepOutcome.INCOMPLETE
             status != "completed" -> AiStepOutcome.FAILED
@@ -337,16 +399,17 @@ internal class OpenAiResponsesMessageMapper(
             // Billed input tokens describe the pre-compaction request, not the retained window.
             contextUsage = usage?.takeIf { outputItems.none { item -> item.isCompaction() } }
                 ?.let { AiContextUsage(it.totalInputTokens, it.totalOutputTokens) },
-            finishReason = response.incompleteDetails().getOrNull()?.reason()?.getOrNull()?.asString() ?: status,
+            finishReason = errorCode ?: response.incompleteDetails().getOrNull()?.reason()?.getOrNull()?.asString() ?: status,
             outcome = outcome,
-            providerMetadata = mapOf(
-                "provider" to "OPENAI_API",
-                "model" to modelName,
-                "reportedModel" to model,
-                "connectionId" to connectionId,
-                "modelConfigurationId" to modelConfigurationId,
-                "responseId" to response.id(),
-            ),
+            providerMetadata = buildMap {
+                put("provider", provider)
+                put("model", modelName)
+                put("reportedModel", model)
+                put("connectionId", connectionId)
+                put("modelConfigurationId", modelConfigurationId)
+                put("responseId", response.id())
+                errorCode?.let { put("responseErrorCode", it) }
+            },
         )
     }
 
@@ -360,7 +423,7 @@ internal class OpenAiResponsesMessageMapper(
                 strategy = ContextCompactionResult.Strategy.PROVIDER_MANAGED,
                 coverage = ContextCompactionResult.Coverage.ALL_PREVIOUS,
                 sourceBoundaryMessageId = request.messages.last().id,
-                providerScope = ContextCompactionResult.ProviderScope("OPENAI_API", connectionId, modelConfigurationId, modelName),
+                providerScope = ContextCompactionResult.ProviderScope(provider, connectionId, modelConfigurationId, modelName),
             )))),
             usage = response.usage().toAiUsage(), outcome = AiStepOutcome.CONTINUE, finishReason = "compaction",
         )
@@ -375,7 +438,7 @@ internal class OpenAiResponsesMessageMapper(
             strategy = ContextCompactionResult.Strategy.PROVIDER_MANAGED,
             coverage = ContextCompactionResult.Coverage.ALL_PREVIOUS,
             providerScope = ContextCompactionResult.ProviderScope(
-                provider = "OPENAI_API", connectionId = connectionId,
+                provider = provider, connectionId = connectionId,
                 modelConfigurationId = modelConfigurationId, modelName = modelName,
             ),
         )))
@@ -389,7 +452,7 @@ internal class OpenAiResponsesMessageMapper(
         }
         val rawItems = message.providerMetadata["openaiOutputItems"] as? JsonArray
         if (nativeCompactions.isEmpty() && message.role == Conversation.Message.Role.ASSISTANT && rawItems != null &&
-            message.providerMetadata["provider"]?.jsonPrimitive?.contentOrNull == "OPENAI_API" &&
+            message.providerMetadata["provider"]?.jsonPrimitive?.contentOrNull == provider &&
             message.providerMetadata["connectionId"]?.jsonPrimitive?.contentOrNull == connectionId &&
             message.providerMetadata["model"]?.jsonPrimitive?.contentOrNull == modelName
         ) {
@@ -474,7 +537,7 @@ internal class OpenAiResponsesMessageMapper(
     private fun ContextCompactionResult.nativeInputItems(): List<ResponseInputItem> {
         val opaque = payload as? ContextCompactionResult.Payload.OpaqueProviderState ?: return emptyList()
         val scope = providerScope
-        check(scope?.provider == "OPENAI_API" && scope.connectionId == connectionId && scope.modelName == modelName) {
+        check(scope?.provider == provider && scope.connectionId == connectionId && scope.modelName == modelName) {
             "OpenAI Responses compaction checkpoint belongs to another provider, connection or model"
         }
         (opaque.state["replay_window"] as? JsonArray)?.let { window ->
@@ -523,6 +586,7 @@ internal class OpenAiResponsesMessageMapper(
                 .callId(toolCall.id.value)
                 .name(toolCall.call.name)
                 .arguments(toolCall.call.input.toString())
+                .apply { functionNamespace?.let { namespace(it) } }
                 .build()
         )
 
@@ -530,12 +594,18 @@ internal class OpenAiResponsesMessageMapper(
         ResponseInputItem.ofFunctionCallOutput(
             ResponseInputItem.FunctionCallOutput.builder()
                 .callId(toolResult.toolUseId.value)
+                .apply {
+                    functionNamespace?.let { namespace ->
+                        name(toolResult.toolName)
+                        namespace(namespace)
+                    }
+                }
                 .outputOfResponseFunctionCallOutputItemList(toolResult.toOpenAiFunctionOutput())
                 .build()
         )
 
     private fun Conversation.Message.toReasoningInputItems(): List<ResponseInputItem> {
-        if (providerMetadata["provider"]?.jsonPrimitive?.contentOrNull != "OPENAI_API") return emptyList()
+        if (providerMetadata["provider"]?.jsonPrimitive?.contentOrNull != provider) return emptyList()
         if (providerMetadata["connectionId"]?.jsonPrimitive?.contentOrNull != connectionId) return emptyList()
         if (providerMetadata["model"]?.jsonPrimitive?.contentOrNull != modelName) return emptyList()
 
@@ -636,7 +706,20 @@ internal class OpenAiResponsesMessageMapper(
     ) {
         val toolsAllowed = toolChoice !is AiToolChoice.None
         if (toolsAllowed) {
-            tools.sortedBy { it.definition.name }.map(::functionTool).forEach(builder::addTool)
+            val sortedTools = tools.sortedBy { it.definition.name }
+            if (sortedTools.isNotEmpty()) {
+                if (functionNamespace == null) {
+                    sortedTools.map(::functionTool).forEach(builder::addTool)
+                } else {
+                    builder.addTool(
+                        NamespaceTool.builder()
+                            .name(functionNamespace)
+                            .description("Gromozeka tools.")
+                            .tools(sortedTools.map(::namespacedFunctionTool))
+                            .build()
+                    )
+                }
+            }
             if (webSearchEnabled) {
                 builder.addTool(WebSearchTool.builder().type(WebSearchTool.Type.WEB_SEARCH).build())
                 builder.addInclude(ResponseIncludable.WEB_SEARCH_CALL_ACTION_SOURCES)
@@ -650,9 +733,21 @@ internal class OpenAiResponsesMessageMapper(
                 builder.toolChoice(ToolChoiceOptions.REQUIRED)
             }
 
-            is AiToolChoice.RequiredTool -> builder.toolChoice(
-                ToolChoiceFunction.builder().name(toolChoice.name).build()
-            )
+            is AiToolChoice.RequiredTool -> if (functionNamespace == null) {
+                builder.toolChoice(ToolChoiceFunction.builder().name(toolChoice.name).build())
+            } else {
+                builder.toolChoice(
+                    ToolChoiceAllowed.builder()
+                        .mode(ToolChoiceAllowed.Mode.REQUIRED)
+                        .addTool(
+                            ToolChoiceAllowed.Tool.builder()
+                                .putAdditionalProperty("type", JsonValue.from("function"))
+                                .putAdditionalProperty("name", JsonValue.from(toolChoice.name))
+                                .build()
+                        )
+                        .build()
+                )
+            }
         }
     }
 
@@ -669,6 +764,19 @@ internal class OpenAiResponsesMessageMapper(
             )
             .strict(false)
             .build()
+    }
+
+    private fun namespacedFunctionTool(callback: AiToolCallback): NamespaceTool.Tool {
+        val schema = json.parseToJsonElement(callback.definition.inputSchema)
+        require(schema is JsonObject) { "Tool ${callback.definition.name} input schema must be a JSON object" }
+        return NamespaceTool.Tool.ofFunction(
+            NamespaceTool.Tool.Function.builder()
+                .name(callback.definition.name)
+                .description(callback.definition.description)
+                .parameters(JsonValue.from(schema.toJsonCompatibleValue()))
+                .strict(false)
+                .build()
+        )
     }
 
     private fun applyReasoning(builder: ResponseCreateParams.Builder, config: AiReasoningConfig?) {
@@ -734,6 +842,11 @@ internal class OpenAiResponsesMessageMapper(
     }
 
     private fun ResponseFunctionToolCall.toAssistantMessage(): AiAssistantMessage {
+        val actualNamespace = namespace().getOrNull()
+        // SIWC currently omits the namespace on calls from the request's single namespace.
+        check(actualNamespace == functionNamespace || actualNamespace == null && functionNamespace != null) {
+            "OpenAI returned an unexpected function namespace: $actualNamespace"
+        }
         val input = json.parseToJsonElement(arguments())
         require(input is JsonObject) { "OpenAI function arguments must be a JSON object" }
         return AiAssistantMessage(

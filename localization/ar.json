@@ -296,6 +296,7 @@
     "ai.connection.kind.ollama": "Ollama",
     "ai.connection.kind.openai_api": "OpenAI API",
     "ai.connection.kind.openai_compatible": "متوافق مع OpenAI",
+    "ai.connection.kind.openai_siwc": "اشتراك ChatGPT (SIWC)",
     "ai.connection.kind.openai_subscription": "اشتراك OpenAI",
     "ai.connection.models": {
       "zero": "لا توجد نماذج",
@@ -307,6 +308,7 @@
     },
     "ai.connection.new": "اتصال جديد",
     "ai.connection.request_target_description": "تستخدم طلبات LLM غير المتدفقة وطلبات التمثيلات المتجهية والتعرّف على الكلام وتحويل النص إلى كلام هذه الوجهة تحديدًا. تتطلب الإجابات المتدفقة والمحادثة الصوتية الحية الخادم.",
+    "ai.connection.siwc_target_description": "توجد عملية تسجيل الدخول وبيانات اعتماد SIWC حاليًا على الخادم. فعّل الاتصال واحفظه، ثم افتح عنوان URL أحادي الاستخدام من سجل الخادم. يمكن إضافة التنفيذ على Worker لاحقًا دون تغيير محول Responses.",
     "ai.connection.request_timeout": "مهلة الطلب (ثوانٍ)",
     "ai.connection.session_idle_timeout": "مهلة خمول جلسة CLI (ثوانٍ)",
     "ai.connection.web_search": "بحث الويب المستضاف لدى OpenAI",

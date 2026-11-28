@@ -5,25 +5,46 @@ import com.gromozeka.domain.model.ai.AiConnectionModels
 import com.gromozeka.domain.model.ai.AiHttpSettings
 import com.gromozeka.domain.model.ai.AiModelCandidate
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
-import com.gromozeka.domain.model.ai.requireGatewayModelListing
+import com.gromozeka.domain.model.ai.requireModelListing
+import com.gromozeka.domain.service.AiCallAdmission
 import com.gromozeka.domain.service.AiConnectionModelsExecutor
 import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.infrastructure.ai.openai.siwc.OpenAiSiwcException
+import com.gromozeka.infrastructure.ai.openai.siwc.OpenAiSiwcModelsClient
+import com.gromozeka.infrastructure.ai.openai.siwc.toAiCallException
 import kotlinx.serialization.json.*
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 import org.springframework.stereotype.Service
+import org.springframework.beans.factory.annotation.Autowired
 import kotlin.time.Clock
 import kotlin.time.Instant
 
-/** Explicit OpenAI-compatible /models discovery, independent of the inference API and model catalog. */
+/** Explicit account/endpoint model discovery, independent of inference and the configured model catalog. */
 @Service
-class SdkConnectionModelsExecutor(
+internal class SdkConnectionModelsExecutor @Autowired constructor(
     private val settingsProvider: SettingsProvider,
     private val httpClients: SdkHttpClientPool,
-    private val admission: com.gromozeka.domain.service.AiCallAdmission,
+    private val admission: AiCallAdmission,
+    private val siwc: OpenAiSiwcModelsClient?,
 ) : AiConnectionModelsExecutor {
+    internal constructor(
+        settingsProvider: SettingsProvider,
+        httpClients: SdkHttpClientPool,
+        admission: AiCallAdmission,
+    ) : this(settingsProvider, httpClients, admission, null)
+
     override suspend fun listModels(connection: AiConnection, deadline: Instant): AiConnectionModels {
-        connection.requireGatewayModelListing()
+        connection.requireModelListing()
+        if (connection is AiConnection.OpenAiSiwc) {
+            return admission.execute(connection, purpose = "MODEL_DISCOVERY", deadline = deadline) {
+                try {
+                    requireNotNull(siwc) { "SIWC model listing is unavailable" }.list(deadline)
+                } catch (error: OpenAiSiwcException) {
+                    throw error.toAiCallException()
+                }
+            }
+        }
         val executor = SdkHttpCallExecutor(connection, timeoutSeconds = 30, maxAttempts = 1, admission = admission) { end ->
             val settings = SdkHttpSupport.settings(connection)
             val baseUrl = requireNotNull((connection as AiConnection.HttpAiConnection).baseUrl)

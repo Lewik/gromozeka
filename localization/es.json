@@ -290,6 +290,7 @@
     "ai.connection.kind.ollama": "Ollama",
     "ai.connection.kind.openai_api": "OpenAI API",
     "ai.connection.kind.openai_compatible": "Compatible con OpenAI",
+    "ai.connection.kind.openai_siwc": "Suscripción de ChatGPT (SIWC)",
     "ai.connection.kind.openai_subscription": "Suscripción de OpenAI",
     "ai.connection.models": {
       "one": "{count} modelo",
@@ -298,6 +299,7 @@
     },
     "ai.connection.new": "Nueva conexión",
     "ai.connection.request_target_description": "Las solicitudes sin streaming de LLM, embeddings, voz a texto y texto a voz usan este destino concreto. El streaming y la voz en directo requieren el servidor.",
+    "ai.connection.siwc_target_description": "El inicio de sesión SIWC y las credenciales residen actualmente en el servidor. Activa y guarda la conexión; después abre la URL de un solo uso del registro del servidor. La ejecución en un Worker podrá añadirse después sin cambiar el adaptador de Responses.",
     "ai.connection.request_timeout": "Tiempo de espera de solicitudes (segundos)",
     "ai.connection.session_idle_timeout": "Tiempo máximo de inactividad de la sesión CLI (segundos)",
     "ai.connection.web_search": "Búsqueda web alojada en OpenAI",

@@ -17,7 +17,9 @@ internal object AiRuntimeInputValidator {
 
         when (runtime.connection.kind) {
             AiConnection.Kind.OPENAI_API,
-            AiConnection.Kind.OPENAI_SUBSCRIPTION -> validateOpenAi(mediaInputs)
+            AiConnection.Kind.OPENAI_SUBSCRIPTION,
+            -> validateOpenAi(mediaInputs)
+            AiConnection.Kind.OPENAI_SIWC -> validateOpenAiSiwc(mediaInputs)
             AiConnection.Kind.GITHUB_COPILOT -> validateGitHubCopilot(mediaInputs)
             AiConnection.Kind.OPENAI_COMPATIBLE -> validateOpenAiCompatible(mediaInputs)
             AiConnection.Kind.ANTHROPIC_API,
@@ -74,6 +76,17 @@ internal object AiRuntimeInputValidator {
             if (input is MediaInput.Image) {
                 require(input.source is MediaSource.EmbeddedBase64) {
                     "GitHub Copilot accepts only materialized base64 image inputs"
+                }
+            }
+        }
+    }
+
+    private fun validateOpenAiSiwc(inputs: List<MediaInput>) {
+        validateOpenAi(inputs)
+        inputs.forEach { input ->
+            if (input is MediaInput.Image) {
+                require(input.source !is MediaSource.FileId) {
+                    "ChatGPT SIWC does not accept OpenAI Files API file ids"
                 }
             }
         }

@@ -99,6 +99,34 @@ class AiRuntimeInputValidatorTest {
     }
 
     @Test
+    fun `ChatGPT SIWC rejects Files API ids but accepts materialized images`() {
+        val runtime = runtime(
+            AiConnection.OpenAiSiwc(
+                id = CONNECTION_ID,
+                displayName = "ChatGPT",
+                enabled = true,
+            )
+        )
+
+        AiRuntimeInputValidator.requireSupported(
+            runtime,
+            listOf(message(image("image/png", "AQID"))),
+        )
+        assertFailsWith<IllegalArgumentException> {
+            AiRuntimeInputValidator.requireSupported(
+                runtime,
+                listOf(
+                    message(
+                        Conversation.Message.ContentItem.ImageItem(
+                            Conversation.Message.ImageSource.FileImageSource("file_123")
+                        )
+                    )
+                ),
+            )
+        }
+    }
+
+    @Test
     fun `Anthropic Bedrock rejects URL images and oversized base64 images`() {
         val runtime = runtime(
             AiConnection.AnthropicBedrock(

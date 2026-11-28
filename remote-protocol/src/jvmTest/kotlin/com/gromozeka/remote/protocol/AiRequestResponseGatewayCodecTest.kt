@@ -164,7 +164,10 @@ class AiRequestResponseGatewayCodecTest {
             baseUrl = "https://gateway.example/api/llm", apiKey = com.gromozeka.domain.model.SecretRef.File("/executor/token"),
             executionTarget = AiExecutionTarget.Worker(worker.value))
         val deadline = Instant.parse("2026-11-07T10:00:00Z")
-        val expected = com.gromozeka.domain.model.ai.AiConnectionModels(listOf(com.gromozeka.domain.model.ai.AiModelCandidate("account/model")), deadline)
+        val expected = com.gromozeka.domain.model.ai.AiConnectionModels(
+            listOf(com.gromozeka.domain.model.ai.AiModelCandidate("account/model", displayName = "Account model")),
+            deadline,
+        )
         var calls = 0
         val handler = object : AiRequestResponseExecutionHandler by fixture {
             override suspend fun listModels(selected: AiConnection, actualDeadline: Instant): com.gromozeka.domain.model.ai.AiConnectionModels {

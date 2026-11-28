@@ -290,6 +290,7 @@
     "ai.connection.kind.ollama": "Ollama",
     "ai.connection.kind.openai_api": "API OpenAI",
     "ai.connection.kind.openai_compatible": "Compatible avec OpenAI",
+    "ai.connection.kind.openai_siwc": "Abonnement ChatGPT (SIWC)",
     "ai.connection.kind.openai_subscription": "Abonnement OpenAI",
     "ai.connection.models": {
       "one": "{count} modèle",
@@ -298,6 +299,7 @@
     },
     "ai.connection.new": "Nouvelle connexion",
     "ai.connection.request_target_description": "Les requêtes ponctuelles de LLM, de plongements vectoriels, de reconnaissance vocale et de synthèse vocale utilisent exactement cette cible. Le streaming et la voix en direct nécessitent le serveur.",
+    "ai.connection.siwc_target_description": "La connexion SIWC et les identifiants résident actuellement sur le serveur. Activez et enregistrez la connexion, puis ouvrez l’URL à usage unique indiquée dans le journal du serveur. L’exécution sur un Worker pourra être ajoutée plus tard sans modifier l’adaptateur Responses.",
     "ai.connection.request_timeout": "Délai maximal des requêtes (secondes)",
     "ai.connection.session_idle_timeout": "Délai d’inactivité des sessions CLI (secondes)",
     "ai.connection.web_search": "Recherche web hébergée par OpenAI",

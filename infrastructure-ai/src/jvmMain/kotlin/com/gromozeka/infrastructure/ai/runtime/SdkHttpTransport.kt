@@ -107,6 +107,9 @@ internal class SdkHttpTransport(sharedClient: OkHttpClient, private val deadline
         val retryAfterMillis: Long? = null)
     val attempts: Int get() = synchronized(lock) { count }
     fun snapshot(): Attempt = synchronized(lock) { current }
+    fun responseHeader(name: String): String? = synchronized(lock) {
+        feedbackHeaders.entries.firstOrNull { it.key.equals(name, ignoreCase = true) }?.value?.firstOrNull()
+    }
     fun beginAttempt() = synchronized(lock) {
         check(calls.isEmpty() && responses.isEmpty()) { "Previous AI HTTP attempt has not closed" }
         current = Attempt()

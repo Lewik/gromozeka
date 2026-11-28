@@ -178,6 +178,10 @@ The executor is selected before execution:
   Other profiles use text compaction. The adapter's decoded-opaque estimate
   is calibrated to scoped usage; it is not a provider token count. Native replay
   may retain raw items according to its protocol, independently of text policy.
+- OpenAI SIWC: the official public Responses endpoint is used with its fixed
+  streaming/stateless policy. Provider count and native compact are currently
+  disabled for this adapter; context inspection uses calibrated local measurement
+  and compaction uses the configured text model.
 - Claude Code: live-session `/compact` is not a detached prefix operation. Harness
   full compactions retain a suffix and therefore select the configured text
   compaction model before any native session mutation. With a Harness threshold
@@ -364,6 +368,10 @@ These are Responses protocol settings, not `httpSettings`. They work with the
 ordinary native API and compatible Responses gateways such as TrueFoundry.
 They do not change Chat Completions, Anthropic, Bedrock or subscription WebSocket.
 No production connection is enabled automatically.
+
+Official SIWC always uses streaming with `store=false`; it does not expose either
+setting. Its fixed endpoint and OAuth transport also do not inherit configurable
+API-key HTTP headers, proxy or retry settings from `OPENAI_API`.
 
 With streaming enabled, the installed SDK consumes SSE internally and returns the
 same complete runtime response as non-streaming execution. A terminal

@@ -286,12 +286,14 @@
     "ai.connection.kind.ollama": "Ollama",
     "ai.connection.kind.openai_api": "OpenAI API",
     "ai.connection.kind.openai_compatible": "OpenAI互換",
+    "ai.connection.kind.openai_siwc": "ChatGPTサブスクリプション (SIWC)",
     "ai.connection.kind.openai_subscription": "OpenAIサブスクリプション",
     "ai.connection.models": {
       "other": "モデル {count} 件"
     },
     "ai.connection.new": "新しい接続設定",
     "ai.connection.request_target_description": "単発のLLM、埋め込み、音声認識、音声合成リクエストは、この実行先を使用します。ストリーミングとライブ音声にはサーバーが必要です。",
+    "ai.connection.siwc_target_description": "SIWCのサインインと認証情報は現在サーバーに保存されます。接続を有効にして保存し、サーバーログに表示されるワンタイムURLを開いてください。Responsesアダプターを変更せずに、後からWorker実行を追加できます。",
     "ai.connection.request_timeout": "リクエストのタイムアウト（秒）",
     "ai.connection.session_idle_timeout": "CLIセッションのアイドルタイムアウト（秒）",
     "ai.connection.web_search": "OpenAIホスト型ウェブ検索",

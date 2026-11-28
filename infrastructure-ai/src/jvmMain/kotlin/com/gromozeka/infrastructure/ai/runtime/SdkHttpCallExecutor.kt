@@ -19,7 +19,9 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import java.io.IOException
+import java.security.MessageDigest
 import java.time.Duration
+import java.util.HexFormat
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionException
 import java.util.concurrent.atomic.AtomicReference
@@ -31,6 +33,10 @@ import kotlin.time.Clock
 
 internal data class SdkHttpCallIdentity(val baseUrl: String, val credentialFingerprint: String)
 
+internal fun credentialFingerprint(credential: String): String = HexFormat.of().formatHex(
+    MessageDigest.getInstance("SHA-256").digest(credential.toByteArray()),
+)
+
 internal class SdkInferenceClient<C>(val client: C, val transport: SdkHttpTransport,
     val identity: SdkHttpCallIdentity? = null,
     private val closeClient: () -> Unit) : AutoCloseable {
@@ -40,18 +46,35 @@ internal class SdkInferenceClient<C>(val client: C, val transport: SdkHttpTransp
 internal class SdkHttpCallExecutor<C>(
     private val connection: AiConnection,
     private val timeoutSeconds: Int?,
-    private val maxAttempts: Int = SdkHttpSupport.settings(connection).maxAttempts,
+    private val maxAttempts: Int,
     private val admission: AiCallAdmission,
     private val modelConfiguration: AiModelConfiguration? = null,
-    private val clientFactory: (deadlineNanos: Long) -> SdkInferenceClient<C>,
+    private val failureMapper: ((SdkInferenceClient<C>, AiCallFailure, Throwable, Long) -> AiCallFailure)? = null,
+    private val clientFactory: suspend (deadlineNanos: Long) -> SdkInferenceClient<C>,
 ) {
+    constructor(
+        connection: AiConnection,
+        timeoutSeconds: Int?,
+        admission: AiCallAdmission,
+        modelConfiguration: AiModelConfiguration? = null,
+        clientFactory: suspend (deadlineNanos: Long) -> SdkInferenceClient<C>,
+    ) : this(
+        connection = connection,
+        timeoutSeconds = timeoutSeconds,
+        maxAttempts = SdkHttpSupport.settings(connection).maxAttempts,
+        admission = admission,
+        modelConfiguration = modelConfiguration,
+        failureMapper = null,
+        clientFactory = clientFactory,
+    )
+
     init { require(maxAttempts in 1..5) { "Invalid AI HTTP attempt limit" } }
 
     fun withDeadline(options: AiRuntimeOptions): AiRuntimeOptions = options.copy(
         executionDeadline = AiHttpCallBudget.deadline(timeoutSeconds, options.executionDeadline, Clock.System.now()))
 
     suspend fun <T> call(options: AiRuntimeOptions,
-        recoverRejected: ((AiCallFailure, Throwable) -> Boolean)? = null,
+        recoverFailure: ((AiCallFailure, Throwable) -> Boolean)? = null,
         action: (C, Duration, SdkInferenceClient<C>) -> CompletableFuture<T>): T {
         val now = Clock.System.now()
         val deadline = AiHttpCallBudget.deadline(timeoutSeconds, options.executionDeadline, now)
@@ -73,6 +96,7 @@ internal class SdkHttpCallExecutor<C>(
                                     val activeSession = session ?: try {
                                         clientFactory(end).also { session = it; transportRef.set(it.transport) }
                                     } catch (error: CancellationException) { throw error }
+                                    catch (error: AiCallException) { throw error }
                                     catch (_: Exception) { throw AiCallException(AiCallFailure(AiCallFailure.Kind.CONFIGURATION,
                                         AiCallFailure.Outcome.NOT_STARTED, 0)) }
                                     val left = end - System.nanoTime()
@@ -102,9 +126,15 @@ internal class SdkHttpCallExecutor<C>(
                                     .firstOrNull()?.let { throw it }
                                 val transport = requireNotNull(transportRef.get()) { "SDK failure has no transport attempt" }
                                 if (end - System.nanoTime() <= 0) throw deadlineFailure(transport)
-                                val failure = classify(error, transport)
-                                if (failure.outcome == AiCallFailure.Outcome.REJECTED &&
-                                    requireNotNull(failure.attempts) < maxAttempts && recoverRejected?.invoke(failure, error) == true) continue
+                                val classified = classify(error, transport)
+                                val failure = failureMapper?.invoke(
+                                    requireNotNull(session),
+                                    classified,
+                                    error,
+                                    end,
+                                ) ?: classified
+                                if (requireNotNull(failure.attempts) < maxAttempts &&
+                                    recoverFailure?.invoke(failure, error) == true) continue
                                 if (failure.kind != AiCallFailure.Kind.RATE_LIMITED ||
                                     failure.outcome != AiCallFailure.Outcome.REJECTED ||
                                     requireNotNull(failure.attempts) >= maxAttempts) throw AiCallException(failure)

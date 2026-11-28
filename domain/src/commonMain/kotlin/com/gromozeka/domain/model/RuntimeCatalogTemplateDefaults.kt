@@ -42,6 +42,11 @@ object RuntimeCatalogTemplateDefaults {
             displayName = "OpenAI Subscription",
             enabled = false,
         ),
+        AiConnection.OpenAiSiwc(
+            id = AiConnection.Id("openai-siwc"),
+            displayName = "ChatGPT plan (SIWC)",
+            enabled = false,
+        ),
         AiConnection.GitHubCopilot(
             id = AiConnection.Id("github-copilot"),
             displayName = "GitHub Copilot",

@@ -13,6 +13,7 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import java.util.concurrent.CopyOnWriteArrayList
 import java.io.BufferedInputStream
+import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
@@ -26,6 +27,7 @@ import kotlin.test.*
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Instant
+import okhttp3.Request
 
 class SdkHttpExecutionTest {
     private val httpClients = SdkHttpClientPool()
@@ -121,6 +123,50 @@ class SdkHttpExecutionTest {
                 assertNull(error.cause); assertTrue(error.suppressed.isEmpty())
                 assertFalse(error.stackTraceToString().contains("private-invalid-response-marker"))
             }
+        }
+    }
+
+    @Test
+    fun `failure mapper can preserve safe diagnostics before the SDK exception is discarded`() = runBlocking {
+        SdkHttpTestServer(listOf(SdkHttpTestServer.Reply(ERROR, 401))).use { server ->
+            val connection = Api.RESPONSES.connection(server.origin, settings = settings().copy(maxAttempts = 1))
+            var mapped = false
+            val executor = SdkHttpCallExecutor(
+                connection = connection,
+                timeoutSeconds = 5,
+                maxAttempts = 1,
+                admission = TestAiAdmission(),
+                failureMapper = { session, failure, cause, deadlineNanos ->
+                    mapped = true
+                    assertEquals(credentialFingerprint(TOKEN), session.identity?.credentialFingerprint)
+                    assertTrue(cause is IOException)
+                    assertTrue(deadlineNanos > System.nanoTime())
+                    failure.copy(
+                        providerErrorCode = "subscription_sharing_invalid_user",
+                        providerRequestId = "req_mapper-1",
+                    )
+                },
+            ) { deadlineNanos ->
+                val transport = httpClients.openTransport(connection, server.origin, deadlineNanos)
+                SdkInferenceClient(Unit, transport, SdkHttpCallIdentity(server.origin, credentialFingerprint(TOKEN))) {}
+            }
+
+            val error = assertFailsWith<AiCallException> {
+                executor.call(AiRuntimeOptions()) { _, _, session ->
+                    val request = Request.Builder().url("${server.origin}/v1/responses").get().build()
+                    session.transport.execute(request) {}.thenApply<Unit> { response ->
+                        response.use { it.body.readAllBytes() }
+                        throw IOException("synthetic SDK failure")
+                    }
+                }
+            }
+
+            assertTrue(mapped)
+            assertEquals(AiCallFailure.Kind.AUTHENTICATION, error.failure.kind)
+            assertEquals("subscription_sharing_invalid_user", error.failure.providerErrorCode)
+            assertEquals("req_mapper-1", error.failure.providerRequestId)
+            assertNull(error.cause)
+            assertTrue(error.suppressed.isEmpty())
         }
     }
 

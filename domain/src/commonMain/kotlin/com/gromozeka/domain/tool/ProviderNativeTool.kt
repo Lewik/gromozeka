@@ -2,7 +2,8 @@ package com.gromozeka.domain.tool
 
 enum class ProviderNativeTool(val source: String, val toolName: String) {
     OPENAI_API_WEB_SEARCH("provider:openai_api", "web_search"),
-    OPENAI_SUBSCRIPTION_WEB_SEARCH("provider:openai_subscription", "web_search");
+    OPENAI_SUBSCRIPTION_WEB_SEARCH("provider:openai_subscription", "web_search"),
+    OPENAI_SIWC_WEB_SEARCH("provider:openai_siwc", "web_search");
 
     val descriptor: AiToolDescriptor
         get() = AiToolDescriptor(

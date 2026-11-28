@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.ai.runtime
 
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiHttpSettings
 import jakarta.annotation.PreDestroy
 import org.springframework.beans.factory.annotation.Autowired
 import okhttp3.Dispatcher
@@ -26,8 +27,8 @@ class SdkHttpClientPool internal constructor(private val nanoTime: () -> Long) :
         maxRequestsPerHost = Int.MAX_VALUE
     }
 
-    internal fun openTransport(connection: AiConnection, baseUrl: String, deadlineNanos: Long): SdkHttpTransport {
-        val settings = SdkHttpSupport.settings(connection)
+    internal fun openTransport(connection: AiConnection, baseUrl: String, deadlineNanos: Long,
+        settings: AiHttpSettings = SdkHttpSupport.settings(connection)): SdkHttpTransport {
         val proxy = SdkHttpSupport.proxy(settings, baseUrl)
         val caBundle = SdkHttpSupport.readCaBundle(settings)
         val key = Key(baseUrl, proxy, caBundle?.let { bytes ->

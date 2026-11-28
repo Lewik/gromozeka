@@ -62,6 +62,7 @@ sealed interface AiConnection {
     enum class Kind(val provider: AiProvider) {
         OPENAI_API(AiProvider.OPENAI),
         OPENAI_SUBSCRIPTION(AiProvider.OPENAI),
+        OPENAI_SIWC(AiProvider.OPENAI),
         GITHUB_COPILOT(AiProvider.OPENAI),
         OPENAI_COMPATIBLE(AiProvider.CUSTOM),
         ANTHROPIC_API(AiProvider.ANTHROPIC),
@@ -85,6 +86,25 @@ sealed interface AiConnection {
 
         init {
             validateDisplayName(displayName)
+        }
+    }
+
+    @Serializable
+    @SerialName("openai_siwc")
+    data class OpenAiSiwc(
+        override val id: Id,
+        override val displayName: String,
+        override val enabled: Boolean = false,
+        val webSearchEnabled: Boolean = true,
+        override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
+    ) : AiConnection {
+        override val kind = Kind.OPENAI_SIWC
+
+        init {
+            validateDisplayName(displayName)
+            require(executionTarget == AiExecutionTarget.Server) {
+                "ChatGPT SIWC currently requires Server execution"
+            }
         }
     }
 

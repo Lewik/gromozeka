@@ -14,8 +14,8 @@ import kotlin.test.assertEquals
 
 class WorkerGatewayProtocolTest {
     @Test
-    fun `Worker Gateway protocol advances after removing Claude Voice commands`() {
-        assertEquals(37, WORKER_GATEWAY_PROTOCOL_VERSION)
+    fun `Worker Gateway protocol advances for SIWC and model discovery serialization`() {
+        assertEquals(38, WORKER_GATEWAY_PROTOCOL_VERSION)
     }
 
     @Test
@@ -34,7 +34,14 @@ class WorkerGatewayProtocolTest {
                 minimumToolReasoningEffort = AiReasoningEffort.LOW,
                 maximumDisabledReasoningEffort = AiReasoningEffort.HIGH,
                 supportsForcedToolChoice = false, anthropicThinkingPrefixDrop = true))
-        val catalog = AiCatalog(listOf(connection), listOf(spec), listOf(model),
+        val siwc = AiConnection.OpenAiSiwc(
+            id = AiConnection.Id("siwc"),
+            displayName = "ChatGPT plan",
+            enabled = true,
+            webSearchEnabled = false,
+            executionTarget = AiExecutionTarget.Server,
+        )
+        val catalog = AiCatalog(listOf(connection, siwc), listOf(spec), listOf(model),
             AiRuntimeAssignment.Purpose.entries.filter { it.requiresExplicitAssignment }.map {
                 AiRuntimeAssignment(it, AiRuntimeSelection(model.id))
             }, AgentDefinition.Id("synthetic-agent"))

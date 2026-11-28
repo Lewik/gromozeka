@@ -1196,6 +1196,14 @@
     "description": "OpenAI access using the configured subscription integration; subscription is the access method, not a model family. Display label for a connection integration kind, distinct from model choice and target machine. Preserve product names and API/CLI acronyms; keep the serialized enum identifier unchanged.",
     "args": []
   },
+  "ai.connection.kind.openai_siwc": {
+    "source": [
+      "domain/src/commonMain/kotlin/com/gromozeka/domain/model/ai/AiConnection.kt",
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiTranslationLabels.kt"
+    ],
+    "description": "Official Sign in with ChatGPT access to the public OpenAI Responses API. SIWC names the authentication integration, not a model family.",
+    "args": []
+  },
   "ai.connection.models": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:583"
@@ -1222,6 +1230,13 @@
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:1017"
     ],
     "description": "Explains which request types use this exact executor and that streaming/live voice require the Server. Finite means bounded request/response work, not a mathematically finite model.",
+    "args": []
+  },
+  "ai.connection.siwc_target_description": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Explains that official Sign in with ChatGPT credentials currently belong to the Server execution host, how to open the one-time authorization URL, and that Worker enrollment is intentionally deferred.",
     "args": []
   },
   "ai.connection.request_timeout": {

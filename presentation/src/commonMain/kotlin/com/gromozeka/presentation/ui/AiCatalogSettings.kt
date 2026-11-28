@@ -1048,6 +1048,9 @@ private fun ConnectionDialog(
     var error by remember(translation) { mutableStateOf<String?>(null) }
 
     LaunchedEffect(kind, workers, executionTarget, copilotAuthMode) {
+        if (kind == AiConnection.Kind.OPENAI_SIWC && executionTarget != AiExecutionTarget.Server) {
+            executionTarget = AiExecutionTarget.Server
+        }
         if (kind == AiConnection.Kind.CLAUDE_CODE && executionTarget !is AiExecutionTarget.Worker) {
             workers.firstOrNull()?.let { worker ->
                 executionTarget = AiExecutionTarget.Worker(worker.workerId.value)
@@ -1107,7 +1110,7 @@ private fun ConnectionDialog(
                     Spacer(Modifier.width(8.dp))
                     Text(translation.text("ai.field.enabled"))
                 }
-                if (kind == AiConnection.Kind.OPENAI_API || kind == AiConnection.Kind.OPENAI_SUBSCRIPTION) {
+                if (kind in setOf(AiConnection.Kind.OPENAI_API, AiConnection.Kind.OPENAI_SUBSCRIPTION, AiConnection.Kind.OPENAI_SIWC)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Switch(checked = webSearchEnabled, onCheckedChange = { webSearchEnabled = it })
                         Spacer(Modifier.width(8.dp))
@@ -1145,8 +1148,11 @@ private fun ConnectionDialog(
                     if (kind != AiConnection.Kind.CLAUDE_CODE) {
                         add(AiExecutionTarget.Server)
                     }
-                    workers.forEach { add(AiExecutionTarget.Worker(it.workerId.value)) }
-                    if (executionTarget is AiExecutionTarget.Worker && executionTarget !in this) {
+                    if (kind != AiConnection.Kind.OPENAI_SIWC) {
+                        workers.forEach { add(AiExecutionTarget.Worker(it.workerId.value)) }
+                    }
+                    if (kind != AiConnection.Kind.OPENAI_SIWC &&
+                        executionTarget is AiExecutionTarget.Worker && executionTarget !in this) {
                         add(executionTarget)
                     }
                 }
@@ -1162,6 +1168,8 @@ private fun ConnectionDialog(
                         translation.text("ai.connection.claude_target_description")
                     } else if (kind == AiConnection.Kind.GITHUB_COPILOT) {
                         translation.text("ai.connection.copilot_target_description")
+                    } else if (kind == AiConnection.Kind.OPENAI_SIWC) {
+                        translation.text("ai.connection.siwc_target_description")
                     } else {
                         translation.text("ai.connection.request_target_description")
                     },
@@ -1563,6 +1571,13 @@ private fun createConnection(
             enabled = enabled,
             webSearchEnabled = webSearchEnabled,
             quotaPacing = quotaPacing,
+            executionTarget = executionTarget,
+        )
+        AiConnection.Kind.OPENAI_SIWC -> AiConnection.OpenAiSiwc(
+            id = connectionId,
+            displayName = displayName,
+            enabled = enabled,
+            webSearchEnabled = webSearchEnabled,
             executionTarget = executionTarget,
         )
         AiConnection.Kind.GITHUB_COPILOT -> AiConnection.GitHubCopilot(
@@ -2310,6 +2325,7 @@ private fun AiConnection?.openAiWebSearchEnabledOrDefault(): Boolean =
     when (this) {
         is AiConnection.OpenAiApi -> webSearchEnabled
         is AiConnection.OpenAiSubscription -> webSearchEnabled
+        is AiConnection.OpenAiSiwc -> webSearchEnabled
         else -> true
     }
 
@@ -2317,6 +2333,7 @@ private fun AiConnection.openAiWebSearchBadge(translation: Translation): List<St
     when (this) {
         is AiConnection.OpenAiApi -> listOf(if (webSearchEnabled) translation.text("ai.badge.web_search_on") else translation.text("ai.badge.web_search_off"))
         is AiConnection.OpenAiSubscription -> listOf(if (webSearchEnabled) translation.text("ai.badge.web_search_on") else translation.text("ai.badge.web_search_off"))
+        is AiConnection.OpenAiSiwc -> listOf(if (webSearchEnabled) translation.text("ai.badge.web_search_on") else translation.text("ai.badge.web_search_off"))
         else -> emptyList()
     }
 

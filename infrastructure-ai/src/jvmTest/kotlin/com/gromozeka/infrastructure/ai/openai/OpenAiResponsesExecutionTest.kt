@@ -5,9 +5,14 @@ import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.model.ai.*
 import com.gromozeka.domain.service.*
 import com.gromozeka.domain.tool.*
+import com.gromozeka.infrastructure.ai.openai.siwc.OpenAiSiwcAccessTokenProvider
+import com.gromozeka.infrastructure.ai.openai.siwc.OpenAiSiwcResourceError
+import com.gromozeka.infrastructure.ai.openai.siwc.mapOpenAiSiwcResourceFailure
 import com.gromozeka.infrastructure.ai.runtime.RoutingAiRuntimeProvider
+import com.gromozeka.infrastructure.ai.runtime.SdkHttpCallExecutor
 import com.gromozeka.infrastructure.ai.runtime.StalledServer
 import com.gromozeka.infrastructure.ai.runtime.TestAiAdmission
+import com.gromozeka.infrastructure.ai.runtime.credentialFingerprint
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import kotlinx.coroutines.*
@@ -140,7 +145,8 @@ class OpenAiResponsesExecutionTest {
     @Test
     fun `only explicit complete missing-parent rejection retries once with full context`() = runBlocking {
         for (stream in listOf(false, true)) ResponsesServer { exchange, _, index ->
-            if (index == 1) reply(exchange, MISSING_PARENT, status = 404)
+            if (index == 1 && stream) reply(exchange, MISSING_PARENT_STREAM, isEventStream = true)
+            else if (index == 1) reply(exchange, MISSING_PARENT, status = 404)
             else reply(exchange, response("parent-$index"), stream)
         }.use { server ->
             val state = OpenAiResponsesContinuations()
@@ -198,6 +204,81 @@ class OpenAiResponsesExecutionTest {
                 assertFalse(result.exceptionOrNull().toString().contains("private-stream-marker"))
             }
             assertEquals(1, server.requests.size)
+        }
+    }
+
+    @Test
+    fun `stream error preserves a structured parameter path`() {
+        val body = """event: error
+data: {"type":"error","sequence_number":1,"code":"subscription_sharing_unsupported_capability","message":"private-stream-marker","param":"input[0].tools"}
+
+"""
+        ResponsesServer { exchange, _, _ -> reply(exchange, body, isEventStream = true) }.use { server ->
+            val connection = connection(server.origin, stream = true)
+            OpenAiSdkClientFactory(Sources, httpClients).createInferenceClient(
+                connection,
+                System.nanoTime() + TimeUnit.SECONDS.toNanos(5),
+            ).use { inference ->
+                val params = OpenAiResponsesMessageMapper(
+                    connectionId = connection.id.value,
+                    modelConfigurationId = "configuration",
+                    modelName = MODEL,
+                ).toCreateParams(MODEL, false, request(listOf(user("root"))))
+
+                val thrown = assertFails {
+                    collectOpenAiResponsesStream(inference.client, params, java.time.Duration.ofSeconds(5))
+                        .get(5, TimeUnit.SECONDS)
+                }
+                val error = assertNotNull(
+                    generateSequence(thrown) { it.cause }
+                        .filterIsInstance<OpenAiResponsesStreamException>()
+                        .firstOrNull(),
+                )
+                assertEquals("subscription_sharing_unsupported_capability", error.code)
+                assertEquals("input[0].tools", error.parameter)
+            }
+        }
+    }
+
+    @Test
+    fun `SIWC terminal failed response follows structured failure recovery`() = runBlocking {
+        val cases = listOf(
+            Triple("subscription_sharing_usage_limit_exceeded",
+                AiCallFailure.Kind.RATE_LIMITED, AiCallFailure.Outcome.REJECTED),
+            Triple("subscription_sharing_usage_unavailable",
+                AiCallFailure.Kind.TRANSPORT, AiCallFailure.Outcome.UNKNOWN),
+            Triple("subscription_sharing_invalid_user",
+                AiCallFailure.Kind.AUTHENTICATION, AiCallFailure.Outcome.REJECTED),
+        )
+        for ((code, kind, outcome) in cases) {
+            ResponsesServer { exchange, _, _ ->
+                exchange.responseHeaders.set("x-request-id", "req_failed-1")
+                val failed = """{
+                    "id":"failed","object":"response","created_at":1,"status":"failed","model":"$MODEL","output":[],
+                    "error":{"code":"$code","message":"private-stream-marker"}
+                }"""
+                reply(exchange, terminal(failed, "response.failed"), isEventStream = true)
+            }.use { server ->
+                val tokens = RecordingSiwcAccessTokens()
+                val thrown = assertFailsWith<AiCallException> {
+                    siwcRuntime(connection(server.origin, stream = true), OpenAiResponsesContinuations(), tokens)
+                        .call(request(listOf(user("root"))))
+                }
+                val error = thrown.failure
+
+                assertEquals(kind, error.kind, code)
+                assertEquals(outcome, error.outcome, code)
+                assertEquals(200, error.httpStatus, code)
+                assertEquals(code, error.providerErrorCode)
+                assertEquals("req_failed-1", error.providerRequestId)
+                assertFalse(thrown.toString().contains("private-stream-marker"))
+                if (code == "subscription_sharing_invalid_user") {
+                    assertEquals(listOf(credentialFingerprint(TOKEN)), tokens.rejectedFingerprints)
+                    assertEquals(listOf(200), tokens.rejections.map { it.status })
+                } else {
+                    assertTrue(tokens.rejections.isEmpty())
+                }
+            }
         }
     }
 
@@ -306,6 +387,29 @@ class OpenAiResponsesExecutionTest {
                 val result = withTimeout(3000) { runtime(connection(server.origin, true), OpenAiResponsesContinuations()).call(request(listOf(user("one")))) }
                 assertEquals(AiStepOutcome.COMPLETE, result.outcome)
             } finally { finish.countDown() }
+        }
+    }
+
+    @Test
+    fun `completed output items survive an empty terminal response output`() = runBlocking {
+        val item = Json.parseToJsonElement(TEXT_OUTPUT).jsonArray.single()
+        val itemDone = "event: response.output_item.done\ndata: " + buildJsonObject {
+            put("type", "response.output_item.done")
+            put("sequence_number", 1)
+            put("output_index", 0)
+            put("item", item)
+        } + "\n\n"
+        val completed = terminal(response("done", output = "[]"))
+        ResponsesServer { exchange, _, _ ->
+            reply(exchange, itemDone + completed, isEventStream = true)
+        }.use { server ->
+            val result = runtime(connection(server.origin, stream = true), OpenAiResponsesContinuations())
+                .call(request(listOf(user("one"))))
+            val text = result.messages.flatMap { it.content }
+                .filterIsInstance<ContentItem.AssistantMessage>()
+                .single()
+                .structured.fullText
+            assertEquals("OK", text)
         }
     }
 
@@ -484,6 +588,65 @@ class OpenAiResponsesExecutionTest {
             .getRuntime(ResolvedAiRuntime(connection, config, spec), null)
     }
 
+    private fun siwcRuntime(
+        connection: AiConnection.OpenAiApi,
+        state: OpenAiResponsesContinuations,
+        accessTokens: OpenAiSiwcAccessTokenProvider,
+    ): AiRuntime {
+        val configuration = AiModelConfiguration(
+            AiModelConfiguration.Id("siwc-configuration"),
+            connection.id,
+            MODEL,
+            "Synthetic SIWC",
+        )
+        val executor = SdkHttpCallExecutor(
+            connection = connection,
+            timeoutSeconds = configuration.defaultParameters.timeoutSeconds,
+            maxAttempts = 1,
+            admission = TestAiAdmission(),
+            modelConfiguration = configuration,
+            failureMapper = { session, failure, cause, deadline ->
+                mapOpenAiSiwcResourceFailure(accessTokens, session, failure, cause, deadline)
+            },
+        ) { deadline -> OpenAiSdkClientFactory(Sources, httpClients).createInferenceClient(connection, deadline) }
+        return OpenAiResponsesSdkRuntime(
+            connectionId = connection.id.value,
+            modelConfigurationId = configuration.id.value,
+            modelName = MODEL,
+            webSearchEnabled = false,
+            executor = executor,
+            provider = OpenAiResponsesProvider(
+                providerScope = AiConnection.Kind.OPENAI_SIWC.name,
+                webSearchTool = ProviderNativeTool.OPENAI_SIWC_WEB_SEARCH,
+                functionNamespace = "functions",
+                supportsNativeCompaction = false,
+                supportsDetachedNativeCompaction = false,
+                supportsProviderTokenCount = false,
+                streaming = true,
+                terminalFailuresAsErrors = true,
+                requestFeatures = OpenAiResponsesRequestFeatures(maxOutputTokens = false),
+            ),
+            continuations = state,
+            quotaEnabled = false,
+        )
+    }
+
+    private class RecordingSiwcAccessTokens : OpenAiSiwcAccessTokenProvider {
+        val rejectedFingerprints = mutableListOf<String>()
+        val rejections = mutableListOf<OpenAiSiwcResourceError>()
+
+        override suspend fun validAccessToken(deadlineNanos: Long): String = error("The test supplies the SDK token directly")
+
+        override fun resourceRejectedAccessToken(
+            credentialFingerprint: String,
+            error: OpenAiSiwcResourceError,
+            deadlineNanos: Long,
+        ) {
+            rejectedFingerprints += credentialFingerprint
+            rejections += error
+        }
+    }
+
     private fun request(messages: List<Conversation.Message>) = AiRuntimeRequest(listOf("Current instructions"), messages,
         options = AiRuntimeOptions(maxOutputTokens = 128, usagePurpose = "CONVERSATION", toolContext = mapOf(
             TOOL_CONTEXT_USER_ID to "actor", TOOL_CONTEXT_PROJECT_ID to "project", TOOL_CONTEXT_CONVERSATION_ID to "conversation",
@@ -524,6 +687,10 @@ class OpenAiResponsesExecutionTest {
         const val TEXT_OUTPUT = """[{"type":"message","id":"m-1","role":"assistant","status":"completed","content":[{"type":"output_text","text":"OK","annotations":[]}]}]"""
         const val TOOL_OUTPUT = """[{"type":"function_call","id":"fc-1","call_id":"call-1","name":"lookup","arguments":"{}","status":"completed"}]"""
         const val MISSING_PARENT = """{"error":{"type":"invalid_request_error","code":"previous_response_not_found","param":"previous_response_id","message":"private-missing-parent-marker"}}"""
+        const val MISSING_PARENT_STREAM = """event: error
+data: {"type":"error","sequence_number":1,"code":"previous_response_not_found","message":"private-missing-parent-marker","param":"previous_response_id"}
+
+"""
         fun settings() = AiHttpSettings(authentication = AiHttpSettings.Authentication.BEARER, noProxy = listOf("*"))
         fun response(id: String, status: String = "completed", output: String = TEXT_OUTPUT): String =
             """{"id":"$id","object":"response","created_at":1,"status":"$status","model":"$MODEL","output":$output}"""

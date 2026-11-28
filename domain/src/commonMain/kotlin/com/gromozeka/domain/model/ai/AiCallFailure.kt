@@ -11,6 +11,9 @@ data class AiCallFailure(
     val httpStatus: Int? = null,
     val retryAfterMillis: Long? = null,
     val workerRequestId: String? = null,
+    val providerErrorCode: String? = null,
+    val providerErrorParameter: String? = null,
+    val providerRequestId: String? = null,
 ) {
     init {
         require(attempts == null || attempts >= 0) { "AI attempt count must not be negative" }
@@ -18,6 +21,16 @@ data class AiCallFailure(
         require(retryAfterMillis == null || retryAfterMillis >= 0) { "Invalid AI retry delay" }
         require(workerRequestId == null || workerRequestId.matches(Regex("[A-Za-z0-9-]{1,128}"))) {
             "Invalid AI Worker request id"
+        }
+        require(providerErrorCode == null || providerErrorCode.matches(Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,127}"))) {
+            "Invalid AI provider error code"
+        }
+        require(providerErrorParameter == null ||
+            providerErrorParameter.matches(Regex("[A-Za-z0-9][A-Za-z0-9._\\[\\]-]{0,255}"))) {
+            "Invalid AI provider error parameter"
+        }
+        require(providerRequestId == null || providerRequestId.matches(Regex("[A-Za-z0-9][A-Za-z0-9._:-]{0,255}"))) {
+            "Invalid AI provider request id"
         }
     }
 
@@ -45,4 +58,7 @@ class AiCallException(val failure: AiCallFailure) : RuntimeException(buildString
     failure.httpStatus?.let { append(" HTTP $it.") }
     append(" Attempts: ${failure.attempts ?: "unknown"}. Outcome: ${failure.outcome}. Do not automatically repeat this call.")
     failure.workerRequestId?.let { append(" Worker request: $it.") }
+    failure.providerErrorCode?.let { append(" Provider code: $it.") }
+    failure.providerErrorParameter?.let { append(" Provider parameter: $it.") }
+    failure.providerRequestId?.let { append(" Provider request: $it.") }
 })
