@@ -1,723 +1,390 @@
 package com.gromozeka.server
 
-import com.gromozeka.application.service.AiConversationMessageMapper
-import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.User
-import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiAdmissionOutcome
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
-import com.gromozeka.domain.model.ai.AiRuntimeOptions
-import com.gromozeka.domain.model.ai.AiRuntimeRequest
-import com.gromozeka.domain.model.ai.AiRuntimeSelection
-import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.service.AiConfigurationProvider
-import com.gromozeka.domain.service.AiRuntimeProvider
-import com.gromozeka.infrastructure.ai.openai.SttService
+import com.gromozeka.domain.service.LiveTranscriptionEvent
+import com.gromozeka.domain.service.LiveTranscriptionException
+import com.gromozeka.domain.service.LiveTranscriptionProvider
+import com.gromozeka.domain.service.LiveTranscriptionSession
+import com.gromozeka.domain.service.LiveTranscriptionTurnDetection
 import com.gromozeka.remote.protocol.LiveInterpreterAudioChunkCommand
-import com.gromozeka.remote.protocol.LiveInterpreterDraftsEvent
+import com.gromozeka.remote.protocol.CommitLiveInterpreterCommand
 import com.gromozeka.remote.protocol.LiveInterpreterFailedEvent
+import com.gromozeka.remote.protocol.LiveInterpreterNativeTranslationEvent
 import com.gromozeka.remote.protocol.LiveInterpreterStartedResponse
 import com.gromozeka.remote.protocol.LiveInterpreterStatusEvent
 import com.gromozeka.remote.protocol.LiveInterpreterStoppedEvent
 import com.gromozeka.remote.protocol.LiveInterpreterTranscriptEvent
-import com.gromozeka.remote.protocol.LiveInterpreterTranscriptChunkCommand
-import com.gromozeka.remote.protocol.LiveInterpreterTranslationEvent
-import com.gromozeka.remote.protocol.RemoteLiveAudioChunk
-import com.gromozeka.remote.protocol.RemoteLiveInterpreterDraft
-import com.gromozeka.remote.protocol.RemoteLiveTranscriptChunk
+import com.gromozeka.remote.protocol.RemotePcmAudioChunk
+import com.gromozeka.remote.protocol.RemotePcmByteOrder
 import com.gromozeka.remote.protocol.ServerPayload
 import com.gromozeka.remote.protocol.StartLiveInterpreterRequest
 import com.gromozeka.remote.protocol.StopLiveInterpreterCommand
-import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlin.time.Clock
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.coroutines.coroutineContext
+import java.util.concurrent.atomic.AtomicReference
+import kotlin.math.sqrt
 
-internal data class LiveInterpreterSessionOwner(
-    val userId: User.Id,
-    val connectionId: String,
-) {
+internal class LiveInterpreterSessionOwner(val userId: User.Id, val connectionId: String) {
+    internal val lock = Any()
+    internal var closed = false
+    internal val canceledStarts = mutableSetOf<String>()
+
     init {
-        require(connectionId.isNotBlank()) { "Live interpreter connection id must not be blank" }
+        require(connectionId.isNotBlank()) { "Live connection id must not be blank" }
     }
+}
+
+private sealed interface LiveInterpreterInput {
+    data class Audio(val chunk: RemotePcmAudioChunk) : LiveInterpreterInput
+    data object Commit : LiveInterpreterInput
 }
 
 @Service
 class LiveInterpreterApplicationService(
-    private val sttService: SttService,
-    private val aiRuntimeProvider: AiRuntimeProvider,
+    private val transcriptionProvider: LiveTranscriptionProvider,
     private val aiConfigurationProvider: AiConfigurationProvider,
     @param:Qualifier("applicationScope") private val scope: CoroutineScope,
 ) {
     private val log = KLoggers.logger(this)
-    private val sessions = ConcurrentHashMap<String, LiveInterpreterSession>()
+    private val sessions = ConcurrentHashMap<String, Session>()
 
     internal fun start(
         owner: LiveInterpreterSessionOwner,
         request: StartLiveInterpreterRequest,
         eventSink: suspend (ServerPayload) -> Unit,
-    ): LiveInterpreterStartedResponse {
-        require(request.targetLanguage.isNotBlank()) { "Live interpreter target language must not be blank" }
-        val sessionId = uuid7()
-        val session = LiveInterpreterSession(
-            sessionId = sessionId,
-            owner = owner,
-            targetLanguage = request.targetLanguage,
-            sourceLanguageCode = request.sourceLanguageCode.substringBefore('-').ifBlank { "auto" },
-            sourceLanguageHint = request.sourceLanguageHint.ifBlank {
-                "Speech in any language, including multilingual conversation, names, and technical terms"
-            },
-            stabilizerRuntimeSelection = aiConfigurationProvider.runtimeSelectionFor(
-                AiRuntimeAssignment.Purpose.LIVE_TRANSCRIPT_STABILIZER
-            ),
-            translationRuntimeSelection = request.translationRuntimeSelection
-                ?: aiConfigurationProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.LIVE_TRANSLATION),
-            eventSink = eventSink,
-        )
-        sessions[sessionId] = session
-        session.start()
-        log.info {
-                "Live interpreter started: session=$sessionId target=${session.targetLanguage} " +
-                    "sourceLanguage=${session.sourceLanguageCode} " +
-                    "stabilizerRuntime=${session.stabilizerRuntimeSelection.modelConfigurationId.value} " +
-                    "translationRuntime=${session.translationRuntimeSelection.modelConfigurationId.value}"
+    ): LiveInterpreterStartedResponse = synchronized(owner.lock) {
+        check(!owner.closed) { "Live connection owner is closed" }
+        check(request.sessionId !in owner.canceledStarts) { "Live start was canceled" }
+        val session = Session(owner, request, eventSink)
+        check(sessions.putIfAbsent(request.sessionId, session) == null) { "Live session id is already in use" }
+        try {
+            check(session.start()) { "Live processing scope is no longer active" }
+        } catch (error: Throwable) {
+            sessions.remove(request.sessionId, session)
+            throw error
         }
-        return LiveInterpreterStartedResponse(sessionId)
+        LiveInterpreterStartedResponse(request.sessionId)
     }
 
-    internal suspend fun append(
-        owner: LiveInterpreterSessionOwner,
-        command: LiveInterpreterAudioChunkCommand,
-    ): Boolean {
-        val session = sessions[command.sessionId]
-        if (session == null || session.owner != owner) {
-            log.warn { "Live interpreter chunk ignored for inaccessible session=${command.sessionId}" }
-            return false
-        }
-        return session.append(command.chunk)
+    internal fun append(owner: LiveInterpreterSessionOwner, command: LiveInterpreterAudioChunkCommand): Boolean = synchronized(owner.lock) {
+        if (owner.closed) return@synchronized false
+        sessions[command.sessionId]?.takeIf { it.owner === owner }?.append(command.chunk) ?: false
     }
 
-    internal suspend fun append(
-        owner: LiveInterpreterSessionOwner,
-        command: LiveInterpreterTranscriptChunkCommand,
-    ): Boolean {
-        val session = sessions[command.sessionId]
-        if (session == null || session.owner != owner) {
-            log.warn { "Live interpreter transcript ignored for inaccessible session=${command.sessionId}" }
-            return false
-        }
-        return session.append(command.chunk)
+    internal fun commit(owner: LiveInterpreterSessionOwner, command: CommitLiveInterpreterCommand): Boolean = synchronized(owner.lock) {
+        if (owner.closed) return@synchronized false
+        sessions[command.sessionId]?.takeIf { it.owner === owner }?.commit() ?: false
     }
 
-    internal suspend fun stop(
-        owner: LiveInterpreterSessionOwner,
-        command: StopLiveInterpreterCommand,
-    ): Boolean {
-        val session = sessions[command.sessionId]
-        if (session == null || session.owner != owner) {
-            log.warn { "Live interpreter stop ignored for inaccessible session=${command.sessionId}" }
-            return false
+    internal fun stop(owner: LiveInterpreterSessionOwner, command: StopLiveInterpreterCommand): Boolean = synchronized(owner.lock) {
+        if (owner.closed) return@synchronized false
+        // Stop may overtake its Start RPC while that RPC is still being authorized.
+        if (owner.canceledStarts.size >= 1_024 && command.sessionId !in owner.canceledStarts) {
+            owner.closed = true
+            owner.canceledStarts.clear()
+            sessions.values.filter { it.owner === owner }.forEach {
+                it.abort(LiveTranscriptionException("Live cancellation limit reached; reconnect the client to start again", retryable = false))
+            }
+            return@synchronized false
         }
-        return session.stop()
+        owner.canceledStarts += command.sessionId
+        sessions[command.sessionId]?.takeIf { it.owner === owner }?.stop() ?: false
     }
 
     internal suspend fun stopOwnedBy(owner: LiveInterpreterSessionOwner): Int {
-        val ownedSessions = sessions.values
-            .filter { it.owner == owner }
-            .filter { sessions.remove(it.sessionId, it) }
-        ownedSessions.forEach { it.cancel() }
-        return ownedSessions.size
+        val owned = synchronized(owner.lock) {
+            owner.closed = true
+            owner.canceledStarts.clear()
+            sessions.values.filter { it.owner === owner }.filter { sessions.remove(it.id, it) }
+        }
+        owned.forEach { it.cancel() }
+        return owned.size
     }
 
-    private inner class LiveInterpreterSession(
-        val sessionId: String,
+    private inner class Session(
         val owner: LiveInterpreterSessionOwner,
-        val targetLanguage: String,
-        val sourceLanguageCode: String,
-        val sourceLanguageHint: String,
-        val stabilizerRuntimeSelection: AiRuntimeSelection,
-        val translationRuntimeSelection: AiRuntimeSelection,
+        val request: StartLiveInterpreterRequest,
         private val eventSink: suspend (ServerPayload) -> Unit,
     ) {
-        private val chunks = Channel<RemoteLiveAudioChunk>(Channel.UNLIMITED)
-        private val stabilizationSignals = Channel<Unit>(Channel.CONFLATED)
-        private val finalizedOriginalQueue = Channel<LiveInterpreterFinalizedOriginal>(Channel.UNLIMITED)
-        private val transcriptState = LiveInterpreterTranscriptState()
-        private val transcriptStateMutex = Mutex()
+        val id = request.sessionId
+        private val input = Channel<LiveInterpreterInput>(64)
+        private val accepting = AtomicBoolean(true)
+        private val listening = AtomicBoolean(false)
+        private val inputFailure = AtomicReference<Exception?>(null)
         private val emitMutex = Mutex()
-        private val acceptingInput = AtomicBoolean(true)
-        private var nextFinalSequenceNumber = 0
         private lateinit var job: Job
 
-        fun start() {
-            job = scope.launch {
-                emit(LiveInterpreterStatusEvent(sessionId, "interpreter.status.listening"))
-                try {
-                    coroutineScope {
-                        val transcriptionJob = launch { runTranscriptionLoop() }
-                        val stabilizationJob = launch { runStabilizationLoop() }
-                        val translationJob = launch { runTranslationLoop() }
+        fun start(): Boolean {
+            job = scope.launch(start = CoroutineStart.LAZY) { run() }
+            return job.start()
+        }
 
-                        transcriptionJob.invokeOnCompletion { stabilizationSignals.close() }
-                        stabilizationJob.invokeOnCompletion { finalizedOriginalQueue.close() }
-
-                        joinAll(transcriptionJob, stabilizationJob, translationJob)
-                    }
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (error: Throwable) {
-                    log.warn(error) { "Live interpreter failed: session=$sessionId error=${error.message}" }
-                    emit(LiveInterpreterFailedEvent(sessionId, error.message ?: "Live interpreter failed"))
-                } finally {
-                    sessions.remove(sessionId, this@LiveInterpreterSession)
-                    if (coroutineContext.isActive) {
-                        emit(LiveInterpreterStoppedEvent(sessionId))
-                    }
-                }
+        fun abort(error: Exception) {
+            if (inputFailure.compareAndSet(null, error)) {
+                accepting.set(false)
+                job.cancel()
             }
         }
 
-        fun append(chunk: RemoteLiveAudioChunk): Boolean =
-            acceptingInput.get() && chunks.trySend(chunk).isSuccess
+        fun append(chunk: RemotePcmAudioChunk): Boolean {
+            if (!accepting.get()) return false
+            if (chunk.data.size > 32_000) {
+                abort(IllegalArgumentException("Live microphone chunks must not exceed one second of PCM audio"))
+                return false
+            }
+            return enqueue(LiveInterpreterInput.Audio(chunk))
+        }
 
-        suspend fun append(chunk: RemoteLiveTranscriptChunk): Boolean {
-            if (!acceptingInput.get()) return false
-            recordTranscriptDraft(
-                sequenceNumber = chunk.sequenceNumber,
-                transcript = chunk.text.trim(),
-                source = "client",
-            )
-            return true
+        fun commit(): Boolean = enqueue(LiveInterpreterInput.Commit)
+
+        private fun enqueue(value: LiveInterpreterInput): Boolean {
+            if (!accepting.get()) return false
+            val result = input.trySend(value)
+            if (result.isSuccess) return true
+            if (!result.isClosed) abort(LiveTranscriptionException("Live audio buffer overflow; some audio was lost", retryable = true))
+            return false
         }
 
         fun stop(): Boolean {
-            if (!acceptingInput.compareAndSet(true, false)) return false
-            chunks.close()
+            if (!accepting.compareAndSet(true, false)) return false
+            input.close()
+            if (!listening.get()) {
+                sessions.remove(id, this)
+                job.cancel()
+            }
             return true
         }
 
         suspend fun cancel() {
-            acceptingInput.set(false)
-            chunks.cancel()
+            accepting.set(false)
+            input.cancel()
             job.cancelAndJoin()
         }
 
-        private suspend fun runTranscriptionLoop() {
-            for (chunk in chunks) {
-                if (!coroutineContext.isActive) break
-                transcribeChunk(chunk)
-            }
-        }
+        private suspend fun emit(payload: ServerPayload) = emitMutex.withLock { eventSink(payload) }
 
-        private suspend fun transcribeChunk(chunk: RemoteLiveAudioChunk) {
-            log.info {
-                "Live interpreter chunk received: session=$sessionId chunk=${chunk.sequenceNumber} " +
-                    "bytes=${chunk.data.size} format=${chunk.format}"
-            }
-            emit(LiveInterpreterStatusEvent(sessionId, "interpreter.status.transcribing", mapOf("sequence" to chunk.sequenceNumber.toString())))
-            val transcript = sttService.transcribeServerOnly(
-                audioData = chunk.data,
-                format = chunk.format,
-                language = sourceLanguageCode,
-                prompt = sourceLanguageHint,
-            ).trim()
-            if (transcript.isBlank()) {
-                emit(LiveInterpreterStatusEvent(sessionId, "interpreter.status.noSpeech", mapOf("sequence" to chunk.sequenceNumber.toString())))
-                return
-            }
-
-            recordTranscriptDraft(
-                sequenceNumber = chunk.sequenceNumber,
-                transcript = transcript,
-                source = "server",
-            )
-        }
-
-        private suspend fun recordTranscriptDraft(
-            sequenceNumber: Int,
-            transcript: String,
-            source: String,
-        ) {
-            if (transcript.isBlank()) {
-                emit(LiveInterpreterStatusEvent(sessionId, "interpreter.status.noSpeech", mapOf("sequence" to sequenceNumber.toString())))
-                return
-            }
-            val draft = transcriptStateMutex.withLock {
-                transcriptState.recordDraft(sequenceNumber, transcript)
-            }
-            log.info {
-                "Live interpreter draft transcript: session=$sessionId source=$source " +
-                    "draft=${draft.id} chars=${transcript.length} " +
-                    "text='${transcript.liveLogSnippet()}'"
-            }
-            emit(
-                LiveInterpreterTranscriptEvent(
-                    sessionId = sessionId,
-                    segmentId = draft.id,
-                    sequenceNumber = draft.sequenceNumber,
-                    text = transcript,
-                    isFinal = false,
-                )
-            )
-            emitPendingDrafts()
-            val signalResult = stabilizationSignals.trySend(Unit)
-            if (signalResult.isFailure) {
-                log.warn {
-                    "Live interpreter stabilization signal failed: session=$sessionId " +
-                        "draft=${draft.id}"
-                }
-            }
-        }
-
-        private suspend fun runStabilizationLoop() {
-            for (ignored in stabilizationSignals) {
-                if (!coroutineContext.isActive) break
-                stabilizePendingDrafts()
-            }
-            stabilizePendingDrafts()
-        }
-
-        private suspend fun stabilizePendingDrafts() {
-            val context = transcriptStateMutex.withLock {
-                transcriptState.stabilizerContext()
-            }
-            if (context.pendingDrafts.isEmpty()) {
-                return
-            }
-            val newestDraft = context.pendingDrafts.maxOf { it.sequenceNumber }
-            emit(LiveInterpreterStatusEvent(sessionId, "interpreter.status.stabilizing", mapOf("draft" to newestDraft.toString())))
-            val finalizedOriginalSegments = try {
-                val response = stabilizeTranscript(context)
-                log.info {
-                    "Live interpreter stabilizer response: session=$sessionId pending=${context.pendingDrafts.size} " +
-                        "append=${response.appendFinalOriginal.size} keep=${response.keepDraftIds} " +
-                        "drop=${response.dropDraftIds} appendText='${response.appendFinalOriginal.joinToString(" | ").liveLogSnippet()}'"
-                }
-                transcriptStateMutex.withLock {
-                    transcriptState.applyStabilizerResponse(response)
-                }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                log.warn(error) {
-                    "Live interpreter transcript stabilization failed: session=$sessionId " +
-                        "draft=$newestDraft error=${error.message}"
-                }
-                emit(
-                    LiveInterpreterStatusEvent(
-                        sessionId = sessionId,
-                        messageKey = "interpreter.status.stabilizationFailed",
-                        arguments = mapOf("draft" to newestDraft.toString(), "error" to (error.message ?: error::class.simpleName.orEmpty())),
-                    )
-                )
-                emptyList()
-            }
-            emitPendingDrafts()
-
-            if (finalizedOriginalSegments.isEmpty()) {
-                emit(LiveInterpreterStatusEvent(sessionId, "interpreter.status.waitingForSpeech", mapOf("draft" to newestDraft.toString())))
-                return
-            }
-
-            val finalSequenceNumber = nextFinalSequenceNumber++
-            val finalSegmentId = "final-$finalSequenceNumber"
-            val finalizedOriginalText = finalizedOriginalSegments.joinToString("\n")
-            log.info {
-                "Live interpreter finalized transcript: session=$sessionId sequence=$finalSequenceNumber " +
-                    "segments=${finalizedOriginalSegments.size} chars=${finalizedOriginalText.length} " +
-                    "text='${finalizedOriginalText.liveLogSnippet()}'"
-            }
-            emit(
-                LiveInterpreterTranscriptEvent(
-                    sessionId = sessionId,
-                    segmentId = finalSegmentId,
-                    sequenceNumber = finalSequenceNumber,
-                    text = finalizedOriginalText,
-                    isFinal = true,
-                )
-            )
-            finalizedOriginalQueue.send(
-                LiveInterpreterFinalizedOriginal(
-                    segmentId = finalSegmentId,
-                    sequenceNumber = finalSequenceNumber,
-                    segments = finalizedOriginalSegments,
-                )
-            )
-        }
-
-        private suspend fun runTranslationLoop() {
-            for (finalizedOriginal in finalizedOriginalQueue) {
-                if (!coroutineContext.isActive) break
-                translateFinalizedOriginal(finalizedOriginal)
-            }
-        }
-
-        private suspend fun translateFinalizedOriginal(finalizedOriginal: LiveInterpreterFinalizedOriginal) {
-            emit(LiveInterpreterStatusEvent(sessionId, "interpreter.status.translating", mapOf("sequence" to finalizedOriginal.sequenceNumber.toString())))
-            val translation = try {
-                val context = transcriptStateMutex.withLock {
-                    transcriptState.translationContext(finalizedOriginal.segments)
-                }
-                translate(context)
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                log.warn(error) {
-                    "Live interpreter translation failed: session=$sessionId " +
-                        "sequence=${finalizedOriginal.sequenceNumber} error=${error.message}"
-                }
-                emit(
-                    LiveInterpreterStatusEvent(
-                        sessionId = sessionId,
-                        messageKey = "interpreter.status.translationFailed",
-                        arguments = mapOf("sequence" to finalizedOriginal.sequenceNumber.toString(), "error" to (error.message ?: error::class.simpleName.orEmpty())),
-                    )
-                )
-                throw error
-            }
-
-            val trimmedTranslation = translation.trim()
-            if (trimmedTranslation.isBlank()) {
-                val errorMessage = "Translation returned blank text for finalized transcript ${finalizedOriginal.sequenceNumber}"
-                log.warn { "Live interpreter translation failed: session=$sessionId error=$errorMessage" }
-                emit(LiveInterpreterStatusEvent(sessionId, "interpreter.status.emptyTranslation", mapOf("sequence" to finalizedOriginal.sequenceNumber.toString())))
-                error(errorMessage)
-            }
-
-            transcriptStateMutex.withLock {
-                transcriptState.recordTranslationSegment(trimmedTranslation)
-            }
-            log.info {
-                "Live interpreter translated transcript: session=$sessionId " +
-                    "sequence=${finalizedOriginal.sequenceNumber} chars=${trimmedTranslation.length} " +
-                    "text='${trimmedTranslation.liveLogSnippet()}'"
-            }
-            emit(
-                LiveInterpreterTranslationEvent(
-                    sessionId = sessionId,
-                    segmentId = finalizedOriginal.segmentId,
-                    sequenceNumber = finalizedOriginal.sequenceNumber,
-                    text = trimmedTranslation,
-                    targetLanguage = targetLanguage,
-                    isFinal = true,
-                )
-            )
-        }
-
-        private suspend fun stabilizeTranscript(context: LiveInterpreterStabilizerPromptContext): TranscriptStabilizerResponse {
-            val text = callTextModel(
-                selection = stabilizerRuntimeSelection,
-                systemPrompt = buildLiveInterpreterStabilizerSystemPrompt(sourceLanguageHint),
-                userPrompt = buildLiveInterpreterStabilizerUserPrompt(context),
-                maxOutputTokens = 900,
-            )
-            return parseTranscriptStabilizerXml(text)
-        }
-
-        private suspend fun translate(context: LiveInterpreterTranslationPromptContext): String {
-            return callTextModel(
-                selection = translationRuntimeSelection,
-                systemPrompt = buildLiveInterpreterTranslationSystemPrompt(
-                    targetLanguage = targetLanguage,
-                    sourceLanguageHint = sourceLanguageHint,
-                ),
-                userPrompt = buildLiveInterpreterTranslationUserPrompt(context),
-                maxOutputTokens = 800,
-            )
-        }
-
-        private suspend fun callTextModel(
-            selection: AiRuntimeSelection,
-            systemPrompt: String,
-            userPrompt: String,
-            maxOutputTokens: Int,
-        ): String {
-            val runtime = aiRuntimeProvider.getRuntime(selection, null)
-            val response = runtime.call(
-                AiRuntimeRequest(
-                    systemPrompts = listOf(systemPrompt),
-                    messages = listOf(
-                        Conversation.Message(
-                            id = Conversation.Message.Id(uuid7()),
-                            conversationId = Conversation.Id("live-interpreter:$sessionId"),
-                            role = Conversation.Message.Role.USER,
-                            content = listOf(
-                                Conversation.Message.ContentItem.UserMessage(
-                                    userPrompt
-                                )
-                            ),
-                            createdAt = Clock.System.now(),
-                        )
-                    ),
-                    options = AiRuntimeOptions(
-                        maxOutputTokens = maxOutputTokens,
-                        toolChoice = AiToolChoice.None,
-                        assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
-                        usagePurpose = "LIVE_INTERPRETER",
-                    ),
-                )
-            )
-            return AiConversationMessageMapper.extractAssistantText(response)
-        }
-
-        private suspend fun emitPendingDrafts() {
-            val drafts = transcriptStateMutex.withLock {
-                transcriptState.pendingDrafts()
-            }
-            emit(
-                LiveInterpreterDraftsEvent(
-                    sessionId = sessionId,
-                    drafts = drafts.map { draft ->
-                        RemoteLiveInterpreterDraft(
-                            id = draft.id,
-                            sequenceNumber = draft.sequenceNumber,
-                            text = draft.text,
-                        )
-                    },
-                )
-            )
-        }
-
-        private suspend fun emit(payload: ServerPayload) {
+        private suspend fun run() {
+            var upstream: LiveTranscriptionSession? = null
+            var outcome = AiAdmissionOutcome.CANCELLED
+            var failure: Exception? = null
             try {
-                emitMutex.withLock {
-                    eventSink(payload)
+                val selection = request.transcriptionRuntimeSelection
+                    ?: aiConfigurationProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.LIVE_TRANSCRIPTION)
+                val connection = transcriptionProvider.open(owner.userId.value, selection, request.languages,
+                    request.manualTurnControl, request.nativeTranslationLanguage)
+                upstream = connection
+                check(!request.manualTurnControl || connection.turnDetection == LiveTranscriptionTurnDetection.CLIENT) {
+                    "Manual Live input requires client-owned turn boundaries"
                 }
+                listening.set(true)
+                if (!accepting.get()) return
+                emit(LiveInterpreterStatusEvent(id, "interpreter.status.listening"))
+                coroutineScope {
+                    val timeline = LiveTranscriptTimeline(id)
+                    val collector = launch {
+                        connection.events.collect { event -> timeline.accept(event).forEach { emit(it) } }
+                        if (accepting.get()) throw LiveTranscriptionException("Live transcription stream ended unexpectedly", retryable = true)
+                    }
+                    val detector = if (!request.manualTurnControl && connection.turnDetection == LiveTranscriptionTurnDetection.CLIENT)
+                        LiveAudioTurnDetector() else null
+                    var nextSequence = 0
+                    var hasUncommittedAudio = false
+                    for (value in input) {
+                        when (value) {
+                            is LiveInterpreterInput.Audio -> {
+                                val chunk = value.chunk
+                                require(chunk.sequenceNumber == nextSequence) { "Live audio chunk sequence is not contiguous" }
+                                require(chunk.sampleRate == 16_000 && chunk.channels == 1 && chunk.byteOrder == RemotePcmByteOrder.BIG_ENDIAN) {
+                                    "Live requires mono 16 kHz big-endian PCM16 microphone audio"
+                                }
+                                nextSequence += 1
+                                connection.appendAudio(chunk.data)
+                                if (chunk.data.isNotEmpty()) hasUncommittedAudio = true
+                                if (detector?.accept(chunk.data) == true) {
+                                    connection.commit()
+                                    hasUncommittedAudio = false
+                                }
+                            }
+                            LiveInterpreterInput.Commit -> {
+                                check(request.manualTurnControl) { "Manual commit is not enabled for this Live session" }
+                                if (hasUncommittedAudio) {
+                                    connection.commit()
+                                    hasUncommittedAudio = false
+                                    emit(LiveInterpreterStatusEvent(id, "interpreter.commitSent"))
+                                } else emit(LiveInterpreterStatusEvent(id, "interpreter.nothingToCommit"))
+                            }
+                        }
+                    }
+                    connection.finishInput()
+                    collector.join()
+                    timeline.requireDrained()
+                }
+                outcome = AiAdmissionOutcome.SUCCEEDED
             } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                log.warn(error) {
-                    "Live interpreter event send failed: session=$sessionId error=${error.message}"
+                failure = inputFailure.get()
+                if (failure != null) {
+                    outcome = AiAdmissionOutcome.FAILED
+                    throw error
+                }
+                if (!currentCoroutineContext().isActive) throw error
+                failure = LiveTranscriptionException("Live transcription timed out", retryable = true, cause = error)
+                outcome = AiAdmissionOutcome.FAILED
+            } catch (error: Exception) {
+                failure = error
+                outcome = AiAdmissionOutcome.FAILED
+            } finally {
+                accepting.set(false)
+                input.cancel()
+                withContext(NonCancellable) {
+                    var terminalFailure = failure
+                    try {
+                        upstream?.close(outcome)
+                    } catch (error: Exception) {
+                        terminalFailure = terminalFailure ?: error
+                    } finally {
+                        sessions.remove(id, this@Session)
+                    }
+                    terminalFailure?.let { error ->
+                        log.warn { "Live transcription stage failed: session=$id type=${error::class.simpleName}" }
+                        emitTerminalSafely(LiveInterpreterFailedEvent(
+                            sessionId = id,
+                            message = error.message ?: "Live transcription failed",
+                            retryable = (error as? LiveTranscriptionException)?.retryable == true,
+                        ))
+                    }
+                    emitTerminalSafely(LiveInterpreterStoppedEvent(id))
                 }
             }
         }
-    }
 
-}
-
-private fun String.toTargetLanguageName(): String =
-    when (lowercase()) {
-        "ru", "rus", "russian" -> "Russian"
-        "en", "eng", "english" -> "English"
-        "he", "heb", "hebrew" -> "Hebrew"
-        "ar" -> "Arabic"
-        "de" -> "German"
-        "es" -> "Spanish"
-        "fr" -> "French"
-        "id" -> "Indonesian"
-        "ja" -> "Japanese"
-        "ko" -> "Korean"
-        "pt-br" -> "Brazilian Portuguese"
-        "zh-hans" -> "Simplified Chinese"
-        "zh-hant" -> "Traditional Chinese"
-        else -> this
-    }
-
-private fun String.liveLogSnippet(maxLength: Int = 240): String {
-    val compact = replace(Regex("\\s+"), " ").trim()
-    return if (compact.length <= maxLength) compact else compact.take(maxLength) + "..."
-}
-
-internal class LiveInterpreterTranscriptState {
-    private val finalizedOriginalSegments = mutableListOf<String>()
-    private val finalizedTranslationSegments = mutableListOf<String>()
-    private val pendingDrafts = mutableListOf<LiveInterpreterDraftChunk>()
-
-    fun recordDraft(sequenceNumber: Int, text: String): LiveInterpreterDraftChunk {
-        val draft = LiveInterpreterDraftChunk(
-            id = "draft-$sequenceNumber",
-            sequenceNumber = sequenceNumber,
-            text = text,
-        )
-        pendingDrafts.removeAll { it.id == draft.id }
-        pendingDrafts += draft
-        return draft
-    }
-
-    fun stabilizerContext(): LiveInterpreterStabilizerPromptContext =
-        LiveInterpreterStabilizerPromptContext(
-            finalizedOriginalTranscriptTail = finalizedOriginalSegments.takeLast(MAX_FINAL_SEGMENTS_IN_PROMPT)
-                .joinToString("\n"),
-            pendingDrafts = pendingDrafts.toList(),
-        )
-
-    fun pendingDrafts(): List<LiveInterpreterDraftChunk> = pendingDrafts.toList()
-
-    fun applyStabilizerResponse(response: TranscriptStabilizerResponse): List<String> {
-        val finalized = response.appendFinalOriginal.map { it.trim() }.filter { it.isNotBlank() }
-        val keepIds = response.keepDraftIds.toSet()
-        val dropIds = response.dropDraftIds.toSet()
-
-        if (finalized.isNotEmpty()) {
-            finalizedOriginalSegments += finalized
+        private suspend fun emitTerminalSafely(payload: ServerPayload) {
+            try {
+                withTimeout(2_000) { emit(payload) }
+            } catch (error: Exception) {
+                log.warn { "Live terminal event could not be delivered: session=$id type=${error::class.simpleName}" }
+            }
         }
-
-        pendingDrafts.removeAll { draft -> draft.id in dropIds && draft.id !in keepIds }
-        return finalized
-    }
-
-    fun recordTranslationSegment(text: String) {
-        finalizedTranslationSegments += text
-    }
-
-    fun translationContext(finalizedOriginalDelta: List<String>): LiveInterpreterTranslationPromptContext =
-        LiveInterpreterTranslationPromptContext(
-            finalizedOriginalTranscriptTail = finalizedOriginalSegments.takeLast(MAX_FINAL_SEGMENTS_IN_PROMPT)
-                .joinToString("\n"),
-            publishedTranslationTail = finalizedTranslationSegments.takeLast(MAX_FINAL_SEGMENTS_IN_PROMPT)
-                .joinToString("\n"),
-            newFinalOriginalDelta = finalizedOriginalDelta.joinToString("\n"),
-        )
-
-    companion object {
-        private const val MAX_FINAL_SEGMENTS_IN_PROMPT = 50
     }
 }
 
-internal data class LiveInterpreterDraftChunk(
-    val id: String,
-    val sequenceNumber: Int,
-    val text: String,
-)
+internal class LiveTranscriptTimeline(private val sessionId: String) {
+    private val positions = mutableMapOf<String, Int>()
+    private val latest = mutableMapOf<String, LiveTranscriptionEvent.Transcript>()
+    private val latestTranslations = mutableMapOf<String, LiveTranscriptionEvent.Translation>()
+    private var predecessor: String? = null
 
-private data class LiveInterpreterFinalizedOriginal(
-    val segmentId: String,
-    val sequenceNumber: Int,
-    val segments: List<String>,
-)
+    fun accept(event: LiveTranscriptionEvent): List<ServerPayload> = when (event) {
+        is LiveTranscriptionEvent.Committed -> {
+            check(event.itemId !in positions) { "Live turn was committed twice" }
+            check(event.previousItemId == predecessor) { "Live committed turn predecessor is inconsistent" }
+            positions[event.itemId] = positions.size
+            predecessor = event.itemId
+            buildList {
+                latest[event.itemId]?.let { add(project(it)) }
+                latestTranslations[event.itemId]?.let { add(project(it)) }
+            }
+        }
+        is LiveTranscriptionEvent.Transcript -> {
+            val previous = latest[event.itemId]
+            check(previous?.isFinal != true) { "A completed Live transcript was modified" }
+            latest[event.itemId] = event
+            if (event.isFinal && event.itemId !in positions) emptyList() else listOf(project(event))
+        }
+        is LiveTranscriptionEvent.Translation -> {
+            val previous = latestTranslations[event.itemId]
+            check(previous?.isFinal != true) { "A completed Live native translation was modified" }
+            latestTranslations[event.itemId] = event
+            if (event.itemId !in positions) emptyList() else listOf(project(event))
+        }
+    }
 
-internal data class LiveInterpreterStabilizerPromptContext(
-    val finalizedOriginalTranscriptTail: String,
-    val pendingDrafts: List<LiveInterpreterDraftChunk>,
-)
-
-internal data class TranscriptStabilizerResponse(
-    val appendFinalOriginal: List<String> = emptyList(),
-    val keepDraftIds: List<String> = emptyList(),
-    val dropDraftIds: List<String> = emptyList(),
-)
-
-internal data class LiveInterpreterTranslationPromptContext(
-    val finalizedOriginalTranscriptTail: String,
-    val publishedTranslationTail: String,
-    val newFinalOriginalDelta: String,
-)
-
-internal fun buildLiveInterpreterStabilizerSystemPrompt(sourceLanguageHint: String): String =
-    """
-    You stabilize noisy overlapping ASR drafts into a clean original-language live transcript.
-    Source speech may mix $sourceLanguageHint.
-    Do not translate. Preserve code-switching, names, acronyms, numbers, and technical terms.
-    Drafts are overlapping Whisper hypotheses, so they can repeat, truncate, contradict, or contain partial phrases.
-    Append only text that is now stable enough to publish as completed original transcript.
-    Keep trailing incomplete or uncertain draft ids for the next pass.
-    Drop draft ids that are fully covered by appended final text or are obsolete duplicates.
-    Return exactly one XML document with this shape:
-    <stabilization>
-      <append>stable original-language sentence or clause to append</append>
-      <keep>draft-id</keep>
-      <drop>draft-id</drop>
-    </stabilization>
-    Repeat <append>, <keep>, and <drop> as needed. Omit empty sections.
-    XML text content is raw text. Do not JSON-escape it.
-    No markdown, no prose, no code fences.
-    """.trimIndent()
-
-internal fun buildLiveInterpreterStabilizerUserPrompt(context: LiveInterpreterStabilizerPromptContext): String =
-    """
-    Finalized original transcript tail:
-    ${context.finalizedOriginalTranscriptTail.ifBlank { "(none yet)" }}
-
-    Pending ASR drafts:
-    ${context.pendingDrafts.joinToString("\n") { "[${it.id}] ${it.text}" }}
-
-    Return XML:
-    <stabilization>
-      <append>stable original-language sentence or clause to append</append>
-      <keep>draft id still needed because its tail is incomplete or uncertain</keep>
-      <drop>draft id already covered or obsolete</drop>
-    </stabilization>
-    """.trimIndent()
-
-internal fun buildLiveInterpreterTranslationSystemPrompt(
-    targetLanguage: String,
-    sourceLanguageHint: String,
-): String =
-    """
-    You translate a live workplace transcript.
-    Target language: ${targetLanguage.toTargetLanguageName()}.
-    Source may mix $sourceLanguageHint.
-    The source transcript was already stabilized from noisy ASR drafts, but speaker boundaries may still be missing.
-    Use the finalized original transcript tail and the already published translation tail as context.
-    Preserve names, product names, technical terms, numbers, and uncertainty.
-    Return only new text that should be appended to the target-language transcript.
-    Do not repeat already published translation. Do not explain.
-    Never return an empty response for a finalized source delta; translate it or preserve uncertainty explicitly.
-    """.trimIndent()
-
-internal fun buildLiveInterpreterTranslationUserPrompt(context: LiveInterpreterTranslationPromptContext): String =
-    """
-    Finalized original transcript tail:
-    ${context.finalizedOriginalTranscriptTail}
-
-    Already published translation tail:
-    ${context.publishedTranslationTail.ifBlank { "(none yet)" }}
-
-    New finalized original transcript delta to translate now:
-    ${context.newFinalOriginalDelta}
-
-    Return only the target-language text to append now.
-    Do not return an empty string. If the delta contains uncertainty, translate the uncertainty explicitly.
-    Do not repeat or rewrite the already published translation.
-    """.trimIndent()
-
-internal fun parseTranscriptStabilizerXml(text: String): TranscriptStabilizerResponse {
-    val xml = text.extractXmlElement("stabilization")
-    return TranscriptStabilizerResponse(
-        appendFinalOriginal = xml.extractXmlElements("append"),
-        keepDraftIds = xml.extractXmlElements("keep"),
-        dropDraftIds = xml.extractXmlElements("drop"),
+    private fun project(event: LiveTranscriptionEvent.Transcript) = LiveInterpreterTranscriptEvent(
+        sessionId = sessionId,
+        segmentId = event.itemId,
+        sequenceNumber = positions[event.itemId],
+        text = event.text,
+        isFinal = event.isFinal,
+        speakerId = event.speakerId,
+        language = event.language,
+        startMillis = event.startMillis,
+        endMillis = event.endMillis,
     )
+
+    private fun project(event: LiveTranscriptionEvent.Translation) = LiveInterpreterNativeTranslationEvent(
+        sessionId = sessionId,
+        segmentId = event.itemId,
+        sequenceNumber = checkNotNull(positions[event.itemId]) { "Live native translation has no committed source" },
+        text = event.text,
+        isFinal = event.isFinal,
+        targetLanguage = event.targetLanguage,
+        sourceLanguage = event.sourceLanguage,
+        speakerId = event.speakerId,
+    )
+
+    fun requireDrained() {
+        check(latest.values.none { !it.isFinal }) { "Live stream ended with an incomplete transcript" }
+        check(latest.keys.all { it in positions }) { "Live stream ended with an uncommitted transcript" }
+        check(latestTranslations.values.none { !it.isFinal }) { "Live stream ended with an incomplete native translation" }
+        check(latestTranslations.keys.all { it in positions }) { "Live stream ended with an uncommitted native translation" }
+    }
 }
 
-private fun String.extractXmlElement(tag: String): String {
-    val regex = Regex("<$tag\\b[^>]*>([\\s\\S]*?)</$tag>", RegexOption.IGNORE_CASE)
-    return regex.find(removeCodeFence())?.groupValues?.get(1)?.trim()
-        ?: error("Model response does not contain <$tag> XML")
+internal class LiveAudioTurnDetector(
+    private val silenceMillis: Long = 1_500,
+    private val maximumTurnMillis: Long = 20_000,
+    private val speechThreshold: Double = 0.008,
+) {
+    private var samples = 0L
+    private var quietSamples = 0L
+    private var heardSpeech = false
+
+    fun accept(pcm: ByteArray): Boolean {
+        require(pcm.size % 2 == 0) { "Live PCM16 frames must be complete" }
+        if (pcm.isEmpty()) return false
+        val count = pcm.size / 2
+        var sum = 0.0
+        for (index in pcm.indices step 2) {
+            val sample = (((pcm[index].toInt() and 0xff) shl 8) or (pcm[index + 1].toInt() and 0xff)).toShort()
+            val normalized = sample.toDouble() / 32768.0
+            sum += normalized * normalized
+        }
+        val speech = sqrt(sum / count) >= speechThreshold
+        samples += count
+        if (speech) {
+            heardSpeech = true
+            quietSamples = 0
+        } else {
+            quietSamples += count
+        }
+        val boundary = samples * 1000 / 16_000 >= maximumTurnMillis ||
+            (heardSpeech && quietSamples * 1000 / 16_000 >= silenceMillis)
+        if (boundary) {
+            samples = 0
+            quietSamples = 0
+            heardSpeech = false
+        }
+        return boundary
+    }
 }
-
-private fun String.extractXmlElements(tag: String): List<String> {
-    val regex = Regex("<$tag\\b[^>]*>([\\s\\S]*?)</$tag>", RegexOption.IGNORE_CASE)
-    return regex.findAll(this)
-        .map { it.groupValues[1].decodeBasicXmlEntities().trim() }
-        .filter { it.isNotBlank() }
-        .toList()
-}
-
-private fun String.removeCodeFence(): String =
-    trim()
-        .removePrefix("```xml")
-        .removePrefix("```")
-        .removeSuffix("```")
-        .trim()
-
-private fun String.decodeBasicXmlEntities(): String =
-    replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", "\"")
-        .replace("&apos;", "'")
-        .replace("&amp;", "&")

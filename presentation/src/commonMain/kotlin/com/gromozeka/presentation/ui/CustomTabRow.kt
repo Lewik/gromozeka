@@ -44,6 +44,7 @@ internal fun CustomTabRow(
     onTabHover: (Int) -> Unit,
     onTabHoverExit: () -> Unit,
     onRenameConversation: suspend (Conversation.Id, String) -> Unit,
+    liveListening: Boolean = false,
     trailingContent: @Composable RowScope.() -> Unit = {},
 ) {
     val translation = LocalTranslation.current
@@ -68,6 +69,7 @@ internal fun CustomTabRow(
         onTabHover = onTabHover,
         onTabHoverExit = onTabHoverExit,
         onRename = { renaming = it },
+        liveListening = liveListening,
         trailingContent = trailingContent,
     )
 
@@ -97,6 +99,7 @@ internal fun ConversationNavigationTabs(
     onTabHoverExit: () -> Unit,
     onRename: (ConversationTabHeader) -> Unit,
     modifier: Modifier = Modifier,
+    liveListening: Boolean = false,
     trailingContent: @Composable RowScope.() -> Unit = {},
 ) {
     val translation = LocalTranslation.current
@@ -116,7 +119,17 @@ internal fun ConversationNavigationTabs(
                         showTabsAtBottom = showTabsAtBottom,
                         onClick = { onTabSelect(if (index == 0) null else -index) },
                         modifier = Modifier.size(48.dp).testTag(tag),
-                    ) { Icon(icon, contentDescription = title, modifier = Modifier.size(24.dp)) }
+                    ) {
+                        if (index == 3 && liveListening) {
+                            BadgedBox(badge = {
+                                Badge(Modifier.testTag("live-microphone-active"), containerColor = MaterialTheme.colorScheme.error)
+                            }) {
+                                Icon(icon, contentDescription = title + ": " + translation.text("interpreter.status.listening"), modifier = Modifier.size(24.dp))
+                            }
+                        } else {
+                            Icon(icon, contentDescription = title, modifier = Modifier.size(24.dp))
+                        }
+                    }
                 }
             }
             if (headers.isNotEmpty()) {

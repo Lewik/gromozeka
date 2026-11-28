@@ -65,7 +65,9 @@ kotlin {
         val jvmTest by getting {
             dependencies {
                 implementation(kotlin("test"))
+                implementation(libs.kotlinx.coroutines.test)
                 implementation(project(":worker-runtime"))
+                implementation(libs.ktor.server.websockets)
             }
         }
     }

@@ -5,6 +5,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.consumeAsFlow
 import java.io.ByteArrayOutputStream
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.sound.sampled.*
 import kotlin.coroutines.coroutineContext
 
@@ -13,7 +14,8 @@ class DesktopRecordingSession(
     private val scope: CoroutineScope,
 ) : RecordingSession {
 
-    private val audioChannel = Channel<ByteArray>(capacity = Channel.UNLIMITED)
+    private val audioChannel = Channel<ByteArray>(capacity = if (config.retainRecording) Channel.UNLIMITED else 32)
+    private val captureStopped = AtomicBoolean(false)
     private val audioBuffer = ByteArrayOutputStream()
 
     private var targetDataLine: TargetDataLine? = null
@@ -27,8 +29,8 @@ class DesktopRecordingSession(
                 setupAudioLine()
                 recordingLoop()
             } catch (e: Exception) {
-                audioChannel.close(e)
-                throw e
+                audioChannel.close(if (captureStopped.get()) null else e)
+                if (!captureStopped.get()) throw e
             } finally {
                 cleanup()
             }
@@ -64,7 +66,7 @@ class DesktopRecordingSession(
             if (bytesRead > 0) {
                 val chunk = chunkBuffer.copyOfRange(0, bytesRead)
 
-                audioBuffer.write(chunk)
+                if (config.retainRecording) audioBuffer.write(chunk)
                 audioChannel.send(chunk)
             }
 
@@ -75,6 +77,7 @@ class DesktopRecordingSession(
     }
 
     override suspend fun stop(): ByteArray {
+        check(config.retainRecording) { "Streaming audio capture has no retained recording" }
         recordingJob?.cancel()
         recordingJob?.join()
 
@@ -88,7 +91,16 @@ class DesktopRecordingSession(
         }
     }
 
+    override suspend fun stopCapture() {
+        check(!config.retainRecording) { "Use stop() to finish a retained recording" }
+        captureStopped.set(true)
+        cleanup()
+        recordingJob?.cancelAndJoin()
+        audioChannel.close()
+    }
+
     override fun cancel() {
+        if (!config.retainRecording) captureStopped.set(true)
         recordingJob?.cancel()
         audioChannel.close()
         cleanup()

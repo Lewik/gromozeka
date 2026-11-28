@@ -15,6 +15,7 @@ data class AiRuntimeAssignment(
         val requiredCapabilities: Set<AiModelCapability>,
         val displayName: String,
         val description: String,
+        private val assignmentOptional: Boolean = false,
     ) {
         DEFAULT_CHAT(
             requiredCapabilities = setOf(AiModelCapability.TEXT_GENERATION),
@@ -151,15 +152,16 @@ data class AiRuntimeAssignment(
             displayName = "Memory embeddings",
             description = "Embedding model used for vector indexes and semantic memory retrieval.",
         ),
-        LIVE_TRANSCRIPT_STABILIZER(
-            requiredCapabilities = setOf(AiModelCapability.TEXT_GENERATION),
-            displayName = "Live transcript stabilizer",
-            description = "Model that turns noisy overlapping ASR drafts into stable original transcript.",
+        LIVE_TRANSCRIPTION(
+            requiredCapabilities = setOf(AiModelCapability.REALTIME_TRANSCRIPTION),
+            displayName = "Live transcription",
+            description = "Streaming speech recognition for the separate Live tab.",
         ),
         LIVE_TRANSLATION(
-            requiredCapabilities = setOf(AiModelCapability.TEXT_GENERATION),
+            requiredCapabilities = setOf(AiModelCapability.TEXT_GENERATION, AiModelCapability.STRUCTURED_OUTPUT),
             displayName = "Live translation",
-            description = "Model that translates stabilized live transcript deltas.",
+            description = "Contextual text translation for the separate Live tab.",
+            assignmentOptional = true,
         ),
         SPEECH_TO_TEXT(
             requiredCapabilities = setOf(AiModelCapability.SPEECH_TO_TEXT),
@@ -204,6 +206,6 @@ data class AiRuntimeAssignment(
             }
 
         val requiresExplicitAssignment: Boolean
-            get() = fallbackPurpose == null
+            get() = !assignmentOptional && fallbackPurpose == null
     }
 }

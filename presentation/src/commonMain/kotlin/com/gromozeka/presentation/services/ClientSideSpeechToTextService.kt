@@ -4,7 +4,6 @@ import com.gromozeka.presentation.services.translation.LocalizedTextException
 import com.gromozeka.presentation.services.translation.localizedText
 
 import com.gromozeka.remote.protocol.RemoteAudioRecording
-import com.gromozeka.remote.protocol.RemoteLiveAudioChunk
 
 interface ClientSideSpeechToTextService {
     fun isEnabled(): Boolean
@@ -13,11 +12,6 @@ interface ClientSideSpeechToTextService {
 
     suspend fun transcribe(recording: RemoteAudioRecording): String
 
-    suspend fun transcribe(
-        chunk: RemoteLiveAudioChunk,
-        language: String,
-        prompt: String?,
-    ): String
 }
 
 object NoOpClientSideSpeechToTextService : ClientSideSpeechToTextService {
@@ -26,10 +20,4 @@ object NoOpClientSideSpeechToTextService : ClientSideSpeechToTextService {
     override suspend fun transcribe(recording: RemoteAudioRecording): String =
         throw LocalizedTextException(localizedText("voice.clientSttUnavailable"))
 
-    override suspend fun transcribe(
-        chunk: RemoteLiveAudioChunk,
-        language: String,
-        prompt: String?,
-    ): String =
-        throw LocalizedTextException(localizedText("voice.clientSttUnavailable"))
 }

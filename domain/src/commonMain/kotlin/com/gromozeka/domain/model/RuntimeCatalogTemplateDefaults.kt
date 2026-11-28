@@ -30,8 +30,8 @@ object RuntimeCatalogTemplateDefaults {
         assignment(AiRuntimeAssignment.Purpose.MEMORY_WRITE, "openai-subscription-gpt-5.5"),
         assignment(AiRuntimeAssignment.Purpose.MEMORY_MAINTENANCE, "openai-subscription-gpt-5.5"),
         assignment(AiRuntimeAssignment.Purpose.MEMORY_EMBEDDINGS, "openai-api-text-embedding-3-large"),
-        assignment(AiRuntimeAssignment.Purpose.LIVE_TRANSCRIPT_STABILIZER, "openai-subscription-gpt-5.5"),
-        assignment(AiRuntimeAssignment.Purpose.LIVE_TRANSLATION, "openai-subscription-gpt-5.5"),
+        assignment(AiRuntimeAssignment.Purpose.LIVE_TRANSCRIPTION, "openai-api-whisper-1"),
+        assignment(AiRuntimeAssignment.Purpose.LIVE_TRANSLATION, "openai-api-gpt-5.4-mini"),
         assignment(AiRuntimeAssignment.Purpose.SPEECH_TO_TEXT, "openai-api-gpt-transcribe"),
         assignment(AiRuntimeAssignment.Purpose.TEXT_TO_SPEECH, "openai-api-gpt-4o-mini-tts"),
     )
@@ -62,6 +62,12 @@ object RuntimeCatalogTemplateDefaults {
             displayName = "OpenAI API",
             enabled = false,
             apiKey = SecretRef.EnvironmentVariable("OPENAI_API_KEY"),
+        ),
+        AiConnection.SonioxApi(
+            id = AiConnection.Id("soniox-api"),
+            displayName = "Soniox API",
+            enabled = false,
+            apiKey = SecretRef.EnvironmentVariable("SONIOX_API_KEY"),
         ),
     )
 
@@ -136,6 +142,15 @@ object RuntimeCatalogTemplateDefaults {
             assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.XML_INLINE,
         ),
         AiModelConfiguration(
+            id = AiModelConfiguration.Id("openai-api-gpt-5.4-mini"),
+            connectionId = AiConnection.Id("openai-api"),
+            providerModelId = "gpt-5.4-mini",
+            displayName = "GPT-5.4 mini API",
+            defaultParameters = AiModelConfiguration.DefaultParameters(
+                reasoning = AiReasoningConfig(mode = AiReasoningMode.ADAPTIVE, effort = AiReasoningEffort.LOW),
+            ),
+        ),
+        AiModelConfiguration(
             id = AiModelConfiguration.Id("openai-api-gpt-4o-mini"),
             connectionId = AiConnection.Id("openai-api"),
             providerModelId = "gpt-4o-mini",
@@ -153,6 +168,27 @@ object RuntimeCatalogTemplateDefaults {
             connectionId = AiConnection.Id("openai-api"),
             providerModelId = "text-embedding-3-small",
             displayName = "OpenAI text-embedding-3-small",
+            assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
+        ),
+        AiModelConfiguration(
+            id = AiModelConfiguration.Id("soniox-api-stt-rt-v6"),
+            connectionId = AiConnection.Id("soniox-api"),
+            providerModelId = "stt-rt-v6",
+            displayName = "Soniox Live 2 (STT v6)",
+            assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
+        ),
+        AiModelConfiguration(
+            id = AiModelConfiguration.Id("openai-api-whisper-1"),
+            connectionId = AiConnection.Id("openai-api"),
+            providerModelId = "whisper-1",
+            displayName = "OpenAI Whisper",
+            assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
+        ),
+        AiModelConfiguration(
+            id = AiModelConfiguration.Id("openai-api-gpt-live-transcribe"),
+            connectionId = AiConnection.Id("openai-api"),
+            providerModelId = "gpt-live-transcribe",
+            displayName = "OpenAI GPT Live Transcribe",
             assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
         ),
         AiModelConfiguration(

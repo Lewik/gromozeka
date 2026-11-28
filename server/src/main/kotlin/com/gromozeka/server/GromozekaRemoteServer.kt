@@ -1,5 +1,7 @@
 package com.gromozeka.server
 
+import com.gromozeka.remote.protocol.CommitLiveInterpreterCommand
+
 import com.gromozeka.domain.model.SpeechAvailabilityException
 
 import com.gromozeka.application.service.AiUserCredentialApplicationService
@@ -126,6 +128,7 @@ class GromozekaRemoteServer(
     private val ttsService: TtsService,
     private val memoryStore: MemoryStore,
     private val liveInterpreterApplicationService: LiveInterpreterApplicationService,
+    private val liveTranslationApplicationService: LiveTranslationApplicationService,
     private val liveVoiceProviderVadApplicationService: LiveVoiceProviderVadApplicationService,
     private val speechCaptureApplicationService: SpeechCaptureApplicationService,
     private val clientPresentationRegistry: ClientPresentationRegistry,
@@ -261,8 +264,8 @@ class GromozekaRemoteServer(
                             }
                             is LiveInterpreterAudioChunkCommand ->
                                 liveInterpreterApplicationService.append(liveInterpreterOwner, payload)
-                            is LiveInterpreterTranscriptChunkCommand ->
-                                liveInterpreterApplicationService.append(liveInterpreterOwner, payload)
+                            is CommitLiveInterpreterCommand ->
+                                liveInterpreterApplicationService.commit(liveInterpreterOwner, payload)
                             is StopLiveInterpreterCommand ->
                                 liveInterpreterApplicationService.stop(liveInterpreterOwner, payload)
                             is LiveVoiceProviderVadAudioChunkCommand ->
@@ -924,6 +927,7 @@ class GromozekaRemoteServer(
                     liveInterpreterApplicationService.start(liveInterpreterOwner, request) { payload ->
                         sender.send(uuid7(), payload, encoding)
                     }
+                is TranslateLiveTextRequest -> liveTranslationApplicationService.translate(user, request)
                 GetLiveVoiceProviderVadAvailabilityRequest ->
                     liveVoiceProviderVadApplicationService.availability()
                 is StartLiveVoiceProviderVadRequest ->

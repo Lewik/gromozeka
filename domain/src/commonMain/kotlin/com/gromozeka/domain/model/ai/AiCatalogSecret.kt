@@ -114,6 +114,7 @@ fun AiConnection.withApiKey(apiKey: SecretRef?): AiConnection =
     when (this) {
         is AiConnection.OpenAiApi -> copy(apiKey = apiKey)
         is AiConnection.OpenAiCompatible -> copy(apiKey = apiKey)
+        is AiConnection.SonioxApi -> copy(apiKey = apiKey)
         is AiConnection.AnthropicApi -> copy(apiKey = apiKey)
         is AiConnection.GeminiApi -> copy(apiKey = apiKey)
         else -> {

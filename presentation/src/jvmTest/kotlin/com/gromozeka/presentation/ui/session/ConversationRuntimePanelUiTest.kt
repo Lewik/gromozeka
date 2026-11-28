@@ -566,6 +566,7 @@ class ConversationRuntimePanelUiTest {
                     capabilities = setOf(
                         AiModelCapability.TEXT_GENERATION, AiModelCapability.EMBEDDINGS,
                         AiModelCapability.SPEECH_TO_TEXT, AiModelCapability.TEXT_TO_SPEECH,
+                        AiModelCapability.REALTIME_TRANSCRIPTION,
                     ),
                     limits = AiModelSpec.Limits(
                         textGeneration = AiModelSpec.Limits.TextGeneration(contextWindowTokens = 100_000),

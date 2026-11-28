@@ -701,7 +701,9 @@ class AiRuntimeCassetteProxyTest {
                 provider = AiProvider.OPENAI,
                 capabilities = setOf(
                     AiModelCapability.TEXT_GENERATION,
+                    AiModelCapability.STRUCTURED_OUTPUT,
                     AiModelCapability.SPEECH_TO_TEXT,
+                    AiModelCapability.REALTIME_TRANSCRIPTION,
                     AiModelCapability.TEXT_TO_SPEECH,
                     AiModelCapability.EMBEDDINGS,
                 ),

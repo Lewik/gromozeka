@@ -416,17 +416,20 @@ private fun RuntimeAssignmentRow(
 ) {
     val translation = LocalTranslation.current
     val directAssignment = draft.runtimeAssignments.firstOrNull { it.purpose == purpose }
-    val options = draft.modelConfigurations.filter {
-        draft.supportsPurpose(it, purpose, runtimeEnabledConnectionIds)
+    val options = draft.modelConfigurations.filter { model ->
+        draft.supportsPurpose(model, purpose, runtimeEnabledConnectionIds) &&
+            (purpose != AiRuntimeAssignment.Purpose.LIVE_TRANSLATION ||
+                draft.connections.firstOrNull { it.id == model.connectionId }?.let {
+                    it.kind == AiConnection.Kind.OPENAI_API && it.executionTarget == AiExecutionTarget.Server
+                } == true)
     }
     val fallbackLabel = purpose.fallbackPurpose?.let { translation.text("ai.runtime.inherit", "purpose" to it.aiLabel(translation)) }
     val selectedId = directAssignment?.selection?.modelConfigurationId
     val selectedConfiguration = selectedId?.let { id ->
         draft.modelConfigurations.firstOrNull { it.id == id }
     }
-    val selectedAvailable = selectedConfiguration?.let {
-        draft.supportsPurpose(it, purpose, runtimeEnabledConnectionIds)
-    } ?: (directAssignment == null && fallbackLabel != null)
+    val selectedAvailable = selectedConfiguration?.let { selected -> options.any { it.id == selected.id } }
+        ?: (directAssignment == null && fallbackLabel != null)
     val selectedLabel = selectedConfiguration?.displayName
         ?.let { if (selectedAvailable) it else translation.text("ai.runtime.unavailable_model", "name" to it) }
         ?: fallbackLabel
@@ -456,6 +459,7 @@ private fun RuntimeAssignmentRow(
                         label = selectedLabel,
                         options = buildList {
                             if (fallbackLabel != null) add(null to fallbackLabel)
+                            else if (!purpose.requiresExplicitAssignment) add(null to translation.text("ai.runtime.not_configured"))
                             options.forEach { add(it.id to "${it.displayName} · ${it.providerModelId}") }
                         },
                         onSelect = { modelId ->
@@ -1588,6 +1592,15 @@ private fun createConnection(
             executionTarget = executionTarget,
             httpSettings = httpSettings,
         )
+        AiConnection.Kind.SONIOX_API -> AiConnection.SonioxApi(
+            id = connectionId,
+            displayName = displayName,
+            enabled = enabled,
+            baseUrl = baseUrl.trim().ifBlank { null },
+            apiKey = secret,
+            executionTarget = executionTarget,
+            httpSettings = httpSettings,
+        )
         AiConnection.Kind.ANTHROPIC_API -> AiConnection.AnthropicApi(
             id = connectionId,
             displayName = displayName,
@@ -2320,7 +2333,12 @@ private fun AiConnection.openAiWebSearchBadge(translation: Translation): List<St
         else -> emptyList()
     }
 
-private val configurableHttpConnectionKinds = setOf(AiConnection.Kind.OPENAI_API, AiConnection.Kind.OPENAI_COMPATIBLE, AiConnection.Kind.ANTHROPIC_API)
+private val configurableHttpConnectionKinds = setOf(
+    AiConnection.Kind.OPENAI_API,
+    AiConnection.Kind.OPENAI_COMPATIBLE,
+    AiConnection.Kind.SONIOX_API,
+    AiConnection.Kind.ANTHROPIC_API,
+)
 
 private fun parseAiExtraHeaders(value: String, translation: Translation): Map<String, String> {
     if (value.isBlank()) return emptyMap()
@@ -2336,6 +2354,7 @@ private fun parseAiExtraHeaders(value: String, translation: Translation): Map<St
 private val httpConnectionKinds = setOf(
     AiConnection.Kind.OPENAI_API,
     AiConnection.Kind.OPENAI_COMPATIBLE,
+    AiConnection.Kind.SONIOX_API,
     AiConnection.Kind.ANTHROPIC_API,
     AiConnection.Kind.ANTHROPIC_BEDROCK,
     AiConnection.Kind.GEMINI_API,
@@ -2345,6 +2364,7 @@ private val httpConnectionKinds = setOf(
 private val apiKeyConnectionKinds = setOf(
     AiConnection.Kind.OPENAI_API,
     AiConnection.Kind.OPENAI_COMPATIBLE,
+    AiConnection.Kind.SONIOX_API,
     AiConnection.Kind.ANTHROPIC_API,
     AiConnection.Kind.GEMINI_API,
 )

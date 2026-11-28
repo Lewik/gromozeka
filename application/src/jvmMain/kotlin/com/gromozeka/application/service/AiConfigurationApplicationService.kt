@@ -360,6 +360,9 @@ private fun AiConnection.preserveCompatibleApiKey(existing: AiConnection?): AiCo
         is AiConnection.OpenAiCompatible -> copy(
             apiKey = apiKey ?: (existing as? AiConnection.OpenAiCompatible)?.apiKey
         )
+        is AiConnection.SonioxApi -> copy(
+            apiKey = apiKey ?: (existing as? AiConnection.SonioxApi)?.apiKey
+        )
         is AiConnection.AnthropicApi -> copy(
             apiKey = apiKey ?: (existing as? AiConnection.AnthropicApi)?.apiKey
         )
@@ -378,6 +381,8 @@ private fun AiConnection.preserveSecretFrom(
         this is AiConnection.OpenAiApi && existing is AiConnection.OpenAiApi ->
             copy(apiKey = apiKey ?: existing.apiKey)
         this is AiConnection.OpenAiCompatible && existing is AiConnection.OpenAiCompatible ->
+            copy(apiKey = apiKey ?: existing.apiKey)
+        this is AiConnection.SonioxApi && existing is AiConnection.SonioxApi ->
             copy(apiKey = apiKey ?: existing.apiKey)
         this is AiConnection.AnthropicApi && existing is AiConnection.AnthropicApi ->
             copy(apiKey = apiKey ?: existing.apiKey)

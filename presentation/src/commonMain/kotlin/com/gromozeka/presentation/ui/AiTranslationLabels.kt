@@ -20,6 +20,7 @@ internal fun AiProvider.aiLabel(translation: Translation): String =
             AiProvider.GOOGLE -> "ai.provider.google"
             AiProvider.OLLAMA -> "ai.provider.ollama"
             AiProvider.OPENAI -> "ai.provider.openai"
+            AiProvider.SONIOX -> "ai.provider.soniox"
         }
     )
 
@@ -35,6 +36,7 @@ internal fun AiConnection.Kind.aiLabel(translation: Translation): String =
             AiConnection.Kind.OPENAI_API -> "ai.connection.kind.openai_api"
             AiConnection.Kind.OPENAI_COMPATIBLE -> "ai.connection.kind.openai_compatible"
             AiConnection.Kind.OPENAI_SUBSCRIPTION -> "ai.connection.kind.openai_subscription"
+            AiConnection.Kind.SONIOX_API -> "ai.connection.kind.soniox_api"
         }
     )
 
@@ -45,6 +47,8 @@ internal fun AiModelCapability.aiLabel(translation: Translation): String =
             AiModelCapability.EMBEDDINGS -> "ai.capability.embeddings"
             AiModelCapability.IMAGE_INPUT -> "ai.capability.image_input"
             AiModelCapability.SPEECH_TO_TEXT -> "ai.capability.speech_to_text"
+            AiModelCapability.REALTIME_TRANSCRIPTION -> "ai.capability.realtime_transcription"
+            AiModelCapability.SPEAKER_DIARIZATION -> "ai.capability.speaker_diarization"
             AiModelCapability.STRUCTURED_OUTPUT -> "ai.capability.structured_output"
             AiModelCapability.TEXT_GENERATION -> "ai.capability.text_generation"
             AiModelCapability.TEXT_TO_SPEECH -> "ai.capability.text_to_speech"
@@ -116,7 +120,7 @@ private val AiRuntimeAssignment.Purpose.aiTranslationKey: String
     get() = when (this) {
         AiRuntimeAssignment.Purpose.AGENT_SKILL_ANALYSIS -> "ai.runtime.purpose.agent_skill_analysis"
         AiRuntimeAssignment.Purpose.DEFAULT_CHAT -> "ai.runtime.purpose.default_chat"
-        AiRuntimeAssignment.Purpose.LIVE_TRANSCRIPT_STABILIZER -> "ai.runtime.purpose.live_transcript_stabilizer"
+        AiRuntimeAssignment.Purpose.LIVE_TRANSCRIPTION -> "ai.runtime.purpose.live_transcription"
         AiRuntimeAssignment.Purpose.LIVE_TRANSLATION -> "ai.runtime.purpose.live_translation"
         AiRuntimeAssignment.Purpose.MEMORY_EMBEDDINGS -> "ai.runtime.purpose.memory_embeddings"
         AiRuntimeAssignment.Purpose.MEMORY_MAINTENANCE -> "ai.runtime.purpose.memory_maintenance"

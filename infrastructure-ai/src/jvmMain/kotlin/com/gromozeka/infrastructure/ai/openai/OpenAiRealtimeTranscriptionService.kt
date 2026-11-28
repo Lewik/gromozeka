@@ -360,7 +360,7 @@ sealed interface OpenAiRealtimeTranscriptionEvent {
     data object Stopped : OpenAiRealtimeTranscriptionEvent
 }
 
-private fun resamplePcm16To24kLittleEndian(
+internal fun resamplePcm16To24kLittleEndian(
     input: ByteArray,
     sourceSampleRate: Int,
     byteOrder: OpenAiRealtimePcmByteOrder,

@@ -25,7 +25,7 @@ import com.gromozeka.presentation.services.RemotePttController
 import com.gromozeka.presentation.services.QuickTextActionRunner
 import com.gromozeka.presentation.services.ResourceSoundNotificationPlayer
 import com.gromozeka.presentation.services.RemoteTtsQueue
-import com.gromozeka.presentation.services.RollingClientLiveAudioStreamer
+import com.gromozeka.presentation.services.PcmClientLiveAudioStreamer
 import com.gromozeka.presentation.services.AttachmentAcquisitionController
 import com.gromozeka.presentation.services.NoOpAttachmentAcquisitionController
 import com.gromozeka.presentation.services.TabPromptService
@@ -223,9 +223,7 @@ suspend fun createRemoteAppComponents(
             projectMembershipService = remoteServices.projectMembershipService,
             liveInterpreterService = remoteServices.liveInterpreterService,
             clientSideSpeechToTextService = clientSideSpeechToTextService,
-            liveAudioStreamer = RollingClientLiveAudioStreamer(audioRecorder) {
-                remoteServices.settingsService.userProfile.speechSettings.speechToText.localWhisper.liveStreaming
-            },
+            liveAudioStreamer = PcmClientLiveAudioStreamer(audioRecorder),
             globalHotkeyController = globalHotkeyController,
             pttEventRouter = pttController,
             pttService = pttController,

@@ -66,6 +66,8 @@ import com.gromozeka.domain.model.QuickTextAction
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.User
 import com.gromozeka.presentation.AppComponents
+import com.gromozeka.presentation.services.LiveInterpreterController
+import com.gromozeka.presentation.services.LiveInterpreterPhase
 import com.gromozeka.presentation.services.UiFeedbackEvent
 import com.gromozeka.presentation.services.UnifiedGestureDetector
 import com.gromozeka.presentation.services.translation.data.Translation
@@ -99,6 +101,8 @@ import kotlin.time.Clock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 @Composable
@@ -135,6 +139,23 @@ fun GromozekaAppContent(
     val localization = LocalTranslation.current
     val log = KLoggers.logger("ChatWindow")
     val coroutineScope = rememberCoroutineScope()
+    val liveInterpreterController = remember(appComponents, coroutineScope) {
+        LiveInterpreterController(appComponents.liveInterpreterService, appComponents.liveAudioStreamer, coroutineScope,
+            initialTranslationLanguages = listOf(localization.languageCode),
+            initialNativeTranslationLanguage = localization.languageCode)
+    }
+    LaunchedEffect(localization.languageCode, liveInterpreterController) {
+        liveInterpreterController.translations.useInterfaceLanguage(localization.languageCode)
+        liveInterpreterController.useInterfaceNativeTranslationLanguage(localization.languageCode)
+    }
+    androidx.compose.runtime.DisposableEffect(liveInterpreterController) {
+        onDispose { liveInterpreterController.cancel() }
+    }
+    val liveListening by remember(liveInterpreterController) {
+        liveInterpreterController.state.map {
+            it.phase == LiveInterpreterPhase.LISTENING || it.phase == LiveInterpreterPhase.STOPPING
+        }.distinctUntilChanged()
+    }.collectAsState(initial = false)
     val hapticFeedback = LocalHapticFeedback.current
 
     var recordingShortcut by remember { mutableStateOf(false) }
@@ -594,6 +615,7 @@ fun GromozekaAppContent(
 
                                 val tabRowComponent = @Composable {
                                     CustomTabRow(
+                                        liveListening = liveListening,
                                         selectedTabIndex = selectedTabIndex,
                                         showTabsAtBottom = currentUiSettings.showTabsAtBottom,
                                         isCompactLayout = isCompactLayout,
@@ -647,12 +669,8 @@ fun GromozekaAppContent(
                                             Box(modifier = Modifier.weight(1f)) {
                                                 if (currentTabIndex == -3) {
                                                     LiveInterpreterScreen(
-                                                        settings = currentSettings,
+                                                        controller = liveInterpreterController,
                                                         aiConfigurationProvider = appComponents.aiConfigurationService,
-                                                        liveInterpreterService = appComponents.liveInterpreterService,
-                                                        liveAudioStreamer = appComponents.liveAudioStreamer,
-                                                        clientSideSpeechToTextService = appComponents.clientSideSpeechToTextService,
-                                                        coroutineScope = coroutineScope,
                                                         isCompactLayout = isCompactLayout,
                                                     )
                                                 } else if (currentTab != null) {
