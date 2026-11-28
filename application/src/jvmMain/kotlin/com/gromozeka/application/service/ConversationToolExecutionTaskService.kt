@@ -83,7 +83,7 @@ class ConversationToolExecutionTaskService(
                 payload.executionToolNamesByCallId
             )
             val baseToolContext = ToolExecutionContext(
-                buildMap {
+                values = buildMap {
                     put(TOOL_CONTEXT_CONVERSATION_ID, conversationId.value)
                     put(TOOL_CONTEXT_THREAD_ID, conversation.currentThread.value)
                     put(TOOL_CONTEXT_TARGET_MESSAGE_ID, payload.rootUserMessageId.value)
@@ -97,6 +97,10 @@ class ConversationToolExecutionTaskService(
                     )
                 },
                 modelVisibleToolNames = payload.modelVisibleToolNames.toSet(),
+                commandJournalSource = com.gromozeka.domain.service.CommandJournal.Source(
+                    kind = com.gromozeka.domain.service.CommandJournal.Source.Kind.CONVERSATION_TOOL_CALL,
+                    sourceRuntimeTaskId = task.id,
+                ),
             )
             val toolContextsByTarget = mutableMapOf<ConversationRuntimeTaskTarget, ToolExecutionContext>()
             payload.executionTargetsByCallId.values.distinct().forEach { target ->

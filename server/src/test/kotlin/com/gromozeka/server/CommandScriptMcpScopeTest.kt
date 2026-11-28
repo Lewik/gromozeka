@@ -1,6 +1,7 @@
 package com.gromozeka.server
 
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.service.CommandJournal
 import com.gromozeka.domain.service.CommandTask
 import com.gromozeka.domain.tool.*
 import com.gromozeka.domain.tool.AiToolContextField.*
@@ -39,6 +40,8 @@ class CommandScriptMcpScopeTest {
             assertEquals(f.project.id.value, context.getString(TOOL_CONTEXT_PROJECT_ID))
             assertEquals(f.conversation.id.value, context.getString(TOOL_CONTEXT_CONVERSATION_ID))
             assertEquals(f.conversation.currentThread.value, context.getString(TOOL_CONTEXT_THREAD_ID))
+            assertEquals(CommandJournal.Source.Kind.COMMAND_SDK_MCP, context.commandJournalSource?.kind)
+            assertEquals(CommandTask.Id("script-command"), context.commandJournalSource?.parentCommandTaskId)
         }
     }
 

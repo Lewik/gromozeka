@@ -34,11 +34,11 @@ class PostgresContextMetadataRepairBackupTest {
 
         val elapsed = measureTimeMillis {
             val result = flyway.migrate()
-            assertEquals(listOf("104", "105"), result.migrations.map { it.version })
+            assertEquals(listOf("104", "105", "106"), result.migrations.map { it.version })
         }
 
         flyway.validate()
-        assertEquals("105", requireNotNull(flyway.info().current()).version.toString())
+        assertEquals("106", requireNotNull(flyway.info().current()).version.toString())
         assertEquals(messageCount, messageCount(source))
         assertEquals(0, metadataMismatchCount(source))
         println("CONTEXT_METADATA_BACKUP_REPAIR messages=$messageCount repaired=$staleBefore migration_ms=$elapsed")

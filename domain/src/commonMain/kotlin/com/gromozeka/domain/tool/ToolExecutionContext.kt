@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.Workspace
 import com.gromozeka.domain.model.WorkspaceMount
+import com.gromozeka.domain.service.CommandJournal
 import com.gromozeka.domain.service.ConversationRuntimeWorkerId
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -23,6 +24,7 @@ const val TOOL_CONTEXT_WORKER_ID = "workerId"
 const val TOOL_CONTEXT_AGENT_DEFINITION_ID = "agentDefinitionId"
 const val TOOL_CONTEXT_USER_ID = "userId"
 const val TOOL_CONTEXT_TOOL_NAME = "toolName"
+const val TOOL_CONTEXT_TOOL_CALL_ID = "toolCallId"
 const val TOOL_CONTEXT_VISUAL_ID = "visualId"
 const val TOOL_CONTEXT_MEMORY_RESULT_DELIVERY = "memoryResultDelivery"
 const val TOOL_CONTEXT_MEMORY_NAMESPACE = "memoryNamespace"
@@ -39,6 +41,7 @@ data class ToolExecutionContext(
     val workerRequest: WorkerRequestExecutionContext? = null,
     val asyncOrigin: com.gromozeka.domain.model.AsyncToolOrigin? = null,
     val modelVisibleToolNames: Set<String> = emptySet(),
+    val commandJournalSource: CommandJournal.Source? = null,
 ) {
     /** Only a start fence: never apply the delivery TTL to an already running command. */
     fun checkStartAllowed(now: Instant = Clock.System.now()) {
@@ -67,7 +70,7 @@ data class ToolExecutionContext(
 fun ToolExecutionContext.backgroundActivityLaunchReference(): com.gromozeka.domain.service.BackgroundActivityLaunchReference? =
     workerRequest?.let { request ->
         val callId = if (getString(TOOL_CONTEXT_VISUAL_ID) != null) null else {
-            requireNotNull(getString("toolCallId")?.takeIf(String::isNotBlank)) {
+            requireNotNull(getString(TOOL_CONTEXT_TOOL_CALL_ID)?.takeIf(String::isNotBlank)) {
                 "Worker tool launch requires its trusted tool call id"
             }
         }
