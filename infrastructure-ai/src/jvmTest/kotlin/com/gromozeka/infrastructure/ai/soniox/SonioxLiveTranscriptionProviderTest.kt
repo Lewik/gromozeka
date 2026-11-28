@@ -60,6 +60,27 @@ class SonioxLiveTranscriptionProviderTest {
     }
 
     @Test
+    fun `replaced provisional language does not contaminate final metadata`() {
+        val assembler = SonioxTranscriptAssembler()
+        val provisional = assembler.accept(listOf(
+            token("bon", false, 0, 200, "1", language = "fr"),
+        ))
+        assertEquals(
+            "fr",
+            provisional.filterIsInstance<LiveTranscriptionEvent.Transcript>().single().language,
+        )
+
+        val completed = assembler.accept(listOf(
+            token("hello", true, 0, 300, "1", language = "en"),
+            token(".", true, 300, 400, "1", language = "en"),
+        ))
+
+        val final = completed.filterIsInstance<LiveTranscriptionEvent.Transcript>().single { it.isFinal }
+        assertEquals("hello.", final.text)
+        assertEquals("en", final.language)
+    }
+
+    @Test
     fun `provisional speaker label may stabilize before finalization`() {
         val assembler = SonioxTranscriptAssembler()
         assembler.accept(listOf(token("draft", false, 0, 300, "1")))

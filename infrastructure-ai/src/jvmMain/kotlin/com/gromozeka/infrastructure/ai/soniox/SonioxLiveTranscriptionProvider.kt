@@ -579,10 +579,7 @@ internal class SonioxTranscriptAssembler(
         speakerId = token.speaker,
         startMillis = token.startMillis,
         endMillis = token.endMillis,
-    ).also {
-        it.languages.add(token.language)
-        active = it
-    }
+    ).also { active = it }
 
     private fun durationMillis(current: Active): Long =
         if (current.startMillis == null || current.endMillis == null) 0 else current.endMillis!! - current.startMillis!!
