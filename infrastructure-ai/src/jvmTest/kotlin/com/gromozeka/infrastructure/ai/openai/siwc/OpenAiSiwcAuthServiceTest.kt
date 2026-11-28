@@ -45,6 +45,7 @@ class OpenAiSiwcAuthServiceTest {
     private var jwksAvailable = true
     private var tokenFailure: TokenFailure? = null
     private var tokenBodyGate: CountDownLatch? = null
+    private var tokenScopes = "openid profile email offline_access resource.invoke chatgpt.tokens.use.direct"
     private var now = 1_800_000_000_000L
     private val server: HttpServer
     private val issuer: String
@@ -92,6 +93,7 @@ class OpenAiSiwcAuthServiceTest {
         assertEquals("issued_client", returningQuery["client_id"])
         assertFalse(returningQuery.containsKey("login_hint"))
         assertFalse(returningQuery.containsKey("agent_name_hint"))
+        assertEquals("consent", returningQuery["prompt"])
 
         now += 3_600_000L
         assertEquals("access-2", service.validAccessToken(Long.MAX_VALUE))
@@ -251,6 +253,48 @@ class OpenAiSiwcAuthServiceTest {
         }
     }
 
+    @Test
+    fun `loopback callback discards a sign-in without plan access and makes consent retryable`() {
+        val store = OpenAiSiwcCredentialStore(TestSettings(home))
+        val service = service(store)
+        val browser = OpenAiSiwcBrowserAuthService(service)
+        try {
+            tokenScopes = "openid profile email offline_access resource.invoke"
+            val authorization = browser.beginLogin().getOrThrow()
+            nonce = authorization.nonce
+            val callback = URI.create("${authorization.redirectUri}?" + listOf(
+                "code" to "one-time-code",
+                "state" to authorization.state,
+                "client_id" to "issued_client",
+            ).joinToString("&") { (name, value) ->
+                "$name=${java.net.URLEncoder.encode(value, StandardCharsets.UTF_8)}"
+            })
+
+            val response = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder(callback).GET().build(),
+                HttpResponse.BodyHandlers.ofString(),
+            )
+
+            assertEquals(403, response.statusCode())
+            assertTrue(response.body().contains("ChatGPT Plan Not Enabled"))
+            val discarded = assertNotNull(store.read())
+            assertEquals(OpenAiSiwcStoredState.Status.DISCONNECTED, discarded.status)
+            assertEquals("issued_client", discarded.clientId)
+            assertEquals(null, discarded.subject)
+            assertEquals(null, discarded.identity)
+            assertEquals(null, discarded.credentials)
+            assertTrue(discarded.scopes.isEmpty())
+
+            val retry = parseQuery(URI.create(service.prepareAuthorization(
+                "http://127.0.0.1:14555/auth/callback").url).rawQuery)
+            assertEquals("issued_client", retry["client_id"])
+            assertEquals("consent", retry["prompt"])
+            assertFalse(retry.containsKey("agent_name_hint"))
+        } finally {
+            browser.shutdown()
+        }
+    }
+
     private fun service(store: OpenAiSiwcCredentialStore) = OpenAiSiwcAuthService(
         store = store,
         issuer = issuer,
@@ -297,7 +341,7 @@ class OpenAiSiwcAuthServiceTest {
         val idToken = signedIdToken(clientId = "issued_client", nonce = if (call == 1) nonce else null)
         exchange.json(200, """{
             "token_type":"Bearer","access_token":"access-$call","refresh_token":"refresh-$call",
-            "expires_in":3600,"scope":"openid profile email offline_access resource.invoke chatgpt.tokens.use.direct",
+            "expires_in":3600,"scope":"$tokenScopes",
             "id_token":"$idToken"
         }""", tokenBodyGate)
     }

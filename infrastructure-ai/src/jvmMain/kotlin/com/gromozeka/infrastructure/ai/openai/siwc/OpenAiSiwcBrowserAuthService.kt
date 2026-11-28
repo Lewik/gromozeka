@@ -185,8 +185,18 @@ internal class OpenAiSiwcBrowserAuthService @Autowired constructor(
             log.info("ChatGPT SIWC sign-in completed")
             finish(login)
         } catch (error: Exception) {
-            log.error(error) { "ChatGPT SIWC sign-in failed" }
-            send(exchange, 500, "Sign-In Failed", html(error.message ?: "ChatGPT sign-in failed."))
+            if (error is OpenAiSiwcException && error.code == "sharing_not_enabled") {
+                log.warn("ChatGPT SIWC sign-in was discarded because plan access was not granted")
+                send(
+                    exchange,
+                    403,
+                    "ChatGPT Plan Not Enabled",
+                    "Gromozeka did not retain this sign-in because ChatGPT plan access was not granted.",
+                )
+            } else {
+                log.error(error) { "ChatGPT SIWC sign-in failed" }
+                send(exchange, 500, "Sign-In Failed", html(error.message ?: "ChatGPT sign-in failed."))
+            }
             finish(login)
         } finally {
             exchange.close()

@@ -96,6 +96,7 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
             "ext_agent_host_id" to store.hostId(),
         )
         if (clientId == null) parameters["agent_name_hint"] = APP_NAME
+        else parameters["prompt"] = "consent"
         val query = parameters.entries.joinToString("&") { (name, value) -> "${encoded(name)}=${encoded(value)}" }
         return Authorization(
             url = "${provider.authorizationEndpoint}?$query",
@@ -132,7 +133,24 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
         val idToken = token.idToken
             ?: throw OpenAiSiwcException("invalid_id_token", "ChatGPT did not return a verifiable identity.")
         val identity = verifyIdentity(idToken, clientId, authorization.nonce, nowMillis())
-        requireSharingScope(token.scopes)
+        if (SHARING_SCOPE !in token.scopes) {
+            store.update { current ->
+                require(current?.clientId == clientId) { "The saved SIWC registration changed" }
+                current.copy(
+                    status = OpenAiSiwcStoredState.Status.DISCONNECTED,
+                    scopes = emptyList(),
+                    subject = null,
+                    identity = null,
+                    credentials = null,
+                    pendingRefresh = null,
+                    savedAt = Instant.ofEpochMilli(nowMillis()).toString(),
+                ) to Unit
+            }
+            throw OpenAiSiwcException(
+                "sharing_not_enabled",
+                "ChatGPT plan access was not granted; the sign-in was not retained.",
+            )
+        }
         return store.update { current ->
             require(current?.clientId == clientId) { "The saved SIWC registration changed" }
             if (current.subject != null && current.subject != identity.subject) {
