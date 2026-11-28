@@ -134,17 +134,22 @@ class SettingsService(
     }
 
     private fun loadSettings(): Settings = if (settingsFile.exists()) {
-        try {
-            val settings = json.decodeFromString<Settings>(settingsFile.readText())
-            validateSettings(settings)
-            settings
-        } catch (e: Exception) {
-            log.info("Failed to load settings: ${e.message}")
-            createDefaultSettings()
+        val source = settingsFile.absolutePath
+        val content = try {
+            settingsFile.readText()
+        } catch (error: Exception) {
+            throw IllegalStateException("Failed to read settings from $source: ${error.message}", error)
         }
+        decodeSettings(content, source)
     } else {
         log.info("Settings file not found, creating defaults")
         createDefaultSettings()
+    }
+
+    internal fun decodeSettings(content: String, source: String): Settings = try {
+        json.decodeFromString<Settings>(content).also(::validateSettings)
+    } catch (error: Exception) {
+        throw IllegalStateException("Failed to load settings from $source: ${error.message}", error)
     }
 
     private fun createDefaultSettings(): Settings {

@@ -1010,9 +1010,6 @@ private fun ConnectionDialog(
                 ?: AiConnection.ClaudeCode.DEFAULT_PROCESS_IDLE_TTL_MINUTES.toString()
         )
     }
-    var voiceTranscriptionEnabled by remember {
-        mutableStateOf((existing as? AiConnection.ClaudeCode)?.voiceTranscriptionEnabled ?: false)
-    }
     val existingQuotaPacing = (existing as? AiSubscriptionConnection)?.quotaPacing
         ?: AiSubscriptionQuotaPacingPolicy()
     var quotaPacingEnabled by remember { mutableStateOf(existingQuotaPacing.enabled) }
@@ -1294,21 +1291,6 @@ private fun ConnectionDialog(
                     )
                 }
                 if (kind == AiConnection.Kind.CLAUDE_CODE) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Switch(
-                            checked = voiceTranscriptionEnabled,
-                            onCheckedChange = { voiceTranscriptionEnabled = it },
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Column {
-                            Text(translation.text("ai.connection.claude_voice"))
-                            Text(
-                                translation.text("ai.connection.claude_voice_description"),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
                     OutlinedTextField(
                         value = executablePath,
                         onValueChange = { executablePath = it },
@@ -1483,7 +1465,6 @@ private fun ConnectionDialog(
                             copilotSessionIdleTimeoutSeconds = copilotSessionIdleTimeoutSeconds,
                             maxCachedProcesses = maxCachedProcesses,
                             processIdleTtlMinutes = processIdleTtlMinutes,
-                            voiceTranscriptionEnabled = voiceTranscriptionEnabled,
                             quotaPacingEnabled = quotaPacingEnabled,
                             quotaReservePercent = quotaReservePercent,
                             quotaMinimumHeadroomPercent = quotaMinimumHeadroomPercent,
@@ -1535,7 +1516,6 @@ private fun createConnection(
     copilotSessionIdleTimeoutSeconds: String,
     maxCachedProcesses: String,
     processIdleTtlMinutes: String,
-    voiceTranscriptionEnabled: Boolean,
     quotaPacingEnabled: Boolean,
     quotaReservePercent: String,
     quotaMinimumHeadroomPercent: String,
@@ -1635,7 +1615,6 @@ private fun createConnection(
                 ?: error(translation.text("ai.validation.cached_process_limit_positive_integer")),
             processIdleTtlMinutes = processIdleTtlMinutes.toIntOrNull()
                 ?: error(translation.text("ai.validation.idle_ttl_positive_integer")),
-            voiceTranscriptionEnabled = voiceTranscriptionEnabled,
             quotaPacing = quotaPacing,
             executionTarget = executionTarget as? AiExecutionTarget.Worker
                 ?: error(translation.text("ai.validation.claude_worker_target")),

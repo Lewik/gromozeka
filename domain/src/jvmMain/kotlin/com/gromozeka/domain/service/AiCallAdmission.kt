@@ -71,10 +71,9 @@ abstract class AiCallAdmission {
         return AiAdmittedSession { finishChecked(lease, it) }
     }
 
-    suspend fun openSession(connection: AiConnection, purpose: String, backgroundSessionId: String? = null): AiAdmittedSession {
+    suspend fun openSession(connection: AiConnection, purpose: String): AiAdmittedSession {
         if (currentCoroutineContext()[HeldAiAdmission] != null) throw AiAdmissionException("Nested AI admission is not allowed")
-        val operation = AiAdmissionOperation(uuid7().toString(), AiAdmissionTarget.Connection(connection.id), purpose,
-            backgroundSessionId = backgroundSessionId)
+        val operation = AiAdmissionOperation(uuid7().toString(), AiAdmissionTarget.Connection(connection.id), purpose)
         val lease = acquireChecked(operation)
         return AiAdmittedSession { finishChecked(lease, it) }
     }

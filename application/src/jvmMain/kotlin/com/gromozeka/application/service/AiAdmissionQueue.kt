@@ -55,7 +55,6 @@ class AiAdmissionQueue(
         data class Acquire(val waiting: Waiting) : Command { override val reply get() = waiting.result }
         data class Cancel(val id: String, val recipient: CompletableDeferred<AiAdmissionLease>) : Command { override val reply = null }
         data class Release(val id: String, val feedback: AiTpmFeedback?, val refund: Boolean, override val reply: CompletableDeferred<Unit>) : Command
-        data class Accept(val id: String, override val reply: CompletableDeferred<Unit>) : Command
         data class Update(val catalog: AiCatalog, val revision: Long, override val reply: CompletableDeferred<Unit>) : Command
         data class FinishWorkerRequest(val workerId: String, val requestId: String,
             override val reply: CompletableDeferred<Unit>) : Command
@@ -185,11 +184,6 @@ class AiAdmissionQueue(
                             active.remove(command.id)?.operation?.tpm?.let(ledger::refundUndelivered)
                         }
                     }
-                    is Command.Accept -> {
-                        val lease = active[command.id]
-                        if (lease == null) completions[command.reply] = { command.reply.completeExceptionally(IllegalStateException("AI admission lease is unavailable")) }
-                        else { active[command.id] = lease.copy(accepted = true); completions[command.reply] = { command.reply.complete(Unit) } }
-                    }
                     is Command.Release -> {
                         recipients.remove(command.id)
                         active.remove(command.id)?.operation?.tpm?.let { reservation ->
@@ -203,8 +197,7 @@ class AiAdmissionQueue(
                         completions[command.reply] = { command.reply.complete(Unit) }
                     }
                     is Command.FinishWorkerRequest -> {
-                        active.values.filter { it.workerId == command.workerId && it.workerRequestId == command.requestId &&
-                            (it.operation.backgroundSessionId == null || !it.accepted) }
+                        active.values.filter { it.workerId == command.workerId && it.workerRequestId == command.requestId }
                             .map { it.operation.id }.forEach { active.remove(it); recipients.remove(it) }
                         val interrupted = waiting.values.filter { it.workerId == command.workerId && it.workerRequestId == command.requestId }
                         interrupted.forEach {
@@ -244,12 +237,6 @@ class AiAdmissionQueue(
             withContext(NonCancellable) { commands.trySend(Command.Cancel(operation.id, result)) }
             throw error
         }
-    }
-
-    suspend fun accept(id: String) {
-        val reply = CompletableDeferred<Unit>()
-        commands.send(Command.Accept(id, reply))
-        reply.await()
     }
 
     suspend fun release(id: String, feedback: AiTpmFeedback? = null, refund: Boolean = false) {

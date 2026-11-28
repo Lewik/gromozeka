@@ -8,6 +8,7 @@ import com.gromozeka.presentation.services.translation.localizedText
 import com.gromozeka.presentation.services.translation.localizedPlural
 import com.gromozeka.remote.protocol.RemoteAudioRecording
 import com.gromozeka.remote.protocol.RemoteLiveAudioChunk
+import com.gromozeka.shared.concurrency.DynamicConcurrencyGate
 import klog.KLoggers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -38,6 +39,7 @@ class DesktopLocalWhisperSpeechToTextService(
         .connectTimeout(Duration.ofSeconds(5))
         .build()
     private val serverLock = ReentrantLock()
+    private val concurrency = DynamicConcurrencyGate()
 
     @Volatile
     private var serverHandle: WhisperServerHandle? = null
@@ -93,40 +95,44 @@ class DesktopLocalWhisperSpeechToTextService(
         language: String,
         prompt: String?,
         sequenceNumber: Int?,
-    ): String = withContext(Dispatchers.IO) {
+    ): String {
         if (!isAvailable()) throw LocalizedTextException(localizedText("client.whisper.disabled"))
-        format.requireValid(audioData)
-
         val speechToText = settingsService.userProfile.speechSettings.speechToText
         val settings = speechToText.localWhisper
-        val requestedLanguage = language.trim().ifBlank { speechToText.mainLanguageCode }
-        val server = ensureServerStarted(settings)
-        val audioContext = settings.audioContextFramesForWavBytes(audioData.size)
-        val audioDurationSeconds = wavDurationSeconds(audioData.size)
+        return concurrency.withPermit(settings.maxConcurrentTranscriptions) {
+            withContext(Dispatchers.IO) {
+                format.requireValid(audioData)
+                val requestedLanguage = language.trim().ifBlank { speechToText.mainLanguageCode }
+                val server = ensureServerStarted(settings)
+                val audioContext = settings.audioContextFramesForWavBytes(audioData.size)
+                val audioDurationSeconds = wavDurationSeconds(audioData.size)
 
-        log.info {
-            "Client Local Whisper transcription requested: sequence=$sequenceNumber bytes=${audioData.size} " +
-                "format=$format language=$requestedLanguage audioCtx=$audioContext url=${server.inferenceUrl}"
+                log.info {
+                    "Client Local Whisper transcription requested: sequence=$sequenceNumber bytes=${audioData.size} " +
+                        "format=$format language=$requestedLanguage audioCtx=$audioContext url=${server.inferenceUrl}"
+                }
+
+                val startedAt = TimeSource.Monotonic.markNow()
+                val transcript = postInference(
+                    server = server,
+                    audioData = audioData,
+                    language = requestedLanguage,
+                    prompt = prompt,
+                    audioContext = audioContext,
+                    timeoutSeconds = settings.timeoutSeconds,
+                )
+                val elapsed = startedAt.elapsedNow()
+                val rtf = audioDurationSeconds?.takeIf { it > 0.0 }
+                    ?.let { elapsed.inWholeMilliseconds / 1000.0 / it }
+
+                log.info {
+                    "Client Local Whisper transcription completed: sequence=$sequenceNumber textChars=${transcript.length} " +
+                        "elapsedMs=${elapsed.inWholeMilliseconds} audioSec=${audioDurationSeconds?.formatSeconds()} rtf=${rtf?.formatRatio()}"
+                }
+
+                transcript
+            }
         }
-
-        val startedAt = TimeSource.Monotonic.markNow()
-        val transcript = postInference(
-            server = server,
-            audioData = audioData,
-            language = requestedLanguage,
-            prompt = prompt,
-            audioContext = audioContext,
-            timeoutSeconds = settings.timeoutSeconds,
-        )
-        val elapsed = startedAt.elapsedNow()
-        val rtf = audioDurationSeconds?.takeIf { it > 0.0 }?.let { elapsed.inWholeMilliseconds / 1000.0 / it }
-
-        log.info {
-            "Client Local Whisper transcription completed: sequence=$sequenceNumber textChars=${transcript.length} " +
-                "elapsedMs=${elapsed.inWholeMilliseconds} audioSec=${audioDurationSeconds?.formatSeconds()} rtf=${rtf?.formatRatio()}"
-        }
-
-        transcript
     }
 
     private fun ensureServerStarted(settings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper): WhisperServerHandle {

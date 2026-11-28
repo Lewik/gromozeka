@@ -140,7 +140,7 @@ internal fun MessageInput(
             pttState == PttState.RECORDING && previousPttState != PttState.RECORDING ->
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.ToggleOn)
 
-            pttState == PttState.TRANSCRIBING && previousPttState == PttState.RECORDING ->
+            pttState == PttState.FINALIZING && previousPttState == PttState.RECORDING ->
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.ToggleOff)
         }
         previousPttState = pttState
@@ -155,7 +155,7 @@ internal fun MessageInput(
     val liveActive = liveVoiceInputState != LiveVoiceInputState.IDLE
     val showLiveControl = liveActive || (showLiveVoiceButton && liveVoiceInputUnavailableReason == null)
     val pttAvailable = showPttButton && pttUnavailableReason == null
-    val showVoiceMode = pttAvailable || liveActive || pttState == PttState.RECORDING || pttState == PttState.PREPARING
+    val showVoiceMode = pttAvailable || liveActive || pttState != PttState.IDLE
     val mentionError = (resolveAgentMention(userInput, agentMentionCandidates) as? AgentMentionResolution.Invalid)
         ?.message?.resolve(localization)
     val inputError = messageSubmissionError?.takeIf(String::isNotBlank) ?: mentionError
@@ -365,8 +365,9 @@ internal fun MessageInput(
                         pttUnavailableReason,
                     ).joinToString("\n"),
                 ) {
-                    if (pttState == PttState.PREPARING) GromozekaLoadingIndicator(Modifier.size(controls.iconSize))
-                    else Icon(if (recording || !pttAvailable || pttState == PttState.TRANSCRIBING) Icons.Default.Stop else Icons.Default.Mic,
+                    if (pttState == PttState.PREPARING || pttState == PttState.FINALIZING) {
+                        GromozekaLoadingIndicator(Modifier.size(controls.iconSize))
+                    } else Icon(if (recording || !pttAvailable) Icons.Default.Stop else Icons.Default.Mic,
                         contentDescription = if (pttAvailable) localization.pushToTalkText else localization.runtime.stopButton,
                         modifier = Modifier.size(controls.iconSize))
                 }

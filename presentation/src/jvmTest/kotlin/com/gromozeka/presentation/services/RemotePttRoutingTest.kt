@@ -31,6 +31,65 @@ class RemotePttRoutingTest {
     @Test fun `cancelled preparation cannot replace the next recording draft target`() = cancelledPreparation(false)
     @Test fun `cancelled preparation cannot replace the next recording auto send target`() = cancelledPreparation(true)
 
+    @Test
+    fun `next recording starts while the previous transcription is still pending`() = runTest {
+        val fixture = VoiceInputTestFixture(backgroundScope, autoSend = false)
+        fixture.open("a")
+        fixture.open("b")
+        fixture.app.selectTab(0)
+        runCurrent()
+        val controller = fixture.controller(backgroundScope)
+        runCurrent()
+
+        controller.handlePTTEvent(PTTEvent.SINGLE_PUSH)
+        runCurrent()
+        controller.handlePTTRelease()
+        runCurrent()
+        val first = fixture.transcription.requests.receive()
+        assertEquals(PttState.IDLE, controller.state.value)
+        assertEquals(true, controller.canRecord)
+
+        fixture.app.selectTab(1)
+        runCurrent()
+        controller.handlePTTEvent(PTTEvent.SINGLE_PUSH)
+        runCurrent()
+        controller.handlePTTRelease()
+        runCurrent()
+        assertEquals(PttState.IDLE, controller.state.value)
+        assertEquals(true, controller.canRecord)
+        assertEquals(true, fixture.transcription.requests.tryReceive().isFailure)
+
+        first.complete("First phrase")
+        runCurrent()
+        val second = fixture.transcription.requests.receive()
+        second.complete("Second phrase")
+        runCurrent()
+
+        assertEquals("First phrase", fixture.app.tabs.value[0].userInput)
+        assertEquals("Second phrase", fixture.app.tabs.value[1].userInput)
+    }
+
+    @Test
+    fun `capture finalization failure returns to idle and remains visible`() = runTest {
+        val fixture = VoiceInputTestFixture(backgroundScope, autoSend = false)
+        fixture.open("a")
+        runCurrent()
+        fixture.recorder.stopFailure = IllegalStateException("synthetic failure")
+        val controller = fixture.controller(backgroundScope)
+        runCurrent()
+
+        controller.handlePTTEvent(PTTEvent.SINGLE_PUSH)
+        runCurrent()
+        controller.handlePTTRelease()
+        runCurrent()
+
+        assertEquals(PttState.IDLE, controller.state.value)
+        assertEquals(true, controller.canRecord)
+        assertNotNull(controller.statusMessage.value)
+        assertEquals(1, fixture.recorder.cancellations)
+        assertEquals(true, fixture.transcription.requests.tryReceive().isFailure)
+    }
+
     private fun missingTarget(autoSend: Boolean) = runTest {
         val fixture = VoiceInputTestFixture(backgroundScope, autoSend)
         fixture.open("a")
@@ -38,15 +97,13 @@ class RemotePttRoutingTest {
         runCurrent()
         val controller = fixture.controller(backgroundScope)
         runCurrent()
+
         controller.handlePTTEvent(PTTEvent.SINGLE_PUSH)
         runCurrent()
         fixture.app.selectTab(0)
         runCurrent()
-        val release = launch { controller.handlePTTRelease() }
-        runCurrent()
-        fixture.transcription.requests.receive().complete("Orphan phrase")
-        release.join()
-        runCurrent()
+
+        assertEquals(PttState.IDLE, controller.state.value)
         assertEquals("", fixture.app.tabs.value.single().userInput)
         assertEquals(emptyList(), fixture.submitted)
         assertNotNull(controller.statusMessage.value)
@@ -127,7 +184,6 @@ class RemotePttRoutingTest {
         if (switchPoint == SwitchPoint.CLOSED) {
             assertEquals("Original draft", original.userInput)
             assertEquals(emptyList(), fixture.submitted)
-            assertNotNull(controller.statusMessage.value)
             return@runTest
         }
         if (autoSend) {
@@ -141,16 +197,21 @@ class RemotePttRoutingTest {
 
     private enum class SwitchPoint { PREPARING, RECORDING, RECOGNITION, WORKER_RECORDING, CLOSED }
 
-    private fun VoiceInputTestFixture.controller(scope: CoroutineScope) = RemotePttController(
-        appViewModel = app,
-        audioRecorder = recorder,
-        audioTranscriptionService = transcription,
-        clientSideSpeechToTextService = NoOpClientSideSpeechToTextService,
-        ttsQueue = NoOpTtsQueue(),
-        systemAudioMuteService = NoOpSystemAudioMuteService,
-        settingsService = settings,
-        uiFeedbackController = UiFeedbackController(),
-        voiceInputDelivery = VoiceInputDelivery(app, settings, MessageInputContext.ClientPlatform.DESKTOP),
-        scope = scope,
-    )
+    private fun VoiceInputTestFixture.controller(scope: CoroutineScope): RemotePttController {
+        val delivery = VoiceInputDelivery(app, settings, MessageInputContext.ClientPlatform.DESKTOP)
+        val feedback = UiFeedbackController()
+        val queue = VoiceTranscriptionQueue(transcription, delivery, settings, feedback, scope)
+        return RemotePttController(
+            appViewModel = app,
+            audioRecorder = recorder,
+            audioTranscriptionService = transcription,
+            transcriptionQueue = queue,
+            ttsQueue = NoOpTtsQueue(),
+            systemAudioMuteService = NoOpSystemAudioMuteService,
+            settingsService = settings,
+            uiFeedbackController = feedback,
+            voiceInputDelivery = delivery,
+            scope = scope,
+        )
+    }
 }

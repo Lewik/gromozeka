@@ -97,6 +97,7 @@ internal class VoiceTestSettings(initial: Settings) : SettingsService {
 
 internal class VoiceTestRecorder : ClientAudioRecorder {
     var preparation = CompletableDeferred(Unit)
+    var stopFailure: Throwable? = null
     val chunks = MutableSharedFlow<ByteArray>(extraBufferCapacity = 32)
     var cancellations = 0
     override val supportsStreamingAudioChunks = true
@@ -104,25 +105,45 @@ internal class VoiceTestRecorder : ClientAudioRecorder {
         preparation.await()
         return object : ClientAudioRecordingSession {
             override val audioChunks = chunks
-            override suspend fun stop() = ClientRecordedAudio(SpeechPcmWav.encode(ByteArray(640)), SpeechAudioFormat.WAV_PCM_S16LE_MONO_16_KHZ)
+            override suspend fun stop(): ClientRecordedAudio {
+                stopFailure?.let { throw it }
+                return ClientRecordedAudio(
+                    SpeechPcmWav.encode(ByteArray(640)),
+                    SpeechAudioFormat.WAV_PCM_S16LE_MONO_16_KHZ,
+                )
+            }
             override fun cancel() { cancellations++ }
         }
     }
 }
 
 internal class VoiceTestTranscription : AudioTranscriptionService {
-    val requests = Channel<CompletableDeferred<String>>(Channel.UNLIMITED)
+    val requests = Channel<VoiceRecognitionRequest>(Channel.UNLIMITED)
     var preparation = CompletableDeferred(Unit)
-    override suspend fun transcribe(recording: RemoteAudioRecording) = recognize()
-    override suspend fun captureUnavailableReason(): SpeechAvailabilityFailure? = null
-    override suspend fun startCapture(sessionId: String) { preparation.await() }
-    override suspend fun stopCapture(sessionId: String) = recognize()
-    override suspend fun cancelCapture(sessionId: String) = Unit
-    private suspend fun recognize(): String {
+    override suspend fun transcribe(recording: RemoteAudioRecording): String {
         val result = CompletableDeferred<String>()
-        requests.send(result)
+        requests.send(VoiceRecognitionRequest(recording, result))
         return result.await()
     }
+    override suspend fun captureUnavailableReason(): SpeechAvailabilityFailure? = null
+    override suspend fun startCapture(sessionId: String) { preparation.await() }
+    override suspend fun stopCapture(sessionId: String) = RemoteAudioRecording(
+        sessionId = sessionId,
+        format = SpeechAudioFormat.WAV_PCM_S16LE_MONO_16_KHZ,
+        chunks = listOf(com.gromozeka.remote.protocol.RemoteAudioChunk(
+            sequenceNumber = 0,
+            data = SpeechPcmWav.encode(ByteArray(640)),
+        )),
+    )
+    override suspend fun cancelCapture(sessionId: String) = Unit
+}
+
+internal class VoiceRecognitionRequest(
+    val recording: RemoteAudioRecording,
+    private val result: CompletableDeferred<String>,
+) {
+    fun complete(text: String) = result.complete(text)
+    fun fail(error: Throwable) = result.completeExceptionally(error)
 }
 
 @Suppress("UNCHECKED_CAST")

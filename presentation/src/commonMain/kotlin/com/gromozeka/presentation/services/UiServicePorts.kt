@@ -194,7 +194,7 @@ enum class PttState {
     IDLE,
     PREPARING,
     RECORDING,
-    TRANSCRIBING,
+    FINALIZING,
 }
 
 enum class PTTEvent {

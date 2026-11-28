@@ -479,7 +479,6 @@ private data class AiSpeechTranscriptionRequestWire(
     val format: SpeechAudioFormat,
     val engine: UserProfile.SpeechSettings.SpeechToText.Engine,
     val selection: AiRuntimeSelection?,
-    val claudeCodeConnection: AiConnection.ClaudeCode?,
     val language: String?,
     val prompt: String?,
 )
@@ -636,7 +635,6 @@ private fun AiSpeechTranscriptionRequest.toWire(): AiSpeechTranscriptionRequestW
         format = format,
         engine = engine,
         selection = selection,
-        claudeCodeConnection = claudeCodeConnection,
         language = language,
         prompt = prompt,
     )
@@ -647,7 +645,6 @@ private fun AiSpeechTranscriptionRequestWire.toRuntime(): AiSpeechTranscriptionR
         format = format,
         engine = engine,
         selection = selection,
-        claudeCodeConnection = claudeCodeConnection,
         language = language,
         prompt = prompt,
     )

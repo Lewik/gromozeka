@@ -9,6 +9,7 @@ import com.gromozeka.domain.model.KeyboardShortcutKey
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class SettingsServiceTest {
     @Test
@@ -22,6 +23,16 @@ class SettingsServiceTest {
             service.saveSettings(Settings(userProfile = UserProfile(keyboardShortcuts = shortcuts)))
         }
         assertEquals(before, service.settings)
+    }
+
+    @Test
+    fun invalidExistingSettingsFailWithTheirSourceInsteadOfFallingBack() {
+        val error = assertFailsWith<IllegalStateException> {
+            SettingsService().decodeSettings("{not-json", "/tmp/broken-settings.json")
+        }
+
+        assertTrue(error.message.orEmpty().contains("/tmp/broken-settings.json"))
+        assertTrue(error.cause != null)
     }
 
     @Test

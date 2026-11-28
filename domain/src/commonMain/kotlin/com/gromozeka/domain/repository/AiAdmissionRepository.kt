@@ -10,7 +10,6 @@ interface AiAdmissionRepository {
     suspend fun findCompletion(id: String, workerId: String?): AiAdmissionCompletionResult?
     suspend fun loadTpmStates(): List<AiTpmState>
     suspend fun create(lease: AiAdmissionLease, tpmStates: List<AiTpmState> = emptyList())
-    suspend fun accept(id: String, workerId: String)
     suspend fun finish(id: String, workerId: String? = null, tpmStates: List<AiTpmState> = emptyList(), feedbackError: String? = null)
     suspend fun finishWorkerRequest(workerId: String, requestId: String)
 }

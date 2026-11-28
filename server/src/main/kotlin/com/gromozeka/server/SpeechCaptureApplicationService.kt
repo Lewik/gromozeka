@@ -1,15 +1,14 @@
 package com.gromozeka.server
 
+import com.gromozeka.domain.model.SpeechAudioSource
+import com.gromozeka.domain.model.SpeechAvailabilityException
 import com.gromozeka.domain.model.SpeechAvailabilityFailure
 import com.gromozeka.domain.model.SpeechAvailabilityFailure.Code
-import com.gromozeka.domain.model.SpeechAvailabilityException
-import com.gromozeka.domain.model.failSpeechAvailability
-import com.gromozeka.domain.model.SpeechAudioSource
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.WorkerAudioInput
 import com.gromozeka.domain.model.WorkerPermission
-import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.failSpeechAvailability
 import com.gromozeka.domain.model.ai.AiExecutionTarget
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.service.AiConfigurationProvider
@@ -24,11 +23,11 @@ import com.gromozeka.domain.service.WorkerAudioCaptureRequest
 import com.gromozeka.domain.service.WorkerAudioCaptureResult
 import com.gromozeka.domain.service.WorkerCatalogEntry
 import com.gromozeka.domain.service.WorkerCatalogService
-import com.gromozeka.domain.service.WorkerOperatingSystem
-import com.gromozeka.infrastructure.ai.openai.SttService
-import com.gromozeka.remote.protocol.AudioTranscriptionResponse
+import com.gromozeka.remote.protocol.RemoteAudioChunk
+import com.gromozeka.remote.protocol.RemoteAudioRecording
 import com.gromozeka.remote.protocol.SpeechCaptureAvailabilityResponse
 import com.gromozeka.remote.protocol.SpeechCaptureStartedResponse
+import com.gromozeka.remote.protocol.SpeechCaptureStoppedResponse
 import com.gromozeka.remote.protocol.StartSpeechCaptureRequest
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
@@ -57,19 +56,19 @@ class SpeechCaptureApplicationService(
     private val workerCatalogService: WorkerCatalogService,
     private val workerTargetResolver: ConversationRuntimeWorkerTargetResolver,
     private val workerAudioCaptureClient: WorkerAudioCaptureClient,
-    private val sttService: SttService,
 ) {
     private val log = KLoggers.logger(this)
     private val mutex = Mutex()
     private val sessions = mutableMapOf<SpeechCaptureSessionKey, ActiveSpeechCapture>()
+    private val terminalSessions = mutableSetOf<SpeechCaptureSessionKey>()
     private val cancelledBeforeStart = mutableMapOf<SpeechCaptureSessionKey, Long>()
 
     internal suspend fun availability(user: User): SpeechCaptureAvailabilityResponse =
         runCatching {
             val settings = settingsProvider.userProfile.speechSettings.speechToText
             when (settings.audioSource) {
-                SpeechAudioSource.CurrentClient -> validateClientAudioRoute(user, settings)
-                is SpeechAudioSource.WorkerInput -> prepareRoute(resolveRoute(user))
+                SpeechAudioSource.CurrentClient -> requireProcessingTarget(user, settings.processingTarget())
+                is SpeechAudioSource.WorkerInput -> resolveRoute(user)
             }
         }.fold(
             onSuccess = { SpeechCaptureAvailabilityResponse(available = true) },
@@ -83,12 +82,11 @@ class SpeechCaptureApplicationService(
             },
         )
 
-    internal suspend fun requireClientAudioRoute(user: User) {
-        val settings = settingsProvider.userProfile.speechSettings.speechToText
-        if (settings.audioSource != SpeechAudioSource.CurrentClient) {
-            failSpeechAvailability(Code.CLIENT_AUDIO_UPLOAD_UNAVAILABLE)
-        }
-        validateClientAudioRoute(user, settings)
+    internal suspend fun requireTranscriptionRoute(user: User) {
+        requireProcessingTarget(
+            user,
+            settingsProvider.userProfile.speechSettings.speechToText.processingTarget(),
+        )
     }
 
     internal suspend fun start(
@@ -115,13 +113,16 @@ class SpeechCaptureApplicationService(
             val result = workerAudioCaptureClient.execute(
                 WorkerAudioCaptureRequest(
                     target = route.worker,
-                    command = route.startCommand(session.workerSessionId),
+                    command = WorkerAudioCaptureRequest.Command.StartAudio(
+                        session.workerSessionId,
+                        route.inputId,
+                    ),
                 )
             )
             require(result.status == WorkerAudioCaptureResult.Status.STARTED) {
                 "Worker returned ${result.status} while starting speech capture"
             }
-            check(mutex.withLock { sessions[key] === session }) {
+            check(mutex.withLock { sessions[key] === session && key !in terminalSessions }) {
                 "Speech capture was cancelled while starting: ${request.sessionId}"
             }
             return SpeechCaptureStartedResponse(request.sessionId)
@@ -137,32 +138,29 @@ class SpeechCaptureApplicationService(
     internal suspend fun stop(
         owner: SpeechCaptureSessionOwner,
         sessionId: String,
-    ): AudioTranscriptionResponse {
-        val session = removeOwned(owner, sessionId)
-        val result = workerAudioCaptureClient.execute(
-            WorkerAudioCaptureRequest(
-                target = session.route.worker,
-                command = WorkerAudioCaptureRequest.Command.Stop(session.workerSessionId),
-            )
-        )
-        val text = when (session.route) {
-            is SpeechCaptureRoute.DirectClaudeCode -> {
-                require(result.status == WorkerAudioCaptureResult.Status.TRANSCRIBED) {
-                    "Worker returned ${result.status} for direct Claude Code speech capture"
-                }
-                requireNotNull(result.transcript)
-            }
-            is SpeechCaptureRoute.RecordAudio -> {
-                require(result.status == WorkerAudioCaptureResult.Status.AUDIO_CAPTURED) {
-                    "Worker returned ${result.status} for recorded speech capture"
-                }
-                sttService.transcribe(
-                    audioData = requireNotNull(result.audioData),
-                    format = requireNotNull(result.format),
+    ): SpeechCaptureStoppedResponse {
+        val claimed = claimOwned(owner, sessionId)
+        try {
+            val result = workerAudioCaptureClient.execute(
+                WorkerAudioCaptureRequest(
+                    target = claimed.session.route.worker,
+                    command = WorkerAudioCaptureRequest.Command.Stop(claimed.session.workerSessionId),
                 )
+            )
+            require(result.status == WorkerAudioCaptureResult.Status.AUDIO_CAPTURED) {
+                "Worker returned ${result.status} while stopping speech capture"
             }
+            val recording = RemoteAudioRecording(
+                sessionId = sessionId,
+                format = requireNotNull(result.format),
+                chunks = listOf(RemoteAudioChunk(sequenceNumber = 0, data = requireNotNull(result.audioData))),
+            )
+            finishClaim(claimed, removeSession = true)
+            return SpeechCaptureStoppedResponse(recording)
+        } catch (error: Throwable) {
+            finishClaim(claimed, removeSession = false)
+            throw error
         }
-        return AudioTranscriptionResponse(text.trim())
     }
 
     internal suspend fun cancel(
@@ -170,16 +168,29 @@ class SpeechCaptureApplicationService(
         sessionId: String,
     ): Boolean {
         val key = SpeechCaptureSessionKey(owner, sessionId)
-        val session = mutex.withLock {
+        val claimed = mutex.withLock {
             val now = System.nanoTime()
             removeExpiredEarlyCancellations(now)
-            sessions.remove(key)?.also { cancelledBeforeStart.remove(key) } ?: run {
+            val session = sessions[key]
+            if (session == null) {
                 cancelledBeforeStart[key] = now + EARLY_CANCELLATION_TTL.inWholeNanoseconds
                 null
+            } else {
+                check(terminalSessions.add(key)) {
+                    "Speech capture terminal operation is already running: $sessionId"
+                }
+                cancelledBeforeStart.remove(key)
+                ClaimedSpeechCapture(key, session)
             }
         }
-        if (session != null) {
-            cancelWorkerSession(session.workerSessionId, session.route.worker)
+        if (claimed != null) {
+            try {
+                cancelWorkerSession(claimed.session.workerSessionId, claimed.session.route.worker)
+                finishClaim(claimed, removeSession = true)
+            } catch (error: Throwable) {
+                finishClaim(claimed, removeSession = false)
+                throw error
+            }
         }
         return true
     }
@@ -187,6 +198,7 @@ class SpeechCaptureApplicationService(
     internal suspend fun stopOwnedBy(owner: SpeechCaptureSessionOwner): Int {
         val owned = mutex.withLock {
             cancelledBeforeStart.keys.removeAll { it.owner == owner }
+            terminalSessions.removeAll { it.owner == owner }
             sessions.entries
                 .filter { it.key.owner == owner }
                 .map { it.key to it.value }
@@ -219,165 +231,85 @@ class SpeechCaptureApplicationService(
             source.workerId,
             ConversationRuntimeCapability.AUDIO_CAPTURE,
         )
-
-        val claudeConnection = settings.claudeCodeConnection()
-        if (
-            claudeConnection != null &&
-            source.inputId == WorkerAudioInput.SystemDefault.id &&
-            claudeConnection.executionTarget == AiExecutionTarget.Worker(source.workerId.value)
-        ) {
-            requireDirectClaudeTargetReady(sourceWorker, claudeConnection)
-            return SpeechCaptureRoute.DirectClaudeCode(
-                worker = sourceIdentity,
-                connection = claudeConnection,
-                language = settings.mainLanguageCode,
-            )
-        }
-
         if (sourceWorker.environmentProfile.audioInputs.none { it.id == source.inputId }) {
-            failSpeechAvailability(Code.AUDIO_INPUT_UNAVAILABLE,
-                "worker" to source.workerId.value, "input" to source.inputId.value)
-        }
-
-        val processingTarget = settings.processingTarget(claudeConnection)
-        requireProcessingTarget(user, processingTarget, workers)
-        if (claudeConnection != null) {
-            requireClaudeForwardingTargetReady(processingTarget, workers, claudeConnection)
-        }
-        return SpeechCaptureRoute.RecordAudio(
-            worker = sourceIdentity,
-            inputId = source.inputId,
-        )
-    }
-
-    private suspend fun prepareRoute(route: SpeechCaptureRoute) {
-        if (route !is SpeechCaptureRoute.DirectClaudeCode) return
-        val result = workerAudioCaptureClient.execute(
-            WorkerAudioCaptureRequest(
-                target = route.worker,
-                command = WorkerAudioCaptureRequest.Command.PrepareClaudeCodeMicrophone(
-                    connection = route.connection,
-                    language = route.language,
-                ),
+            failSpeechAvailability(
+                Code.AUDIO_INPUT_UNAVAILABLE,
+                "worker" to source.workerId.value,
+                "input" to source.inputId.value,
             )
-        )
-        require(result.status == WorkerAudioCaptureResult.Status.PREPARED) {
-            "Worker returned ${result.status} while preparing Claude Code speech capture"
         }
+
+        requireProcessingTarget(user, settings.processingTarget(), workers)
+        return SpeechCaptureRoute(sourceIdentity, source.inputId)
     }
 
-    private suspend fun validateClientAudioRoute(
-        user: User,
-        settings: UserProfile.SpeechSettings.SpeechToText,
-    ) {
-        val workers = workerCatalogService.listWorkers()
-        val claudeConnection = settings.claudeCodeConnection()
-        val processingTarget = settings.processingTarget(claudeConnection)
-        requireProcessingTarget(user, processingTarget, workers)
-        if (claudeConnection != null) {
-            requireClaudeForwardingTargetReady(processingTarget, workers, claudeConnection)
-        }
-    }
-
-    private fun UserProfile.SpeechSettings.SpeechToText.claudeCodeConnection(): AiConnection.ClaudeCode? {
-        if (engine != UserProfile.SpeechSettings.SpeechToText.Engine.CLAUDE_CODE) return null
-        val connectionId = claudeCodeConnectionId
-            ?: failSpeechAvailability(Code.CLAUDE_CONNECTION_NOT_CONFIGURED)
-        val connection = aiConfigurationProvider.catalog.connections
-            .singleOrNull { it.id == connectionId } as? AiConnection.ClaudeCode
-            ?: failSpeechAvailability(Code.CLAUDE_CONNECTION_NOT_FOUND, "connection" to connectionId.value)
-        if (!connection.enabled) failSpeechAvailability(Code.CONNECTION_DISABLED, "connection" to connection.id.value)
-        if (!connection.voiceTranscriptionEnabled) {
-            failSpeechAvailability(Code.CLAUDE_VOICE_DISABLED, "connection" to connection.id.value)
-        }
-        return connection
-    }
-
-    private fun UserProfile.SpeechSettings.SpeechToText.processingTarget(
-        claudeConnection: AiConnection.ClaudeCode?,
-    ): AiExecutionTarget = when (engine) {
+    private fun UserProfile.SpeechSettings.SpeechToText.processingTarget(): AiExecutionTarget = when (engine) {
         UserProfile.SpeechSettings.SpeechToText.Engine.OPENAI_API ->
             aiConfigurationProvider.resolveAiRuntime(AiRuntimeAssignment.Purpose.SPEECH_TO_TEXT)
                 .connection.executionTarget
         UserProfile.SpeechSettings.SpeechToText.Engine.LOCAL_WHISPER -> localWhisper.executionTarget
-        UserProfile.SpeechSettings.SpeechToText.Engine.CLAUDE_CODE ->
-            requireNotNull(claudeConnection).executionTarget
     }
 
     private suspend fun requireProcessingTarget(
         user: User,
         target: AiExecutionTarget,
-        workers: List<WorkerCatalogEntry>,
+        workers: List<WorkerCatalogEntry>? = null,
     ) {
         if (target !is AiExecutionTarget.Worker) return
+        val availableWorkers = workers ?: workerCatalogService.listWorkers()
         val workerId = ConversationRuntimeWorkerId(target.workerId)
         workerAccessService.requirePermission(user, workerId, WorkerPermission.USE)
-        if (workers.none { it.workerId == workerId }) {
+        if (availableWorkers.none { it.workerId == workerId }) {
             failSpeechAvailability(Code.TRANSCRIPTION_WORKER_NOT_FOUND, "worker" to workerId.value)
         }
         workerTargetResolver.requireOnline(workerId, ConversationRuntimeCapability.AI_REQUEST_RESPONSE)
     }
 
-    private fun requireDirectClaudeTargetReady(
-        worker: WorkerCatalogEntry,
-        connection: AiConnection.ClaudeCode,
-    ) {
-        if (worker.environmentProfile.operatingSystem.family !in CLAUDE_VOICE_OPERATING_SYSTEMS) {
-            failSpeechAvailability(Code.CLAUDE_DIRECT_UNSUPPORTED_PLATFORM,
-                "platform" to worker.environmentProfile.operatingSystem.family)
-        }
-        requireWorkerExecutable(worker, connection.executablePath)
-    }
-
-    private fun requireClaudeForwardingTargetReady(
-        target: AiExecutionTarget,
-        workers: List<WorkerCatalogEntry>,
-        connection: AiConnection.ClaudeCode,
-    ) {
-        val workerTarget = target as? AiExecutionTarget.Worker
-            ?: failSpeechAvailability(Code.CLAUDE_REQUIRES_WORKER)
-        val worker = workers.singleOrNull { it.workerId.value == workerTarget.workerId }
-            ?: failSpeechAvailability(Code.TRANSCRIPTION_WORKER_NOT_FOUND, "worker" to workerTarget.workerId)
-        if (worker.environmentProfile.operatingSystem.family != WorkerOperatingSystem.Family.LINUX) {
-            failSpeechAvailability(Code.CLAUDE_FORWARDING_REQUIRES_LINUX)
-        }
-        requireWorkerExecutable(worker, connection.executablePath)
-        CLAUDE_FORWARDING_EXECUTABLES.forEach { executable ->
-            requireWorkerExecutable(worker, executable)
-        }
-    }
-
-    private fun requireWorkerExecutable(
-        worker: WorkerCatalogEntry,
-        executablePath: String,
-    ) {
-        if (executablePath.hasPathSeparator()) return
-        if (executablePath !in worker.environmentProfile.availableExecutables) {
-            failSpeechAvailability(Code.EXECUTABLE_UNAVAILABLE,
-                "worker" to worker.workerId.value, "executable" to executablePath)
-        }
-    }
-
-    private fun String.hasPathSeparator(): Boolean = '/' in this || '\\' in this
-
-    private suspend fun removeOwned(
+    private suspend fun claimOwned(
         owner: SpeechCaptureSessionOwner,
         sessionId: String,
-    ): ActiveSpeechCapture = mutex.withLock {
+    ): ClaimedSpeechCapture = mutex.withLock {
         val key = SpeechCaptureSessionKey(owner, sessionId)
         val session = sessions[key]
             ?: error("Speech capture session not found: $sessionId")
-        check(sessions.remove(key, session)) { "Speech capture session changed concurrently" }
-        session
+        check(terminalSessions.add(key)) {
+            "Speech capture terminal operation is already running: $sessionId"
+        }
+        ClaimedSpeechCapture(key, session)
+    }
+
+    private suspend fun finishClaim(
+        claimed: ClaimedSpeechCapture,
+        removeSession: Boolean,
+    ) = withContext(NonCancellable) {
+        mutex.withLock {
+            terminalSessions.remove(claimed.key)
+            if (removeSession) sessions.remove(claimed.key, claimed.session)
+        }
     }
 
     private suspend fun cleanupFailedStart(
         key: SpeechCaptureSessionKey,
         session: ActiveSpeechCapture,
     ) = withContext(NonCancellable) {
-        val removed = mutex.withLock { sessions.remove(key, session) }
-        if (removed) {
-            runCatching { cancelWorkerSession(session.workerSessionId, session.route.worker) }
+        val claimed = mutex.withLock {
+            if (sessions[key] === session && terminalSessions.add(key)) {
+                ClaimedSpeechCapture(key, session)
+            } else {
+                null
+            }
+        } ?: return@withContext
+
+        try {
+            cancelWorkerSession(session.workerSessionId, session.route.worker)
+            finishClaim(claimed, removeSession = true)
+        } catch (error: Throwable) {
+            finishClaim(claimed, removeSession = false)
+            log.warn(error) {
+                "Failed to cancel speech capture after start failure: " +
+                    "session=${key.clientSessionId} worker=${session.route.worker.workerId.value} " +
+                    "error=${error.message}"
+            }
         }
     }
 
@@ -410,39 +342,17 @@ class SpeechCaptureApplicationService(
         val workerSessionId: String,
     )
 
-    private sealed interface SpeechCaptureRoute {
-        val worker: ConversationRuntimeWorkerIdentity
-        fun startCommand(sessionId: String): WorkerAudioCaptureRequest.Command
+    private data class ClaimedSpeechCapture(
+        val key: SpeechCaptureSessionKey,
+        val session: ActiveSpeechCapture,
+    )
 
-        data class RecordAudio(
-            override val worker: ConversationRuntimeWorkerIdentity,
-            val inputId: WorkerAudioInput.Id,
-        ) : SpeechCaptureRoute {
-            override fun startCommand(sessionId: String) =
-                WorkerAudioCaptureRequest.Command.StartAudio(sessionId, inputId)
-        }
-
-        data class DirectClaudeCode(
-            override val worker: ConversationRuntimeWorkerIdentity,
-            val connection: AiConnection.ClaudeCode,
-            val language: String?,
-        ) : SpeechCaptureRoute {
-            override fun startCommand(sessionId: String) =
-                WorkerAudioCaptureRequest.Command.StartClaudeCodeMicrophone(
-                    sessionId = sessionId,
-                    connection = connection,
-                    language = language,
-                )
-        }
-    }
+    private data class SpeechCaptureRoute(
+        val worker: ConversationRuntimeWorkerIdentity,
+        val inputId: WorkerAudioInput.Id,
+    )
 
     private companion object {
         val EARLY_CANCELLATION_TTL = 3.minutes
-        val CLAUDE_VOICE_OPERATING_SYSTEMS = setOf(
-            WorkerOperatingSystem.Family.LINUX,
-            WorkerOperatingSystem.Family.MACOS,
-            WorkerOperatingSystem.Family.WINDOWS,
-        )
-        val CLAUDE_FORWARDING_EXECUTABLES = listOf("pactl", "paplay")
     }
 }

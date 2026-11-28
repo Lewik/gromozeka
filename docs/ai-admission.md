@@ -86,20 +86,12 @@ retried on reconnect. The model action is never repeated. Invalid protocol,
 ownership or journal state fails explicitly rather than selecting another
 executor or silently granting local capacity.
 
-A detached Claude microphone capture additionally performs `Accept` after its
-grant is journaled. Only then may capture start. The Server validates its session
-and connection against the original start command. An accepted background lease
-survives that start command's result; an unaccepted grant does not. This handoff
-avoids both premature release and a leaked grant whose reply never reached the
-Worker.
-
-Only an actual Worker response can retire the request's finite/unaccepted
-leases. A Server timeout, synthetic unknown outcome, disconnect, or heartbeat
-loss is not proof of completion. Accepted background leases require explicit
-completion or Worker process recovery. On restart, exclusive journal ownership
-allows that Worker to report prior-process leases as `OWNER_STOPPED`; it does not
-resume their inference. The Server restores remote leases across its restart;
-old Server-local leases belong to the departed process and are removed.
+Only an actual Worker response can retire leases owned by that request. A
+Server timeout, synthetic unknown outcome, disconnect, or heartbeat loss is not
+proof of completion. On restart, exclusive journal ownership allows that Worker
+to report prior-process leases as `OWNER_STOPPED`; it does not resume their
+inference. The Server restores remote leases across its restart; old Server-local
+leases belong to the departed process and are removed.
 
 Transport closure proves the controlled local operation ended, not that upstream
 billing/computation stopped. Permanent loss of a Worker journal cannot be solved
@@ -112,6 +104,10 @@ Migration V83 creates the default group and moves **all existing connections** t
 it. Old `httpSettings.maxConcurrentCalls` values are deliberately discarded, not
 converted into per-connection groups or preserved as another limit. The shared
 default limit is 4. Operators can explicitly split groups afterwards.
+
+Migration V93 discards outstanding detached voice-capture leases, then removes
+the former handoff columns. Every remaining Worker lease is owned by its finite
+Worker request.
 
 Migration V84 transfers those connection assignments to their model configurations
 and removes the old connection field. It also adds TPM groups/state/receipts.

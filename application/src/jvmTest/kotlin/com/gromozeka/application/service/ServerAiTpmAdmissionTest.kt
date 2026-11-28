@@ -76,13 +76,12 @@ class ServerAiTpmAdmissionTest {
         }
         override suspend fun loadTpmStates() = states
         override suspend fun create(lease: AiAdmissionLease, tpmStates: List<AiTpmState>) { check(leases.putIfAbsent(lease.operation.id, lease) == null); states = tpmStates }
-        override suspend fun accept(id: String, workerId: String) { leases.compute(id) { _, lease -> requireNotNull(lease).also { require(it.workerId == workerId) }.copy(accepted = true) } }
         override suspend fun finish(id: String, workerId: String?, tpmStates: List<AiTpmState>, feedbackError: String?) {
             leases.remove(id)?.let { require(it.workerId == workerId); completions[id] = workerId to AiAdmissionCompletionResult(feedbackError) }
             states = tpmStates
         }
         override suspend fun finishWorkerRequest(workerId: String, requestId: String) {
-            leases.values.filter { it.workerId == workerId && it.workerRequestId == requestId && (it.operation.backgroundSessionId == null || !it.accepted) }
+            leases.values.filter { it.workerId == workerId && it.workerRequestId == requestId }
                 .forEach { leases.remove(it.operation.id) }
         }
     }

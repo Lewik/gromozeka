@@ -119,18 +119,21 @@ class AiAdmissionQueueTest {
     }
 
     @Test
-    fun `restored remote leases retain capacity and successful start does not finish background capture`() = runBlocking {
+    fun `finishing a Worker request releases its restored remote lease`() = runBlocking {
         withTimeout(10_000) {
             supervisorScope {
-                val lease = AiAdmissionLease(operation("capture", "a").copy(backgroundSessionId = "capture-session"),
-                    AiConcurrencyGroup.DEFAULT_ID, Clock.System.now(), "worker", "start-request", accepted = true)
+                val lease = AiAdmissionLease(
+                    operation("capture", "a"),
+                    AiConcurrencyGroup.DEFAULT_ID,
+                    Clock.System.now(),
+                    "worker",
+                    "start-request",
+                )
                 val queue = AiAdmissionQueue(this, catalog(), listOf(lease))
                 try {
                     val waiting = async { queue.acquire(operation("next", "b")) }
                     queue.snapshot.first { it.waiting.isNotEmpty() }
                     queue.finishWorkerRequest("worker", "start-request")
-                    assertFalse(waiting.isCompleted)
-                    queue.release("capture")
                     assertEquals("next", waiting.await().operation.id)
                     queue.release("next")
                 } finally { queue.close() }

@@ -45,7 +45,6 @@ androidx-activity-compose = "1.13.0"
 androidx-car-app = "1.7.0"
 androidx-health-connect = "1.1.0"
 bouncycastle = "1.85.2"
-pty4j = "0.13.12"
 jna = "5.19.1"
 qrose = "1.1.2"
 json-schema-validator = "0.5.5"
@@ -96,7 +95,6 @@ httpclient5 = { module = "org.apache.httpcomponents.client5:httpclient5" }
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test", version.ref = "spring-boot" }
 spring-security-crypto = { module = "org.springframework.security:spring-security-crypto" }
 bouncycastle-provider = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
-pty4j = { module = "org.jetbrains.pty4j:pty4j", version.ref = "pty4j" }
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
 qrose = { module = "io.github.alexzhirkevich:qrose", version.ref = "qrose" }
