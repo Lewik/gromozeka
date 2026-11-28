@@ -63,6 +63,7 @@ class AiContextMeasurementsTest {
         val stored = persisted(AiContextMeasurements.record(runtime, initial, response))
         val measurement = stored.providerMetadata.getValue("gromozekaContextMeasurement").jsonObject
         for (modified in listOf(JsonObject(measurement - "estimatorId" - "version"),
+            JsonObject(measurement + ("version" to JsonPrimitive(2))),
             JsonObject(measurement + ("estimatorId" to JsonPrimitive("different-projection"))))) {
             val source = stored.copy(providerMetadata = JsonObject(stored.providerMetadata + ("gromozekaContextMeasurement" to modified)))
             val next = initial.copy(messages = initial.messages + source)
@@ -149,6 +150,26 @@ class AiContextMeasurementsTest {
         val unencodable = initial.copy(messages = listOf(initial.messages.single().copy(content = listOf(invalidNumber))))
         assertFailsWith<SerializationException> { AiRequestTokenEstimate.input(unencodable) }
         assertSame(response, AiContextMeasurements.record(runtime, unencodable, response))
+    }
+
+    @Test fun imageBase64DoesNotBecomePortableTextTokens() {
+        fun request(data: String) = initial.copy(messages = listOf(initial.messages.single().copy(content = listOf(
+            Conversation.Message.ContentItem.ToolResult(
+                Conversation.Message.ContentItem.ToolCall.Id("screenshot"),
+                "grz_capture_screenshot",
+                listOf(Conversation.Message.ContentItem.ToolResult.Data.Base64Data(
+                    data,
+                    Conversation.Message.MediaType.IMAGE_PNG,
+                    "screenshot.png",
+                )),
+            ),
+        ))))
+
+        val small = AiRequestTokenEstimate.input(request("AAAA"))
+        val large = AiRequestTokenEstimate.input(request("A".repeat(1_000_000)))
+
+        assertEquals(small, large)
+        assertTrue(large < 20_000)
     }
 
     @Test fun editsToCoveredInputOrOutputInvalidateEvenWithTheSameIds() {

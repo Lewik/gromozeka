@@ -46,7 +46,7 @@ data class AiContextMeasurement(
 
     companion object {
         const val KEY = "gromozekaContextMeasurement"
-        private const val VERSION = 2
+        private const val VERSION = 3
         private val json = Json { encodeDefaults = true }
 
         fun prepare(runtime: ResolvedAiRuntime, request: AiRuntimeRequest): AiRuntimeRequest = request.copy(
