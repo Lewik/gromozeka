@@ -11,6 +11,11 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentSkipListMap
 import kotlin.jvm.optionals.getOrNull
 
+internal class OpenAiResponsesStreamException internal constructor(
+    val code: String?,
+    val parameter: String?,
+) : RuntimeException("Responses stream returned an error event")
+
 /** Collect internally; no partial text or tool call escapes before a terminal response. */
 internal fun collectOpenAiResponsesStream(client: OpenAIClient, params: ResponseCreateParams, timeout: Duration): CompletableFuture<Response> {
     val accumulator = ResponseAccumulator.create()
@@ -19,7 +24,13 @@ internal fun collectOpenAiResponsesStream(client: OpenAIClient, params: Response
     val stream = client.async().responses().createStreaming(params, RequestOptions.builder().timeout(timeout).build())
     return try {
         stream.subscribe { event ->
-            check(!event.isError()) { "Responses stream returned an error event" }
+            if (event.isError()) {
+                val error = event.asError()
+                throw OpenAiResponsesStreamException(
+                    code = error.code().getOrNull().safeErrorField(),
+                    parameter = error.param().getOrNull().safeErrorField(),
+                )
+            }
             event.outputItemDone().getOrNull()?.let { completedOutput[it.outputIndex()] = it.item() }
             accumulator.accumulate(event)
             if (event.isCompleted() || event.isIncomplete() || event.isFailed()) {
@@ -42,3 +53,9 @@ internal fun collectOpenAiResponsesStream(client: OpenAIClient, params: Response
         throw error
     }
 }
+
+private fun String?.safeErrorField(): String? = this?.takeIf {
+    it.matches(SAFE_ERROR_FIELD)
+}
+
+private val SAFE_ERROR_FIELD = Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,127}")

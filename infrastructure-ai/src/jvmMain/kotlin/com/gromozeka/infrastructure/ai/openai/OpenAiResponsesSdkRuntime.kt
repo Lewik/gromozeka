@@ -154,7 +154,7 @@ internal class OpenAiResponsesSdkRuntime(
         var recoveredMissingParent = false
         var outcome = "failed"
         try {
-            val result = executor.call(options, recoverRejected = { _, error ->
+            val result = executor.call(options, recoverFailure = { _, error ->
                 if (!recoveredMissingParent && prepared?.previousResponseId != null && isMissingPreviousResponse(error)) {
                     val original = checkNotNull(prepared) { "Missing-parent recovery has no request plan" }
                     // Recovery must not acquire the right to overwrite a cursor created by a concurrent call.
@@ -235,11 +235,16 @@ internal class OpenAiResponsesSdkRuntime(
     }
 
     private fun isMissingPreviousResponse(error: Throwable): Boolean = generateSequence(error) { it.cause }
-        .take(16).filterIsInstance<com.openai.errors.OpenAIServiceException>().any {
-            runCatching {
-                it.statusCode() in setOf(400, 404) && it.code().orElse(null) == "previous_response_not_found" &&
-                    it.param().orElse("previous_response_id") == "previous_response_id"
-            }.getOrDefault(false)
+        .take(16).any {
+            when (it) {
+                is OpenAiResponsesStreamException ->
+                    it.code == "previous_response_not_found" && it.parameter == "previous_response_id"
+                is com.openai.errors.OpenAIServiceException -> runCatching {
+                    it.statusCode() in setOf(400, 404) && it.code().orElse(null) == "previous_response_not_found" &&
+                        it.param().orElse("previous_response_id") == "previous_response_id"
+                }.getOrDefault(false)
+                else -> false
+            }
         }
 
     override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = flow {

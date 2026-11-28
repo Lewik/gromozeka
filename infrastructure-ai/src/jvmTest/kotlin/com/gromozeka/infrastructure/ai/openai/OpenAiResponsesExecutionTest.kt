@@ -140,7 +140,8 @@ class OpenAiResponsesExecutionTest {
     @Test
     fun `only explicit complete missing-parent rejection retries once with full context`() = runBlocking {
         for (stream in listOf(false, true)) ResponsesServer { exchange, _, index ->
-            if (index == 1) reply(exchange, MISSING_PARENT, status = 404)
+            if (index == 1 && stream) reply(exchange, MISSING_PARENT_STREAM, isEventStream = true)
+            else if (index == 1) reply(exchange, MISSING_PARENT, status = 404)
             else reply(exchange, response("parent-$index"), stream)
         }.use { server ->
             val state = OpenAiResponsesContinuations()
@@ -547,6 +548,10 @@ class OpenAiResponsesExecutionTest {
         const val TEXT_OUTPUT = """[{"type":"message","id":"m-1","role":"assistant","status":"completed","content":[{"type":"output_text","text":"OK","annotations":[]}]}]"""
         const val TOOL_OUTPUT = """[{"type":"function_call","id":"fc-1","call_id":"call-1","name":"lookup","arguments":"{}","status":"completed"}]"""
         const val MISSING_PARENT = """{"error":{"type":"invalid_request_error","code":"previous_response_not_found","param":"previous_response_id","message":"private-missing-parent-marker"}}"""
+        const val MISSING_PARENT_STREAM = """event: error
+data: {"type":"error","sequence_number":1,"code":"previous_response_not_found","message":"private-missing-parent-marker","param":"previous_response_id"}
+
+"""
         fun settings() = AiHttpSettings(authentication = AiHttpSettings.Authentication.BEARER, noProxy = listOf("*"))
         fun response(id: String, status: String = "completed", output: String = TEXT_OUTPUT): String =
             """{"id":"$id","object":"response","created_at":1,"status":"$status","model":"$MODEL","output":$output}"""

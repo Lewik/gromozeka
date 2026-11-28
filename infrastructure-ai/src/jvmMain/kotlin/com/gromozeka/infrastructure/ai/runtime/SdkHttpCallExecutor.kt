@@ -66,7 +66,7 @@ internal class SdkHttpCallExecutor<C>(
         executionDeadline = AiHttpCallBudget.deadline(timeoutSeconds, options.executionDeadline, Clock.System.now()))
 
     suspend fun <T> call(options: AiRuntimeOptions,
-        recoverRejected: ((AiCallFailure, Throwable) -> Boolean)? = null,
+        recoverFailure: ((AiCallFailure, Throwable) -> Boolean)? = null,
         action: (C, Duration, SdkInferenceClient<C>) -> CompletableFuture<T>): T {
         val now = Clock.System.now()
         val deadline = AiHttpCallBudget.deadline(timeoutSeconds, options.executionDeadline, now)
@@ -119,8 +119,8 @@ internal class SdkHttpCallExecutor<C>(
                                 val transport = requireNotNull(transportRef.get()) { "SDK failure has no transport attempt" }
                                 if (end - System.nanoTime() <= 0) throw deadlineFailure(transport)
                                 val failure = classify(error, transport)
-                                if (failure.outcome == AiCallFailure.Outcome.REJECTED &&
-                                    requireNotNull(failure.attempts) < maxAttempts && recoverRejected?.invoke(failure, error) == true) continue
+                                if (requireNotNull(failure.attempts) < maxAttempts &&
+                                    recoverFailure?.invoke(failure, error) == true) continue
                                 if (failure.kind != AiCallFailure.Kind.RATE_LIMITED ||
                                     failure.outcome != AiCallFailure.Outcome.REJECTED ||
                                     requireNotNull(failure.attempts) >= maxAttempts) throw AiCallException(failure)
