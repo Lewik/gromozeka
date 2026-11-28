@@ -138,7 +138,7 @@ internal class CommandJournalToolContributor(
         source = CORE_TOOL_SOURCE,
         name = SEARCH_TOOL_NAME,
         description = """
-            Search Command Journal metadata and bounded text for the current project, newest first.
+            Search Command Journal metadata for the current project, newest first.
             Results are audit records, not live process state. Pass the returned cursor object as before to continue.
         """.trimIndent(),
         inputSchema = SEARCH_SCHEMA,
@@ -152,7 +152,7 @@ internal class CommandJournalToolContributor(
             input,
             setOf(
                 "conversation_id", "actor_user_id", "agent_definition_id", "worker_id", "origin", "tool_name",
-                "event_kind", "text", "from", "to", "before", "limit",
+                "event_kind", "from", "to", "before", "limit",
             ),
         )
         val projectId = toolContext.requiredProjectId()
@@ -182,7 +182,6 @@ internal class CommandJournalToolContributor(
                 origin = input.optionalString("origin")?.let { parseEnum<CommandJournal.Entry.Origin>("origin", it) },
                 toolName = input.optionalString("tool_name"),
                 eventKind = input.optionalString("event_kind")?.let { parseEnum<CommandJournal.Event.Kind>("event_kind", it) },
-                text = input.optionalString("text"),
                 from = input.optionalString("from")?.let { parseInstant("from", it) },
                 to = input.optionalString("to")?.let { parseInstant("to", it) },
                 before = before,
@@ -373,7 +372,6 @@ internal class CommandJournalToolContributor(
                 "origin" to ServerToolSchemas.string("Optional entry origin.", CommandJournal.Entry.Origin.entries.map { it.name }),
                 "tool_name" to ServerToolSchemas.string("Optional exact tool name used by any call."),
                 "event_kind" to ServerToolSchemas.string("Optional latest lifecycle event kind.", CommandJournal.Event.Kind.entries.map { it.name }),
-                "text" to ServerToolSchemas.string("Optional case-insensitive literal substring in tool name, content or status."),
                 "from" to ServerToolSchemas.string("Optional inclusive entry creation time."),
                 "to" to ServerToolSchemas.string("Optional inclusive entry creation time."),
                 "before" to ServerToolSchemas.objectSchema(

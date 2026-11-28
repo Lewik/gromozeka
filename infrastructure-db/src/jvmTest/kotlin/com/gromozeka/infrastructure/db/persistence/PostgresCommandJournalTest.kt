@@ -94,7 +94,6 @@ class PostgresCommandJournalTest {
                     projectId = entry.projectId,
                     conversationId = entry.conversationId,
                     eventKind = CommandJournal.Event.Kind.STARTED,
-                    text = "hello",
                     limit = 1,
                 )
             )

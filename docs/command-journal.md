@@ -75,7 +75,7 @@ bounded UTF-8 limits.
 
 The following read tools remain on-demand and are discoverable through the ordinary tool catalog:
 
-- `grz_command_journal_search` — bounded project search with exact metadata filters and literal text;
+- `grz_command_journal_search` — bounded project search with exact metadata filters;
 - `grz_command_journal_get` — entry metadata, bounded calls, and bounded lifecycle events;
 - `grz_command_journal_read_content` — paged text with a cursor that resumes within oversized content and preserves slice/range metadata;
 - `grz_command_journal_stats` — logical project counts plus physical Journal/database sizes; owner-only.
@@ -85,5 +85,5 @@ The entire contributor is absent when the journal property is disabled.
 
 The journal tables intentionally have no foreign key to Conversation. Deleting a conversation therefore
 does not silently delete its audit trail. Retention and size notifications, Visual handlers, internal command
-reporting by non-command tools, heuristic safety analysis, embeddings, and semantic search remain separate
-stages.
+reporting by non-command tools, heuristic safety analysis, indexed literal/trigram/vector search, embeddings,
+and semantic ranking remain separate stages.

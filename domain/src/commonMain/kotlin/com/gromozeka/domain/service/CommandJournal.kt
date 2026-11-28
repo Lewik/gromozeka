@@ -87,7 +87,6 @@ interface CommandJournal {
         val origin: Entry.Origin? = null,
         val toolName: String? = null,
         val eventKind: Event.Kind? = null,
-        val text: String? = null,
         val from: Instant? = null,
         val to: Instant? = null,
         val before: Cursor? = null,
@@ -96,7 +95,6 @@ interface CommandJournal {
         init {
             require(limit in 1..50) { "Command Journal search limit must be between 1 and 50" }
             require(toolName == null || toolName.isNotBlank()) { "Command Journal tool name filter must not be blank" }
-            require(text == null || text.isNotBlank()) { "Command Journal text filter must not be blank" }
             require(from == null || to == null || from <= to) { "Command Journal time range is invalid" }
         }
     }

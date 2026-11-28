@@ -250,30 +250,6 @@ internal class PostgresCommandJournal(
                 )
             }
             query.eventKind?.let { add("latest_event.kind=?", it.name) }
-            query.text?.lowercase()?.let { text ->
-                add(
-                    """
-                    (
-                        POSITION(? IN LOWER(root_call.tool_name)) > 0 OR
-                        EXISTS (
-                            SELECT 1 FROM command_journal_content_links text_link
-                            JOIN command_journal_contents text_content ON text_content.id=text_link.content_id
-                            WHERE text_link.entry_id=entry.id
-                              AND POSITION(? IN LOWER(text_content.text_content)) > 0
-                        ) OR
-                        EXISTS (
-                            SELECT 1 FROM command_journal_events text_event
-                            WHERE text_event.entry_id=entry.id
-                              AND text_event.status_message IS NOT NULL
-                              AND POSITION(? IN LOWER(text_event.status_message)) > 0
-                        )
-                    )
-                    """.trimIndent(),
-                    text,
-                    text,
-                    text,
-                )
-            }
             query.from?.let { add("entry.created_at>=?", it) }
             query.to?.let { add("entry.created_at<=?", it) }
             query.before?.let {
