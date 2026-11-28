@@ -34,6 +34,7 @@ internal fun AiConnection.Kind.aiLabel(translation: Translation): String =
             AiConnection.Kind.OLLAMA -> "ai.connection.kind.ollama"
             AiConnection.Kind.OPENAI_API -> "ai.connection.kind.openai_api"
             AiConnection.Kind.OPENAI_COMPATIBLE -> "ai.connection.kind.openai_compatible"
+            AiConnection.Kind.OPENAI_SIWC -> "ai.connection.kind.openai_siwc"
             AiConnection.Kind.OPENAI_SUBSCRIPTION -> "ai.connection.kind.openai_subscription"
         }
     )

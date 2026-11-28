@@ -40,11 +40,26 @@ internal class SdkInferenceClient<C>(val client: C, val transport: SdkHttpTransp
 internal class SdkHttpCallExecutor<C>(
     private val connection: AiConnection,
     private val timeoutSeconds: Int?,
-    private val maxAttempts: Int = SdkHttpSupport.settings(connection).maxAttempts,
+    private val maxAttempts: Int,
     private val admission: AiCallAdmission,
     private val modelConfiguration: AiModelConfiguration? = null,
-    private val clientFactory: (deadlineNanos: Long) -> SdkInferenceClient<C>,
+    private val clientFactory: suspend (deadlineNanos: Long) -> SdkInferenceClient<C>,
 ) {
+    constructor(
+        connection: AiConnection,
+        timeoutSeconds: Int?,
+        admission: AiCallAdmission,
+        modelConfiguration: AiModelConfiguration? = null,
+        clientFactory: suspend (deadlineNanos: Long) -> SdkInferenceClient<C>,
+    ) : this(
+        connection = connection,
+        timeoutSeconds = timeoutSeconds,
+        maxAttempts = SdkHttpSupport.settings(connection).maxAttempts,
+        admission = admission,
+        modelConfiguration = modelConfiguration,
+        clientFactory = clientFactory,
+    )
+
     init { require(maxAttempts in 1..5) { "Invalid AI HTTP attempt limit" } }
 
     fun withDeadline(options: AiRuntimeOptions): AiRuntimeOptions = options.copy(
@@ -73,6 +88,7 @@ internal class SdkHttpCallExecutor<C>(
                                     val activeSession = session ?: try {
                                         clientFactory(end).also { session = it; transportRef.set(it.transport) }
                                     } catch (error: CancellationException) { throw error }
+                                    catch (error: AiCallException) { throw error }
                                     catch (_: Exception) { throw AiCallException(AiCallFailure(AiCallFailure.Kind.CONFIGURATION,
                                         AiCallFailure.Outcome.NOT_STARTED, 0)) }
                                     val left = end - System.nanoTime()

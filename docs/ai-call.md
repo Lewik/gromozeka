@@ -32,8 +32,8 @@ characters). `inputs` defaults to an empty list and preserves order. Optional:
   Requires structured-output capability; maximum schema size is 256 KiB.
 - `result_mode`: `inline` (default) or `artifact`.
 - `max_output_tokens`: positive per-call output limit. Omission uses existing
-  model settings. Claude Code and OpenAI Subscription currently reject an
-  explicit override because those adapters do not implement it.
+  model settings. Claude Code, OpenAI Subscription, and OpenAI SIWC currently
+  reject an explicit override because those adapters do not implement it.
 
 There are at most 32 input parts and 12 MiB of total prompt/input bytes. Model
 context limits, provider limits and transport limits still apply. Exceeding a

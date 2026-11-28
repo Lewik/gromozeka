@@ -288,6 +288,7 @@
     "ai.connection.kind.ollama": "Ollama",
     "ai.connection.kind.openai_api": "OpenAI API",
     "ai.connection.kind.openai_compatible": "OpenAI-compatible",
+    "ai.connection.kind.openai_siwc": "ChatGPT plan (SIWC)",
     "ai.connection.kind.openai_subscription": "OpenAI subscription",
     "ai.connection.models": {
       "one": "{count} model",
@@ -295,6 +296,7 @@
     },
     "ai.connection.new": "New connection",
     "ai.connection.request_target_description": "Finite LLM, embedding, speech-to-text, and text-to-speech requests use this exact target. Streaming and live voice require Server.",
+    "ai.connection.siwc_target_description": "SIWC sign-in and credentials currently live on the Server. Enable and save the connection, then open the one-time URL from the Server log. Worker execution can be added later without changing the Responses adapter.",
     "ai.connection.request_timeout": "Request timeout (seconds)",
     "ai.connection.session_idle_timeout": "CLI session idle timeout (seconds)",
     "ai.connection.web_search": "OpenAI hosted web search",

@@ -288,6 +288,7 @@
     "ai.connection.kind.ollama": "Ollama",
     "ai.connection.kind.openai_api": "OpenAI-API",
     "ai.connection.kind.openai_compatible": "OpenAI-kompatibel",
+    "ai.connection.kind.openai_siwc": "ChatGPT-Abo (SIWC)",
     "ai.connection.kind.openai_subscription": "OpenAI-Abonnement",
     "ai.connection.models": {
       "one": "{count} Modell",
@@ -295,6 +296,7 @@
     },
     "ai.connection.new": "Neue Verbindung",
     "ai.connection.request_target_description": "Einzelanfragen für LLM, Embeddings, Spracherkennung und Sprachausgabe verwenden genau dieses Ziel. Streaming und Live-Sprache erfordern den Server.",
+    "ai.connection.siwc_target_description": "SIWC-Anmeldung und Zugangsdaten befinden sich derzeit auf dem Server. Aktivieren und speichern Sie die Verbindung und öffnen Sie dann die einmalige URL aus dem Serverprotokoll. Die Worker-Ausführung kann später ergänzt werden, ohne den Responses-Adapter zu ändern.",
     "ai.connection.request_timeout": "Zeitlimit für Anfragen (Sekunden)",
     "ai.connection.session_idle_timeout": "Leerlauflimit für CLI-Sitzungen (Sekunden)",
     "ai.connection.web_search": "Von OpenAI bereitgestellte Websuche",

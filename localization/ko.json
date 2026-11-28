@@ -286,12 +286,14 @@
     "ai.connection.kind.ollama": "Ollama",
     "ai.connection.kind.openai_api": "OpenAI API",
     "ai.connection.kind.openai_compatible": "OpenAI 호환",
+    "ai.connection.kind.openai_siwc": "ChatGPT 구독 (SIWC)",
     "ai.connection.kind.openai_subscription": "OpenAI 구독",
     "ai.connection.models": {
       "other": "모델 {count}개"
     },
     "ai.connection.new": "새 연결 설정",
     "ai.connection.request_target_description": "단일 LLM, 임베딩, 음성 인식, 음성 합성 요청은 지정된 이 대상에서 실행됩니다. 스트리밍과 실시간 음성에는 서버가 필요합니다.",
+    "ai.connection.siwc_target_description": "SIWC 로그인과 자격 증명은 현재 서버에 저장됩니다. 연결을 활성화해 저장한 다음 서버 로그의 일회용 URL을 여세요. Responses 어댑터를 변경하지 않고 나중에 Worker 실행을 추가할 수 있습니다.",
     "ai.connection.request_timeout": "요청 제한 시간(초)",
     "ai.connection.session_idle_timeout": "CLI 세션 유휴 제한 시간(초)",
     "ai.connection.web_search": "OpenAI 호스팅 웹 검색",

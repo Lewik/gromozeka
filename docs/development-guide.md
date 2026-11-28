@@ -243,6 +243,37 @@ The main dogfood chat path is `OPEN_AI_SUBSCRIPTION`, implemented by
 for other providers, embeddings, and auxiliary integrations. Provider quirks
 belong behind those infrastructure boundaries rather than in domain workflows.
 
+`OPENAI_SIWC` is the separate official Sign in with ChatGPT integration. It uses
+dynamic OAuth registration at `https://auth.openai.com` and the public
+`https://api.openai.com/v1/responses` and `/models` endpoints. It deliberately
+shares the OpenAI Responses request/replay mapper with `OPENAI_API`; authentication,
+model discovery, provider identity and fixed protocol policy remain separate.
+SIWC requests are stateless (`store=false`), streamed, and never send
+`previous_response_id` or `max_output_tokens`. Native compact and provider token
+count remain disabled until those exact SIWC routes are verified; local context
+measurement and configured text compaction remain available. These are adapter
+policies, not user-facing compatibility flags. Materialized image and document
+inputs use the shared Responses mapping; provider `file_id` image sources are
+rejected because this flow has no Files upload API.
+
+An enabled Server-targeted SIWC connection starts one loopback OAuth transaction
+and logs its authorization URL. Enabling the connection while the Server is
+running is sufficient; a restart is not required. The callback is bound only to
+`127.0.0.1` on the Server host. The one-time transaction expires after ten
+minutes; disable and re-enable the connection to start a fresh attempt. For a remote Server, forward the callback port
+shown inside the logged redirect URI over SSH before opening the URL locally.
+One execution host owns one rotating grant. Credentials live under
+`<GROMOZEKA_HOME>/openai-siwc`, are owner-only and encrypted with a host-local key;
+this prevents accidental plaintext disclosure but does not protect against an
+attacker who can read the complete Gromozeka home. Do not use one copied grant
+concurrently on multiple hosts. The current host record is intentionally
+single-account. Reauthorization uses the issued client ID but no ID-token/email
+hint, so the logged authorization URL contains no account token and ChatGPT shows
+its account selector. Disabling the connection stops use but does not revoke the
+renewable session; disconnect it in ChatGPT Settings when revocation is required.
+An account picker, in-app revocation, and Worker enrollment can be added later
+without changing the Responses projection.
+
 Subscription WebSocket continuation compares canonical input items, not independently
 formatted copies of function calls. The default function namespace is explicit
 `functions` for Responses Lite and omitted for ordinary subscription Responses;
@@ -1716,12 +1747,14 @@ commands. Command/monitor completion still uses its typed synthetic messages and
 normal continuation scheduling. `Instruction.RuntimeObservation` remains a small
 assistant-message annotation for existing synthetic async-completion provenance;
 it has no key, revision, removal marker, or history-boundary behavior, and
-authenticated user submissions cannot forge it. Worker Gateway protocol **37** is
+authenticated user submissions cannot forge it. Worker Gateway protocol **38** is
 the coordinated Server/Worker contract for the current proactive-compaction and
-runtime task payloads. Its upgrade is a clean cutover: stop accepting new inputs,
+runtime task payloads plus the `OPENAI_SIWC` connection variant and model-discovery
+display metadata. Its upgrade is a
+clean cutover: stop accepting new inputs,
 wait until there is no active, continuation, insertion or queued runtime work and
 no proactive compaction is running, then stop the Server and all Workers and update
-them together. Stopping processes does not drain durable queued work. Protocol 36
+them together. Stopping processes does not drain durable queued work. Older
 Workers are rejected during the handshake. Migration V101 also fails closed if an
 executable legacy history mutation remains despite this precondition.
 

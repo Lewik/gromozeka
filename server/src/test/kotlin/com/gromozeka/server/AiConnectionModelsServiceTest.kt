@@ -73,6 +73,32 @@ class AiConnectionModelsServiceTest {
     }
 
     @Test
+    fun `SIWC model listing uses its Server-side account catalog`() = runBlocking<Unit> {
+        val selected = AiConnection.OpenAiSiwc(
+            id = AiConnection.Id("siwc-models"),
+            displayName = "ChatGPT plan",
+            enabled = true,
+        )
+        var directCalls = 0
+        val service = AiConnectionModelsService(
+            Configuration(selected),
+            AiConnectionModelsExecutor { connection, _ ->
+                directCalls++
+                assertEquals(selected, connection)
+                result
+            },
+            UnusedRemote(),
+            Workers(),
+        )
+
+        val inspection = service.listModels(selected.id, owner.id)
+
+        assertEquals(AiExecutionTarget.Server, inspection.executionTarget)
+        assertEquals(result, inspection.result)
+        assertEquals(1, directCalls)
+    }
+
+    @Test
     fun `disabled missing implicit and unsupported connections fail before selecting an executor`() = runBlocking<Unit> {
         for (selected in listOf(connection().copy(enabled = false), AiConnection.OpenAiApi(AiConnection.Id("models-only"), "Native", enabled = true),
             AiConnection.OpenAiSubscription(AiConnection.Id("models-only"), "Subscription", enabled = true))) {

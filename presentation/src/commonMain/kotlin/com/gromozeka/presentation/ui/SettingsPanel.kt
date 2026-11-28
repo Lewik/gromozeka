@@ -1770,7 +1770,9 @@ private fun WebToolSettingsEditor(
     var openAiConnections by remember(currentSnapshot.revision) {
         mutableStateOf(
             currentSnapshot.catalog.connections.filter {
-                it is AiConnection.OpenAiApi || it is AiConnection.OpenAiSubscription
+                it is AiConnection.OpenAiApi ||
+                    it is AiConnection.OpenAiSubscription ||
+                    it is AiConnection.OpenAiSiwc
             }
         )
     }
@@ -1804,7 +1806,9 @@ private fun WebToolSettingsEditor(
     val canEnableClaudeTools = selectedClaudeModel in claudeModelById
     val isDirty = draft != currentSnapshot.catalog.webTools ||
         openAiConnections != currentSnapshot.catalog.connections.filter {
-            it is AiConnection.OpenAiApi || it is AiConnection.OpenAiSubscription
+            it is AiConnection.OpenAiApi ||
+                it is AiConnection.OpenAiSubscription ||
+                it is AiConnection.OpenAiSiwc
         } ||
         secretMutations.isNotEmpty()
 
@@ -1859,6 +1863,8 @@ private fun WebToolSettingsEditor(
                         is AiConnection.OpenAiApi ->
                             translation.text("settingsUi.useOpenAIWebSearchThroughThisAPIConnection")
                         is AiConnection.OpenAiSubscription ->
+                            translation.text("settingsUi.useOpenAIWebSearchThroughThisSubscriptionConnection")
+                        is AiConnection.OpenAiSiwc ->
                             translation.text("settingsUi.useOpenAIWebSearchThroughThisSubscriptionConnection")
                         else -> error("Unexpected OpenAI web search connection ${connection.kind}")
                     },
@@ -2082,12 +2088,14 @@ private fun WebToolSettingsEditor(
 private fun AiConnection.openAiWebSearchEnabled(): Boolean = when (this) {
     is AiConnection.OpenAiApi -> webSearchEnabled
     is AiConnection.OpenAiSubscription -> webSearchEnabled
+    is AiConnection.OpenAiSiwc -> webSearchEnabled
     else -> error("Connection $id does not support OpenAI hosted web search")
 }
 
 private fun AiConnection.withOpenAiWebSearchEnabled(enabled: Boolean): AiConnection = when (this) {
     is AiConnection.OpenAiApi -> copy(webSearchEnabled = enabled)
     is AiConnection.OpenAiSubscription -> copy(webSearchEnabled = enabled)
+    is AiConnection.OpenAiSiwc -> copy(webSearchEnabled = enabled)
     else -> error("Connection $id does not support OpenAI hosted web search")
 }
 

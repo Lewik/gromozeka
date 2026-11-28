@@ -53,7 +53,11 @@ internal class AiCallService(
         val resolved = configurations.resolveAiRuntime(selection)
         require(AiModelCapability.TEXT_GENERATION in resolved.modelSpec.capabilities) { "Selected configuration does not generate text" }
         if (resolved.connection.kind == AiConnection.Kind.GITHUB_COPILOT) throw UnsupportedOperationException("Strict tool-free inference is unsupported by Copilot")
-        if (input.maxOutputTokens != null && resolved.connection.kind in setOf(AiConnection.Kind.CLAUDE_CODE, AiConnection.Kind.OPENAI_SUBSCRIPTION)) {
+        if (input.maxOutputTokens != null && resolved.connection.kind in setOf(
+                AiConnection.Kind.CLAUDE_CODE,
+                AiConnection.Kind.OPENAI_SUBSCRIPTION,
+                AiConnection.Kind.OPENAI_SIWC,
+            )) {
             throw UnsupportedOperationException("This adapter does not support a per-call output-token override")
         }
         input.responseSchema?.let {

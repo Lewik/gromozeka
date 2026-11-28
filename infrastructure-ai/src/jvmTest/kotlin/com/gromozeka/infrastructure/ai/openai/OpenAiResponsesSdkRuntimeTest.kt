@@ -179,6 +179,20 @@ class OpenAiResponsesSdkRuntimeTest {
     }
 
     @Test
+    fun `failed stream preserves the provider error code`() {
+        val native = com.openai.core.jsonMapper().readValue("""{
+            "id":"resp-failed","model":"gpt-5","status":"failed","output":[],
+            "error":{"code":"subscription_sharing_usage_limit_exceeded","message":"Usage unavailable"}
+        }""", com.openai.models.responses.Response::class.java)
+
+        val response = mapper.toRuntimeResponse(native, AiModelConfiguration.AssistantResponseFormat.TEXT)
+
+        assertEquals(AiStepOutcome.FAILED, response.outcome)
+        assertEquals("subscription_sharing_usage_limit_exceeded", response.finishReason)
+        assertEquals("subscription_sharing_usage_limit_exceeded", response.providerMetadata["responseErrorCode"])
+    }
+
+    @Test
     fun `OpenAI-compatible reasoning dialect and tool extensions round trip`() {
         val compatible = OpenAiSdkMessageMapper(AiConnection.Kind.OPENAI_COMPATIBLE, "deepseek", "deepseek-reasoner")
         val native = com.openai.core.jsonMapper().readValue("""{
@@ -218,6 +232,73 @@ class OpenAiResponsesSdkRuntimeTest {
         ))
         val allowed = mapper.toCreateParams("gpt-5", true, input.copy(options = input.options.copy(toolAccess = policy)))
         assertTrue(allowed.tools().get().any { it.isWebSearch() })
+    }
+
+    @Test
+    fun `SIWC request policy keeps public Responses semantics without API-only fields`() {
+        val siwc = OpenAiResponsesMessageMapper(
+            connectionId = "openai-siwc",
+            modelConfigurationId = "openai-siwc-gpt",
+            modelName = "gpt-test",
+            provider = AiConnection.Kind.OPENAI_SIWC.name,
+            nativeCompactionProvider = null,
+            requestFeatures = OpenAiResponsesRequestFeatures(maxOutputTokens = false),
+            webSearchTool = com.gromozeka.domain.tool.ProviderNativeTool.OPENAI_SIWC_WEB_SEARCH,
+            functionNamespace = "functions",
+        )
+        val base = request(tools = listOf(testTool()))
+        val allowed = base.copy(options = base.options.copy(
+            maxOutputTokens = 123,
+            toolAccess = com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly(setOf(
+                com.gromozeka.domain.tool.ProviderNativeTool.OPENAI_SIWC_WEB_SEARCH.catalogEntry().selector(true),
+            )),
+        ))
+        val params = siwc.toCreateParams("gpt-test", webSearchEnabled = true, allowed)
+
+        assertFalse(params.maxOutputTokens().isPresent)
+        assertEquals(false, params.store().orElseThrow())
+        assertTrue(params.tools().orElseThrow().any { it.isWebSearch() })
+        val namespace = params.tools().orElseThrow().single { it.isNamespace() }.asNamespace()
+        assertEquals("functions", namespace.name())
+        assertEquals("test_tool", namespace.tools().single().asFunction().name())
+        assertTrue(params.tools().orElseThrow().none { it.isFunction() })
+
+        val apiOnlyPolicy = allowed.copy(options = allowed.options.copy(
+            toolAccess = com.gromozeka.domain.tool.ToolAccessPolicy.AllowOnly(setOf(
+                com.gromozeka.domain.tool.ProviderNativeTool.OPENAI_API_WEB_SEARCH.catalogEntry().selector(true),
+            )),
+        ))
+        assertTrue(siwc.toCreateParams("gpt-test", true, apiOnlyPolicy).tools().orElse(emptyList()).none { it.isWebSearch() })
+
+        val toolCall = userMessage().copy(
+            id = Conversation.Message.Id("assistant-tool-call"),
+            role = Conversation.Message.Role.ASSISTANT,
+            content = listOf(
+                Conversation.Message.ContentItem.ToolCall(
+                    id = Conversation.Message.ContentItem.ToolCall.Id("call-1"),
+                    call = Conversation.Message.ContentItem.ToolCall.Data("test_tool", JsonObject(emptyMap())),
+                )
+            ),
+        )
+        val toolOutput = userMessage().copy(
+            id = Conversation.Message.Id("user-tool-output"),
+            content = listOf(
+                Conversation.Message.ContentItem.ToolResult(
+                    toolUseId = Conversation.Message.ContentItem.ToolCall.Id("call-1"),
+                    toolName = "test_tool",
+                    result = listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("ok")),
+                    isError = false,
+                )
+            ),
+        )
+        val replay = siwc.toCreateParams(
+            "gpt-test",
+            webSearchEnabled = false,
+            request(messages = listOf(toolCall, toolOutput)),
+        ).input().orElseThrow().asResponse()
+        assertEquals("functions", replay[0].asFunctionCall().namespace().orElseThrow())
+        assertEquals("functions", replay[1].asFunctionCallOutput().namespace().orElseThrow())
+        assertEquals("test_tool", replay[1].asFunctionCallOutput().name().orElseThrow())
     }
 
     @Test

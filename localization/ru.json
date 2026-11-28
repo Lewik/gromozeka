@@ -292,6 +292,7 @@
     "ai.connection.kind.ollama": "Ollama",
     "ai.connection.kind.openai_api": "OpenAI API",
     "ai.connection.kind.openai_compatible": "Совместимое с OpenAI",
+    "ai.connection.kind.openai_siwc": "Подписка ChatGPT (SIWC)",
     "ai.connection.kind.openai_subscription": "Подписка OpenAI",
     "ai.connection.models": {
       "one": "{count} модель",
@@ -301,6 +302,7 @@
     },
     "ai.connection.new": "Новое подключение",
     "ai.connection.request_target_description": "Непотоковые запросы к LLM, создание эмбеддингов, распознавание и синтез речи используют именно этот узел. Для потоковых ответов и живого голосового общения нужен сервер.",
+    "ai.connection.siwc_target_description": "Вход SIWC и учётные данные пока находятся на сервере. Включите и сохраните подключение, затем откройте одноразовую ссылку из лога сервера. Позже выполнение на воркере можно добавить без переделки адаптера Responses.",
     "ai.connection.request_timeout": "Тайм-аут запроса (секунды)",
     "ai.connection.session_idle_timeout": "Тайм-аут бездействия сеанса CLI (секунды)",
     "ai.connection.web_search": "Веб-поиск на стороне OpenAI",

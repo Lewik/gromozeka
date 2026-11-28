@@ -286,12 +286,14 @@
     "ai.connection.kind.ollama": "Ollama",
     "ai.connection.kind.openai_api": "OpenAI API",
     "ai.connection.kind.openai_compatible": "OpenAI 相容介面",
+    "ai.connection.kind.openai_siwc": "ChatGPT 訂閱 (SIWC)",
     "ai.connection.kind.openai_subscription": "OpenAI 訂閱",
     "ai.connection.models": {
       "other": "{count} 個模型"
     },
     "ai.connection.new": "新增連線",
     "ai.connection.request_target_description": "單次 LLM、嵌入向量、語音轉文字及文字轉語音請求都使用此指定目標。串流及即時語音須由伺服器處理。",
+    "ai.connection.siwc_target_description": "SIWC 登入與憑證目前儲存在伺服器上。請啟用並儲存連線，然後開啟伺服器記錄中的一次性網址。之後可以在不修改 Responses 轉接器的情況下加入 Worker 執行。",
     "ai.connection.request_timeout": "請求逾時（秒）",
     "ai.connection.session_idle_timeout": "CLI 工作階段閒置逾時（秒）",
     "ai.connection.web_search": "OpenAI 代管網路搜尋",

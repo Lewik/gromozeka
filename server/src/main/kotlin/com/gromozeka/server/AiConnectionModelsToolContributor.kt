@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiConnectionModels
 import com.gromozeka.domain.model.ai.AiExecutionTarget
+import com.gromozeka.domain.model.ai.requireModelListing
 import com.gromozeka.domain.model.ai.requireGatewayModelListing
 import com.gromozeka.domain.service.AiConfigurationService
 import com.gromozeka.domain.service.AiConnectionModelsExecutor
@@ -41,12 +42,16 @@ class AiConnectionModelsService(
         configuration.refreshIfChanged()
         val snapshot = configuration.snapshot
         val connection = requireNotNull(snapshot.catalog.connections.singleOrNull { it.id == connectionId }) { "AI connection not found" }
-        connection.requireGatewayModelListing()
+        connection.requireModelListing()
         val result = when (val target = connection.executionTarget) {
             AiExecutionTarget.Server -> direct.listModels(connection, deadline)
-            is AiExecutionTarget.Worker -> remote.listModels(
-                workers.requireRegistered(ConversationRuntimeWorkerId(target.workerId), ConversationRuntimeCapability.AI_REQUEST_RESPONSE),
-                connection, deadline, actorUserId)
+            is AiExecutionTarget.Worker -> {
+                connection.requireGatewayModelListing()
+                remote.listModels(
+                    workers.requireRegistered(ConversationRuntimeWorkerId(target.workerId), ConversationRuntimeCapability.AI_REQUEST_RESPONSE),
+                    connection, deadline, actorUserId,
+                )
+            }
         }
         return Inspection(connection.id, snapshot.revision, connection.executionTarget, result)
     }
@@ -59,7 +64,7 @@ internal class AiConnectionModelsToolContributor(
 ) : AiToolCallbackContributor {
     override val callbacks = listOf(toolFactory.create(CONTROL_TOOL_SOURCE,
         name = "grz_ai_connection_models",
-        description = "Explicitly check the OpenAI-compatible GET /models endpoint of one saved, enabled SDK HTTP connection with an explicit base URL, on its configured Server or exact Worker. Uses its selected credential, CA, proxy and headers. One bounded GET, no automatic retry, redirects, route fallback, model inference or catalog changes. Returns candidate IDs and metadata only, never inferred capabilities or limits. Create specs and configurations manually through existing catalog tools. This is not a health, authentication-proof or inference-readiness test. Disabled/unsupported connections make no network request.",
+        description = "Explicitly list models for one saved, enabled connection. Configurable SDK HTTP connections use their exact GET /models endpoint on the configured Server or Worker; ChatGPT SIWC uses its account-specific public catalog on Server. One bounded request, no automatic retry, redirects, route fallback, model inference or catalog changes. Returns candidate IDs and metadata only, never inferred capabilities or limits. Create specs and configurations manually through existing catalog tools. This is not a health or inference-readiness test. Disabled/unsupported connections make no network request.",
         inputSchema = ServerToolSchemas.objectSchema(mapOf("connectionId" to ServerToolSchemas.string("Exact saved AI connection id.")), listOf("connectionId")),
         readOnly = true,
         accessPolicy = AiToolAccessPolicy.SERVER_OWNER,

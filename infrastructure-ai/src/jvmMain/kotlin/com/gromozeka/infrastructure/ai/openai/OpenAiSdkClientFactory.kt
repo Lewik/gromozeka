@@ -2,8 +2,11 @@ package com.gromozeka.infrastructure.ai.openai
 
 import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiHttpSettings
 import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.infrastructure.ai.runtime.SdkHttpClientPool
 import com.gromozeka.infrastructure.ai.runtime.SdkHttpSupport
+import com.gromozeka.infrastructure.ai.runtime.SdkInferenceClient
 import com.openai.core.LogLevel
 import com.openai.client.OpenAIClient
 import org.springframework.stereotype.Component
@@ -11,13 +14,23 @@ import org.springframework.stereotype.Component
 @Component
 class OpenAiSdkClientFactory(
     private val settingsProvider: SettingsProvider,
-    private val httpClients: com.gromozeka.infrastructure.ai.runtime.SdkHttpClientPool,
+    private val httpClients: SdkHttpClientPool,
 ) {
-    internal fun createInferenceClient(connection: AiConnection, deadlineNanos: Long): com.gromozeka.infrastructure.ai.runtime.SdkInferenceClient<OpenAIClient> {
+    internal fun createInferenceClient(connection: AiConnection, deadlineNanos: Long): SdkInferenceClient<OpenAIClient> {
         val settings = SdkHttpSupport.settings(connection)
         val baseUrl = resolveBaseUrl(connection)
         val token = resolveApiKey(connection)
-        val transport = httpClients.openTransport(connection, baseUrl, deadlineNanos)
+        return createInferenceClient(connection, baseUrl, token, settings, deadlineNanos)
+    }
+
+    internal fun createInferenceClient(
+        connection: AiConnection,
+        baseUrl: String,
+        token: String,
+        settings: AiHttpSettings,
+        deadlineNanos: Long,
+    ): SdkInferenceClient<OpenAIClient> {
+        val transport = httpClients.openTransport(connection, baseUrl, deadlineNanos, settings)
         try {
             val options = com.openai.core.ClientOptions.builder()
                 .httpClient(com.gromozeka.infrastructure.ai.runtime.OpenAiControlledHttpClient(transport))
@@ -27,7 +40,7 @@ class OpenAiSdkClientFactory(
             val client = com.openai.client.OpenAIClientImpl(options)
             val identity = com.gromozeka.infrastructure.ai.runtime.SdkHttpCallIdentity(baseUrl,
                 java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(token.toByteArray())))
-            return com.gromozeka.infrastructure.ai.runtime.SdkInferenceClient(client, transport, identity) { client.close() }
+            return SdkInferenceClient(client, transport, identity) { client.close() }
         } catch (error: Exception) { transport.close(); throw error }
     }
 

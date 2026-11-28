@@ -119,6 +119,7 @@ class TelegramLiveRoundTripTest {
     private fun testCatalog(catalog: AiCatalog): AiCatalog = catalog.copy(connections = catalog.connections.map {
         when (it) {
             is AiConnection.OpenAiSubscription -> it.copy(enabled = true, webSearchEnabled = true)
+            is AiConnection.OpenAiSiwc -> it.copy(enabled = false)
             is AiConnection.OpenAiApi -> it.copy(enabled = false)
             is AiConnection.OpenAiCompatible -> it.copy(enabled = false)
             is AiConnection.GitHubCopilot -> it.copy(enabled = false)

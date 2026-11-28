@@ -25,6 +25,7 @@ import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.model.ai.AiUsage
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.ProviderNativeTool
 import com.gromozeka.infrastructure.ai.parsers.AssistantResponseParser
 import com.openai.client.OpenAIClient
 import com.openai.core.JsonValue
@@ -36,6 +37,7 @@ import com.openai.models.responses.FunctionTool
 import com.openai.models.responses.Response
 import com.openai.models.responses.ResponseCompactParams
 import com.openai.models.responses.CompactedResponse
+import com.openai.models.responses.NamespaceTool
 import com.openai.models.responses.inputtokens.InputTokenCountParams
 import com.gromozeka.domain.model.ai.AiContextInspection
 import com.openai.models.responses.ResponseCreateParams
@@ -96,6 +98,8 @@ internal class OpenAiResponsesSdkRuntime(
         provider = provider.providerScope,
         nativeCompactionProvider = provider.nativeCompactionProvider,
         requestFeatures = provider.requestFeatures,
+        webSearchTool = provider.webSearchTool,
+        functionNamespace = provider.functionNamespace,
         generation = generation,
     ),
 ) : AiRuntime {
@@ -245,6 +249,8 @@ internal class OpenAiResponsesSdkRuntime(
 /** Fixed protocol characteristics selected by a provider adapter, not user-facing feature flags. */
 internal data class OpenAiResponsesProvider(
     val providerScope: String,
+    val webSearchTool: ProviderNativeTool,
+    val functionNamespace: String? = null,
     val supportsNativeCompaction: Boolean,
     val supportsDetachedNativeCompaction: Boolean,
     val supportsProviderTokenCount: Boolean,
@@ -255,6 +261,9 @@ internal data class OpenAiResponsesProvider(
 
     init {
         require(providerScope.isNotBlank()) { "Responses provider scope must not be blank" }
+        require(functionNamespace == null || functionNamespace.matches(Regex("[A-Za-z0-9_-]{1,64}"))) {
+            "Responses function namespace is invalid"
+        }
         require(!supportsDetachedNativeCompaction || supportsNativeCompaction) {
             "Detached Responses compaction requires native compaction"
         }
@@ -273,6 +282,8 @@ internal class OpenAiResponsesMessageMapper(
     private val provider: String = "OPENAI_API",
     private val nativeCompactionProvider: String? = provider,
     private val requestFeatures: OpenAiResponsesRequestFeatures = OpenAiResponsesRequestFeatures(),
+    private val webSearchTool: ProviderNativeTool = ProviderNativeTool.OPENAI_API_WEB_SEARCH,
+    private val functionNamespace: String? = null,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -302,8 +313,7 @@ internal class OpenAiResponsesMessageMapper(
             ?.takeIf(String::isNotBlank)
             ?.let(builder::promptCacheKey)
 
-        val nativeWebSearch = webSearchEnabled &&
-            com.gromozeka.domain.tool.ProviderNativeTool.OPENAI_API_WEB_SEARCH.isAllowed(request.options.toolAccess)
+        val nativeWebSearch = webSearchEnabled && webSearchTool.isAllowed(request.options.toolAccess)
         val reasoning = generation.reasoning(request.options, request.tools.isNotEmpty() || nativeWebSearch)
         applyTools(builder, request.tools, request.options.toolChoice, nativeWebSearch)
         applyReasoning(builder, reasoning)
@@ -317,6 +327,7 @@ internal class OpenAiResponsesMessageMapper(
     ): AiRuntimeResponse {
         val outputItems = response.output()
         val status = response.status().getOrNull()?.asString()
+        val errorCode = response.error().getOrNull()?.code()?.asString()
         val outcome = when {
             status == "incomplete" -> AiStepOutcome.INCOMPLETE
             status != "completed" -> AiStepOutcome.FAILED
@@ -375,16 +386,17 @@ internal class OpenAiResponsesMessageMapper(
             // Billed input tokens describe the pre-compaction request, not the retained window.
             contextUsage = usage?.takeIf { outputItems.none { item -> item.isCompaction() } }
                 ?.let { AiContextUsage(it.totalInputTokens, it.totalOutputTokens) },
-            finishReason = response.incompleteDetails().getOrNull()?.reason()?.getOrNull()?.asString() ?: status,
+            finishReason = errorCode ?: response.incompleteDetails().getOrNull()?.reason()?.getOrNull()?.asString() ?: status,
             outcome = outcome,
-            providerMetadata = mapOf(
-                "provider" to provider,
-                "model" to modelName,
-                "reportedModel" to model,
-                "connectionId" to connectionId,
-                "modelConfigurationId" to modelConfigurationId,
-                "responseId" to response.id(),
-            ),
+            providerMetadata = buildMap {
+                put("provider", provider)
+                put("model", modelName)
+                put("reportedModel", model)
+                put("connectionId", connectionId)
+                put("modelConfigurationId", modelConfigurationId)
+                put("responseId", response.id())
+                errorCode?.let { put("responseErrorCode", it) }
+            },
         )
     }
 
@@ -561,6 +573,7 @@ internal class OpenAiResponsesMessageMapper(
                 .callId(toolCall.id.value)
                 .name(toolCall.call.name)
                 .arguments(toolCall.call.input.toString())
+                .apply { functionNamespace?.let { namespace(it) } }
                 .build()
         )
 
@@ -568,6 +581,12 @@ internal class OpenAiResponsesMessageMapper(
         ResponseInputItem.ofFunctionCallOutput(
             ResponseInputItem.FunctionCallOutput.builder()
                 .callId(toolResult.toolUseId.value)
+                .apply {
+                    functionNamespace?.let { namespace ->
+                        name(toolResult.toolName)
+                        namespace(namespace)
+                    }
+                }
                 .outputOfResponseFunctionCallOutputItemList(toolResult.toOpenAiFunctionOutput())
                 .build()
         )
@@ -674,7 +693,20 @@ internal class OpenAiResponsesMessageMapper(
     ) {
         val toolsAllowed = toolChoice !is AiToolChoice.None
         if (toolsAllowed) {
-            tools.sortedBy { it.definition.name }.map(::functionTool).forEach(builder::addTool)
+            val sortedTools = tools.sortedBy { it.definition.name }
+            if (sortedTools.isNotEmpty()) {
+                if (functionNamespace == null) {
+                    sortedTools.map(::functionTool).forEach(builder::addTool)
+                } else {
+                    builder.addTool(
+                        NamespaceTool.builder()
+                            .name(functionNamespace)
+                            .description("Gromozeka tools.")
+                            .tools(sortedTools.map(::namespacedFunctionTool))
+                            .build()
+                    )
+                }
+            }
             if (webSearchEnabled) {
                 builder.addTool(WebSearchTool.builder().type(WebSearchTool.Type.WEB_SEARCH).build())
                 builder.addInclude(ResponseIncludable.WEB_SEARCH_CALL_ACTION_SOURCES)
@@ -707,6 +739,19 @@ internal class OpenAiResponsesMessageMapper(
             )
             .strict(false)
             .build()
+    }
+
+    private fun namespacedFunctionTool(callback: AiToolCallback): NamespaceTool.Tool {
+        val schema = json.parseToJsonElement(callback.definition.inputSchema)
+        require(schema is JsonObject) { "Tool ${callback.definition.name} input schema must be a JSON object" }
+        return NamespaceTool.Tool.ofFunction(
+            NamespaceTool.Tool.Function.builder()
+                .name(callback.definition.name)
+                .description(callback.definition.description)
+                .parameters(JsonValue.from(schema.toJsonCompatibleValue()))
+                .strict(false)
+                .build()
+        )
     }
 
     private fun applyReasoning(builder: ResponseCreateParams.Builder, config: AiReasoningConfig?) {
@@ -772,6 +817,9 @@ internal class OpenAiResponsesMessageMapper(
     }
 
     private fun ResponseFunctionToolCall.toAssistantMessage(): AiAssistantMessage {
+        check(namespace().getOrNull() == functionNamespace) {
+            "OpenAI returned an unexpected function namespace: ${namespace().getOrNull()}"
+        }
         val input = json.parseToJsonElement(arguments())
         require(input is JsonObject) { "OpenAI function arguments must be a JSON object" }
         return AiAssistantMessage(
