@@ -18,7 +18,19 @@ interface ClientAudioRecorder {
     val supportsStreamingAudioChunks: Boolean
         get() = false
 
+    val streamingUnavailableReason: LocalizedText?
+        get() = unavailableReason ?: if (!supportsStreamingAudioChunks) localizedText("interpreter.streamingUnavailable") else null
+
     suspend fun start(scope: CoroutineScope): ClientAudioRecordingSession
+
+    suspend fun startStreaming(scope: CoroutineScope): ClientAudioCaptureSession =
+        throw LocalizedTextException(localizedText("interpreter.streamingUnavailable"))
+}
+
+interface ClientAudioCaptureSession {
+    val audioChunks: Flow<ByteArray>
+    suspend fun stop()
+    fun cancel()
 }
 
 interface ClientAudioRecordingSession {

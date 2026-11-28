@@ -92,6 +92,7 @@ class GromozekaRemoteAuthorization(
             is CancelSpeechCaptureRequest,
             is SynthesizeSpeechRequest,
             is StartLiveInterpreterRequest,
+            is TranslateLiveTextRequest,
             GetLiveVoiceProviderVadAvailabilityRequest,
             is StartLiveVoiceProviderVadRequest,
             is CreateProjectRequest,

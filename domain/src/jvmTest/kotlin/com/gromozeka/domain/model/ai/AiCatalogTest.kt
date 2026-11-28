@@ -291,17 +291,20 @@ class AiCatalogTest {
     }
 
     private fun testCatalog(connectionEnabled: Boolean = true): AiCatalog {
+        val realtimeId = AiModelConfiguration.Id("live-transcription")
         val configurations = listOf(
             configuration(CHAT_CONFIGURATION_ID, "chat"),
             configuration(EMBEDDING_CONFIGURATION_ID, "embedding"),
             configuration(SPEECH_CONFIGURATION_ID, "speech"),
             configuration(TTS_CONFIGURATION_ID, "tts"),
+            configuration(realtimeId, "realtime-speech"),
         )
         val selectionsByCapability = mapOf(
             AiModelCapability.TEXT_GENERATION to AiRuntimeSelection(CHAT_CONFIGURATION_ID),
             AiModelCapability.EMBEDDINGS to AiRuntimeSelection(EMBEDDING_CONFIGURATION_ID),
             AiModelCapability.SPEECH_TO_TEXT to AiRuntimeSelection(SPEECH_CONFIGURATION_ID),
             AiModelCapability.TEXT_TO_SPEECH to AiRuntimeSelection(TTS_CONFIGURATION_ID),
+            AiModelCapability.REALTIME_TRANSCRIPTION to AiRuntimeSelection(realtimeId),
         )
         return AiCatalog(
             connections = listOf(
@@ -316,6 +319,7 @@ class AiCatalogTest {
                 spec("embedding", AiModelCapability.EMBEDDINGS),
                 spec("speech", AiModelCapability.SPEECH_TO_TEXT),
                 spec("tts", AiModelCapability.TEXT_TO_SPEECH),
+                spec("realtime-speech", AiModelCapability.REALTIME_TRANSCRIPTION),
             ),
             modelConfigurations = configurations,
             runtimeAssignments = AiRuntimeAssignment.Purpose.entries

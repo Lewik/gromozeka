@@ -64,6 +64,7 @@ sealed interface AiConnection {
         OPENAI_SUBSCRIPTION(AiProvider.OPENAI),
         GITHUB_COPILOT(AiProvider.OPENAI),
         OPENAI_COMPATIBLE(AiProvider.CUSTOM),
+        SONIOX_API(AiProvider.SONIOX),
         ANTHROPIC_API(AiProvider.ANTHROPIC),
         ANTHROPIC_BEDROCK(AiProvider.ANTHROPIC),
         CLAUDE_CODE(AiProvider.ANTHROPIC),
@@ -172,6 +173,26 @@ sealed interface AiConnection {
             validateDisplayName(displayName)
             AiHttpSettings.validateBaseUrl(baseUrl)
             require(baseUrl.isNotBlank()) { "OpenAI-compatible base URL must not be blank" }
+        }
+    }
+
+    @Serializable
+    @SerialName("soniox_api")
+    data class SonioxApi(
+        override val id: Id,
+        override val displayName: String,
+        override val enabled: Boolean = false,
+        override val baseUrl: String? = null,
+        override val apiKey: SecretRef? = null,
+        override val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
+        override val httpSettings: AiHttpSettings = AiHttpSettings(),
+    ) : AiConnection, ConfigurableHttpAiConnection {
+        override val kind = Kind.SONIOX_API
+
+        init {
+            validateDisplayName(displayName)
+            AiHttpSettings.validateBaseUrl(baseUrl)
+            validateOptionalBaseUrl(baseUrl)
         }
     }
 

@@ -126,6 +126,7 @@ class GromozekaRemoteServer(
     private val ttsService: TtsService,
     private val memoryStore: MemoryStore,
     private val liveInterpreterApplicationService: LiveInterpreterApplicationService,
+    private val liveTranslationApplicationService: LiveTranslationApplicationService,
     private val liveVoiceProviderVadApplicationService: LiveVoiceProviderVadApplicationService,
     private val speechCaptureApplicationService: SpeechCaptureApplicationService,
     private val clientPresentationRegistry: ClientPresentationRegistry,
@@ -260,8 +261,6 @@ class GromozekaRemoteServer(
                                 handleSynthesizeSpeechStream(sender, envelope.id, payload, encoding)
                             }
                             is LiveInterpreterAudioChunkCommand ->
-                                liveInterpreterApplicationService.append(liveInterpreterOwner, payload)
-                            is LiveInterpreterTranscriptChunkCommand ->
                                 liveInterpreterApplicationService.append(liveInterpreterOwner, payload)
                             is StopLiveInterpreterCommand ->
                                 liveInterpreterApplicationService.stop(liveInterpreterOwner, payload)
@@ -924,6 +923,7 @@ class GromozekaRemoteServer(
                     liveInterpreterApplicationService.start(liveInterpreterOwner, request) { payload ->
                         sender.send(uuid7(), payload, encoding)
                     }
+                is TranslateLiveTextRequest -> liveTranslationApplicationService.translate(user, request)
                 GetLiveVoiceProviderVadAvailabilityRequest ->
                     liveVoiceProviderVadApplicationService.availability()
                 is StartLiveVoiceProviderVadRequest ->

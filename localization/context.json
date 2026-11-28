@@ -1767,36 +1767,18 @@
     "description": "Name of the runtime model-assignment workflow/stage. This entry configures the model used for Default chat: Default model for newly created agents and normal chat unless an agent overrides it. It is application workflow metadata, not an instruction to translate or execute as a Prompt. This workflow requires an explicit model assignment and has no parent workflow model fallback.",
     "args": []
   },
-  "ai.runtime.purpose.live_transcript_stabilizer.description": {
-    "source": [
-      "domain/src/commonMain/kotlin/com/gromozeka/domain/model/ai/AiRuntimeAssignment.kt:162",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:404"
-    ],
-    "description": "Help text under this workflow/stage model selector. This entry configures the model used for Live transcript stabilizer: Model that turns noisy overlapping ASR drafts into stable original transcript. It is application workflow metadata, not an instruction to translate or execute as a Prompt. This workflow requires an explicit model assignment and has no parent workflow model fallback. Stabilization reconciles noisy speech-recognition drafts into a consistent original-language transcript; it does not translate the transcript.",
-    "args": []
-  },
-  "ai.runtime.purpose.live_transcript_stabilizer.label": {
-    "source": [
-      "domain/src/commonMain/kotlin/com/gromozeka/domain/model/ai/AiRuntimeAssignment.kt:161",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:402"
-    ],
-    "description": "Name of the runtime model-assignment workflow/stage. This entry configures the model used for Live transcript stabilizer: Model that turns noisy overlapping ASR drafts into stable original transcript. It is application workflow metadata, not an instruction to translate or execute as a Prompt. This workflow requires an explicit model assignment and has no parent workflow model fallback. Stabilization reconciles noisy speech-recognition drafts into a consistent original-language transcript; it does not translate the transcript.",
-    "args": []
-  },
   "ai.runtime.purpose.live_translation.description": {
     "source": [
-      "domain/src/commonMain/kotlin/com/gromozeka/domain/model/ai/AiRuntimeAssignment.kt:167",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:404"
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiTranslationLabels.kt"
     ],
-    "description": "Help text under this workflow/stage model selector. This entry configures the model used for Live translation: Model that translates stabilized live transcript deltas. It is application workflow metadata, not an instruction to translate or execute as a Prompt. This workflow requires an explicit model assignment and has no parent workflow model fallback.",
+    "description": "Separate Live tab: contextual translation independent of speech recognition. OpenAI text model for contextual translation in the Live tab.",
     "args": []
   },
   "ai.runtime.purpose.live_translation.label": {
     "source": [
-      "domain/src/commonMain/kotlin/com/gromozeka/domain/model/ai/AiRuntimeAssignment.kt:166",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:402"
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiTranslationLabels.kt"
     ],
-    "description": "Name of the runtime model-assignment workflow/stage. This entry configures the model used for Live translation: Model that translates stabilized live transcript deltas. It is application workflow metadata, not an instruction to translate or execute as a Prompt. This workflow requires an explicit model assignment and has no parent workflow model fallback.",
+    "description": "Separate Live tab: contextual translation independent of speech recognition. Live translation",
     "args": []
   },
   "ai.runtime.purpose.memory_embeddings.description": {
@@ -5721,71 +5703,12 @@
     },
     "formatNotes": "Legacy printf arguments: preserve types and original argument identity. Use numbered printf arguments when reordering; do not translate placeholder syntax."
   },
-  "interpreter.autoLanguage": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:391"
-    ],
-    "description": "Input-language mode permitting mixed-language speech and automatic language recognition rather than requiring one fixed language.",
-    "args": []
-  },
-  "interpreter.clientWhisper": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:372"
-    ],
-    "description": "Recognition-backend option using Whisper speech recognition on the current UI device. Preserve the Whisper product name.",
-    "args": []
-  },
-  "interpreter.clientWhisperDescription": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:373"
-    ],
-    "description": "Explains that this backend performs audio-to-text conversion on the client and sends only the resulting transcript to the Server's translation pipeline.",
-    "args": []
-  },
   "interpreter.description": {
     "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:297"
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
     ],
-    "description": "Explains the two live output streams: recognized original speech and its translated text, produced from successive overlapping audio segments.",
-    "args": [],
-    "integrationNotes": "The current source specifically says Russian translation; this catalog copy is intentionally target-language-neutral."
-  },
-  "interpreter.emptySegment": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:239"
-    ],
-    "description": "Diagnostic status when client-side speech recognition produces no text for a particular numbered audio segment.",
-    "args": [
-      "sequence"
-    ],
-    "argumentDescriptions": {
-      "sequence": "Ordinal sequence number of the audio segment in this session; not a timestamp, duration, or count requiring plural forms."
-    }
-  },
-  "interpreter.failed": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:215",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:265"
-    ],
-    "description": "Terminal live interpretation failure shown in the status history, including the supplied diagnostic reason.",
-    "args": [
-      "error"
-    ],
-    "argumentDescriptions": {
-      "error": "Diagnostic message supplied by a Server failure event or a local startup exception."
-    }
-  },
-  "interpreter.flushFailed": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:150"
-    ],
-    "description": "Error while finishing and submitting the last buffered audio segment during session shutdown.",
-    "args": [
-      "error"
-    ],
-    "argumentDescriptions": {
-      "error": "Diagnostic message from the failed audio flush, or exception class name when no message exists."
-    }
+    "description": "Separate Live tab: contextual translation independent of speech recognition. Original speech and contextual translations. Add languages at any time to translate the entire transcript.",
+    "args": []
   },
   "interpreter.flushingAudio": {
     "source": [
@@ -5801,20 +5724,6 @@
     "description": "Status placeholder when the live interpretation screen has no active status entries yet.",
     "args": []
   },
-  "interpreter.listeningClient": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:253"
-    ],
-    "description": "Active-session status for local Whisper transcription on the UI device, with recognized text subsequently sent to the Server for translation.",
-    "args": []
-  },
-  "interpreter.listeningServer": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:255"
-    ],
-    "description": "Active-session status when captured audio is sent to the Server for speech recognition before translation.",
-    "args": []
-  },
   "interpreter.noText": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:569"
@@ -5824,9 +5733,9 @@
   },
   "interpreter.noTranslationModel": {
     "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:480"
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
     ],
-    "description": "Fallback explanation shown when no model is configured for live translation and the default chat model will be used.",
+    "description": "Separate Live tab: contextual translation independent of speech recognition. Configure an enabled OpenAI text model with structured output and Server execution.",
     "args": []
   },
   "interpreter.original": {
@@ -5835,41 +5744,6 @@
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:353"
     ],
     "description": "Column heading for the speech transcript in its original spoken language, before translation.",
-    "args": []
-  },
-  "interpreter.pendingDrafts": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:587"
-    ],
-    "description": "Heading for provisional speech-recognition drafts awaiting stabilization or finalization; these are not unsent composer messages or document drafts.",
-    "args": []
-  },
-  "interpreter.recognitionBackend": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:408"
-    ],
-    "description": "Selector label for where audio is converted to text; this is separate from the model that translates that text.",
-    "args": []
-  },
-  "interpreter.serverStt": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:376"
-    ],
-    "description": "Recognition-backend option sending audio to the Server for speech-to-text. STT means speech-to-text, not text-to-speech.",
-    "args": []
-  },
-  "interpreter.serverSttDescription": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:377"
-    ],
-    "description": "Explains that this backend sends recorded audio segments to the Server's speech recognition pipeline.",
-    "args": []
-  },
-  "interpreter.sourceLanguage": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:444"
-    ],
-    "description": "Label for the expected language of the incoming spoken audio; this is an ASR hint, not the translation target.",
     "args": []
   },
   "interpreter.start": {
@@ -5881,22 +5755,10 @@
   },
   "interpreter.starting": {
     "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:167"
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/services/LiveInterpreterController.kt"
     ],
-    "description": "Progress status while creating the live interpretation session and starting audio capture.",
+    "description": "Separate Live tab: original-language streaming transcription, not ordinary dictation. Starting live transcription…",
     "args": []
-  },
-  "interpreter.status.emptyTranslation": {
-    "source": [
-      "server/src/main/kotlin/com/gromozeka/server/LiveInterpreterApplicationService.kt:397"
-    ],
-    "description": "The translation model returned blank output for a finalized source transcript piece. The source piece exists; this does not mean silence or no detected speech.",
-    "args": [
-      "sequence"
-    ],
-    "argumentDescriptions": {
-      "sequence": "Integer sequence number of the audio segment or finalized transcript piece."
-    }
   },
   "interpreter.status.listening": {
     "source": [
@@ -5905,94 +5767,6 @@
     "description": "Server-side live interpreter session has started listening to incoming audio or recognized text. It is not a general conversational assistant.",
     "args": []
   },
-  "interpreter.status.noSpeech": {
-    "source": [
-      "server/src/main/kotlin/com/gromozeka/server/LiveInterpreterApplicationService.kt:239"
-    ],
-    "description": "One audio segment, or the corresponding external transcript, contained no usable speech. Not a microphone access failure.",
-    "args": [
-      "sequence"
-    ],
-    "argumentDescriptions": {
-      "sequence": "Integer sequence number of the audio segment or finalized transcript piece."
-    }
-  },
-  "interpreter.status.stabilizationFailed": {
-    "source": [
-      "server/src/main/kotlin/com/gromozeka/server/LiveInterpreterApplicationService.kt:323"
-    ],
-    "description": "Failed to reconcile the latest speech recognition drafts. Draft is its sequence number; error is a raw provider/exception diagnostic. Finalized content is not rewritten.",
-    "args": [
-      "draft",
-      "error"
-    ],
-    "argumentDescriptions": {
-      "draft": "Integer sequence number of the recognition draft.",
-      "error": "Unmodified diagnostic from the failing operation."
-    }
-  },
-  "interpreter.status.stabilizing": {
-    "source": [
-      "server/src/main/kotlin/com/gromozeka/server/LiveInterpreterApplicationService.kt:302"
-    ],
-    "description": "The stabilizer is merging overlapping noisy speech recognition drafts into a reliable transcript. Draft is the newest draft sequence number, not an unpublished chat message.",
-    "args": [
-      "draft"
-    ],
-    "argumentDescriptions": {
-      "draft": "Integer sequence number of the recognition draft."
-    }
-  },
-  "interpreter.status.transcribing": {
-    "source": [
-      "server/src/main/kotlin/com/gromozeka/server/LiveInterpreterApplicationService.kt:231"
-    ],
-    "description": "Speech-to-text processing of one incoming rolling audio segment. Sequence is its integer sequence number, not a duration or count of messages.",
-    "args": [
-      "sequence"
-    ],
-    "argumentDescriptions": {
-      "sequence": "Integer sequence number of the audio segment or finalized transcript piece."
-    }
-  },
-  "interpreter.status.translating": {
-    "source": [
-      "server/src/main/kotlin/com/gromozeka/server/LiveInterpreterApplicationService.kt:370"
-    ],
-    "description": "Translating a finalized incremental piece of the original speech transcript, after recognition and stabilization. Sequence identifies that piece, not an LLM call count.",
-    "args": [
-      "sequence"
-    ],
-    "argumentDescriptions": {
-      "sequence": "Integer sequence number of the audio segment or finalized transcript piece."
-    }
-  },
-  "interpreter.status.translationFailed": {
-    "source": [
-      "server/src/main/kotlin/com/gromozeka/server/LiveInterpreterApplicationService.kt:386"
-    ],
-    "description": "Translation of a finalized transcript piece failed. Sequence identifies that piece; error is an unchanged provider/exception diagnostic.",
-    "args": [
-      "sequence",
-      "error"
-    ],
-    "argumentDescriptions": {
-      "sequence": "Integer sequence number of the audio segment or finalized transcript piece.",
-      "error": "Unmodified diagnostic from the failing operation."
-    }
-  },
-  "interpreter.status.waitingForSpeech": {
-    "source": [
-      "server/src/main/kotlin/com/gromozeka/server/LiveInterpreterApplicationService.kt:332"
-    ],
-    "description": "A speech recognition draft remains pending until more audio provides enough context to finalize it. Draft is its sequence number.",
-    "args": [
-      "draft"
-    ],
-    "argumentDescriptions": {
-      "draft": "Integer sequence number of the recognition draft."
-    }
-  },
   "interpreter.stop": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:305"
@@ -6000,74 +5774,25 @@
     "description": "Button requesting that recording and the live interpretation session stop.",
     "args": []
   },
-  "interpreter.stopFailed": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:153"
-    ],
-    "description": "Error while asking the remote Server to close its live interpretation session.",
-    "args": [
-      "error"
-    ],
-    "argumentDescriptions": {
-      "error": "Diagnostic message from the failed Server stop request, or exception class name when no message exists."
-    }
-  },
   "interpreter.stopped": {
     "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:155",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:214"
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/services/LiveInterpreterController.kt"
     ],
-    "description": "Status entry confirming that the live interpretation session has ended.",
+    "description": "Separate Live tab: original-language streaming transcription, not ordinary dictation. Live transcription stopped",
     "args": []
-  },
-  "interpreter.stopping": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:305"
-    ],
-    "description": "Temporary button label while a requested stop flushes buffered audio and closes the session.",
-    "args": []
-  },
-  "interpreter.targetLanguage": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:170"
-    ],
-    "description": "Label for the language into which recognized speech should be translated, independently of the spoken input language and interface language.",
-    "args": [],
-    "integrationNotes": "New UI label for replacing targetLanguage = \"ru\". The referenced current source still hardcodes Russian and does not yet render this selector."
   },
   "interpreter.title": {
     "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:291"
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
     ],
-    "description": "Title of the live spoken-language interpretation screen; interpreter means translating human speech, not executing programming code.",
+    "description": "Separate Live tab: contextual translation independent of speech recognition. Live translation",
     "args": []
-  },
-  "interpreter.transcriptionFailed": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:245"
-    ],
-    "description": "Error when client-side speech-to-text fails for an audio segment before recognized text can be sent to the Server.",
-    "args": [
-      "error"
-    ],
-    "argumentDescriptions": {
-      "error": "Diagnostic message from the speech-recognition failure, or exception class name when no message exists."
-    }
-  },
-  "interpreter.translation": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:348",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:358"
-    ],
-    "description": "Column heading for text translated from the recognized speech into the selected target language.",
-    "args": [],
-    "integrationNotes": "The current source says Russian; this catalog label is intentionally target-language-neutral for the upcoming target-language selector."
   },
   "interpreter.translationModel": {
     "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt:474"
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
     ],
-    "description": "Selector label for the AI model configuration that translates recognized speech, not the speech recognition engine or interface-language catalog.",
+    "description": "Separate Live tab: contextual translation independent of speech recognition. Translation model",
     "args": []
   },
   "loadMoreSearchResults": {
@@ -12432,14 +12157,6 @@
     "literal": "Continuous voice VAD mode",
     "terminologyNotes": "VAD = voice activity detection. Keep the acronym or introduce the locale-standard expansion consistently; provider means the configured speech service."
   },
-  "settingsUi.controlsLiveChunkSizeSlowCPUIncreasesLatency": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt:740"
-    ],
-    "description": "Explains the performance tradeoff of the live-audio preset: longer chunks increase delay while helping a slower CPU keep up.",
-    "args": [],
-    "literal": "Controls live chunk size. Slow CPU increases latency but reduces missed audio on weak machines."
-  },
   "settingsUi.couldNotGenerateAnEnrollmentToken": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt:1787"
@@ -13511,15 +13228,6 @@
     "args": [],
     "literal": "Whisper extra arguments"
   },
-  "settingsUi.whisperLiveProfile": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt:739"
-    ],
-    "description": "Dropdown label for a preset controlling Whisper live-audio window and step timing; profile means a performance preset, not a person or account profile.",
-    "args": [],
-    "literal": "Whisper live profile",
-    "integrationNotes": "LOW_LATENCY is localized separately by client.whisper.lowLatency in client.en.json; Balanced and Slow CPU are keys in this fragment."
-  },
   "settingsUi.whisperModel": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt:642"
@@ -13535,31 +13243,6 @@
     "description": "Optional filesystem path field for a Whisper speech recognition model weight file.",
     "args": [],
     "literal": "Whisper model path"
-  },
-  "settingsUi.whisperProfileBalanced": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt:743",
-      "domain/src/commonMain/kotlin/com/gromozeka/domain/model/UserProfile.kt:157"
-    ],
-    "description": "Whisper live-audio performance preset balancing response delay and processing overhead; balanced refers to timing and CPU load, not sound balance or model impartiality.",
-    "args": []
-  },
-  "settingsUi.whisperProfileLowLatency": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt:748",
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt:2669",
-      "domain/src/commonMain/kotlin/com/gromozeka/domain/model/UserProfile.kt:156"
-    ],
-    "description": "Local Whisper live-audio performance preset prioritizing faster transcription updates with a shorter processing window and more frequent decoding than Balanced. Low latency means reduced delay before recognized speech appears, not a network connection setting.",
-    "args": []
-  },
-  "settingsUi.whisperProfileSlowCpu": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt:743",
-      "domain/src/commonMain/kotlin/com/gromozeka/domain/model/UserProfile.kt:158"
-    ],
-    "description": "Whisper live-audio performance preset with larger windows for weaker CPUs, accepting more transcription delay to keep up with audio.",
-    "args": []
   },
   "settingsUi.whisperThreads": {
     "source": [
@@ -15702,5 +15385,244 @@
   "settingsUi.whisperConcurrentTranscriptions": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt"],"description": "Numeric limit for simultaneous local Whisper transcription processes.","args": [],"literal": "Concurrent Whisper transcriptions"},
   "settingsUi.maximumLocalWhisperProcessesRunningAtOnce": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt"],"description": "Explains that the Local Whisper limit controls concurrently running local processes.","args": [],"literal": "Maximum number of local Whisper processes allowed to run at once."},
   "settingsUi.independentVoiceTranscriptionAcrossTabs": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt"],"description": "Device-local switch allowing voice recordings from different tabs to be recognized independently.","args": [],"literal": "Recognize different tabs independently"},
-  "settingsUi.whenEnabledDifferentTabsMayFinishRecognitionIndependently": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt"],"description": "Explains that cross-tab independence never relaxes ordering within one tab.","args": [],"literal": "When enabled, recordings from different tabs may be recognized and delivered independently. Recordings within one tab always stay ordered."}
+  "settingsUi.whenEnabledDifferentTabsMayFinishRecognitionIndependently": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt"],"description": "Explains that cross-tab independence never relaxes ordering within one tab.","args": [],"literal": "When enabled, recordings from different tabs may be recognized and delivered independently. Recordings within one tab always stay ordered."},
+  "interpreter.languages": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
+    ],
+    "description": "Separate Live tab: original-language streaming transcription, not ordinary dictation. Expected languages (optional)",
+    "args": []
+  },
+  "interpreter.languagesHint": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
+    ],
+    "description": "Separate Live tab: original-language streaming transcription, not ordinary dictation. Add language hints to help recognition, or leave empty for automatic recognition.",
+    "args": []
+  },
+  "interpreter.languagesInvalid": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
+    ],
+    "description": "Separate Live tab: original-language streaming transcription, not ordinary dictation. Use language codes, for example he, en, ru.",
+    "args": []
+  },
+  "interpreter.model": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
+    ],
+    "description": "Separate Live tab: original-language streaming transcription, not ordinary dictation. Transcription model",
+    "args": []
+  },
+  "interpreter.selectModel": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
+    ],
+    "description": "Separate Live tab: original-language streaming transcription, not ordinary dictation. Select a model",
+    "args": []
+  },
+  "interpreter.noModel": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
+    ],
+    "description": "Separate Live tab: original-language streaming transcription, not ordinary dictation. Configure an enabled OpenAI realtime transcription model with Server execution.",
+    "args": []
+  },
+  "interpreter.resume": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
+    ],
+    "description": "Separate Live tab: original-language streaming transcription, not ordinary dictation. Resume",
+    "args": []
+  },
+  "interpreter.processingFailed": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/services/LiveInterpreterController.kt"
+    ],
+    "description": "Separate Live tab: original-language streaming transcription, not ordinary dictation. Processing interrupted: {error}. The transcript is preserved; some audio may be missing.",
+    "args": [
+      "error"
+    ]
+  },
+  "interpreter.reconnecting": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/services/LiveInterpreterController.kt"
+    ],
+    "description": "Separate Live tab: original-language streaming transcription, not ordinary dictation. Reconnecting (attempt {attempt})…",
+    "args": [
+      "attempt"
+    ]
+  },
+  "interpreter.interrupted": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
+    ],
+    "description": "Separate Live tab: original-language streaming transcription, not ordinary dictation. Unfinished fragment",
+    "args": []
+  },
+  "interpreter.streamingUnavailable": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/services/ClientAudioRecorder.kt"
+    ],
+    "description": "Separate Live tab: original-language streaming transcription, not ordinary dictation. This client does not support continuous microphone capture.",
+    "args": []
+  },
+  "interpreter.audioBacklog": {
+    "source": [
+      "presentation/src/wasmJsMain/kotlin/com/gromozeka/presentation/services/BrowserClientAudioRecorder.kt"
+    ],
+    "description": "Separate Live tab: original-language streaming transcription, not ordinary dictation. Microphone processing fell behind; capture was interrupted.",
+    "args": []
+  },
+  "interpreter.partial": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
+    ],
+    "description": "Separate Live tab: original-language streaming transcription, not ordinary dictation. Recognizing…",
+    "args": []
+  },
+  "ai.capability.realtime_transcription": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiTranslationLabels.kt"
+    ],
+    "description": "Separate Live tab: original-language streaming transcription, not ordinary dictation. Realtime transcription",
+    "args": []
+  },
+  "ai.runtime.purpose.live_transcription.label": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiTranslationLabels.kt"
+    ],
+    "description": "Separate Live tab: original-language streaming transcription, not ordinary dictation. Live transcription",
+    "args": []
+  },
+  "ai.runtime.purpose.live_transcription.description": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiTranslationLabels.kt"
+    ],
+    "description": "Separate Live tab: original-language streaming transcription, not ordinary dictation. Streaming speech recognition for the separate Live tab.",
+    "args": []
+  },
+  "interpreter.nativeTranslation": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
+    ],
+    "description": "Separate Live tab: Soniox native speech translation target and column.",
+    "args": []
+  },
+  "interpreter.translationLanguages": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
+    ],
+    "description": "Separate Live tab: contextual translation independent of speech recognition. Translate into",
+    "args": []
+  },
+  "interpreter.translationOff": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
+    ],
+    "description": "Separate Live tab: contextual translation independent of speech recognition. Off",
+    "args": []
+  },
+  "interpreter.addTranslationLanguage": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
+    ],
+    "description": "Separate Live tab: contextual translation independent of speech recognition. Other language code, e.g. uk",
+    "args": []
+  },
+  "interpreter.addLanguage": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
+    ],
+    "description": "Separate Live tab: contextual translation independent of speech recognition. Add language",
+    "args": []
+  },
+  "interpreter.translationProgress": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
+    ],
+    "description": "Separate Live tab: contextual translation independent of speech recognition. {done}/{total} blocks",
+    "args": [
+      "done",
+      "total"
+    ]
+  },
+  "interpreter.retryTranslation": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
+    ],
+    "description": "Separate Live tab: contextual translation independent of speech recognition. Retry translation",
+    "args": []
+  },
+  "interpreter.translationWaiting": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
+    ],
+    "description": "Separate Live tab: contextual translation independent of speech recognition. Catching up…",
+    "args": []
+  },
+  "interpreter.translationFixed": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
+    ],
+    "description": "Separate Live tab: contextual translation independent of speech recognition. Fixed",
+    "args": []
+  },
+  "interpreter.translationDraft": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
+    ],
+    "description": "Separate Live tab: contextual translation independent of speech recognition. May be refined",
+    "args": []
+  },
+  "interpreter.translationFailed": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
+    ],
+    "description": "Separate Live tab: contextual translation independent of speech recognition. Translation paused: {error}. The original is preserved.",
+    "args": [
+      "error"
+    ]
+  },
+  "interpreter.translationInputFailed": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
+    ],
+    "description": "Separate Live tab: contextual translation independent of speech recognition. Translation input stopped: {error}. Speech recognition continues.",
+    "args": [
+      "error"
+    ]
+  },
+  "ai.provider.soniox": {
+    "source": [
+      "domain/src/commonMain/kotlin/com/gromozeka/domain/model/AIProvider.kt",
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiTranslationLabels.kt"
+    ],
+    "description": "Provider-family display label. Soniox is a proper product/organization name and should remain unchanged.",
+    "args": []
+  },
+  "ai.connection.kind.soniox_api": {
+    "source": [
+      "domain/src/commonMain/kotlin/com/gromozeka/domain/model/ai/AiConnection.kt",
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt"
+    ],
+    "description": "Soniox hosted API connection used for Live speech transcription. Preserve Soniox and API as product/acronym names.",
+    "args": []
+  },
+  "ai.capability.speaker_diarization": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiTranslationLabels.kt"
+    ],
+    "description": "AI model capability: separate speakers and attach stable speaker labels to transcript tokens.",
+    "args": []
+  },
+  "interpreter.speaker": {
+    "source": [
+      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/LiveInterpreterScreen.kt"
+    ],
+    "description": "Live transcript label for an anonymous diarized speaker. {speaker} is a provider-stable identifier such as 1 or 2, not a person name.",
+    "args": [
+      "speaker"
+    ]
+  }
 }

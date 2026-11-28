@@ -25,6 +25,7 @@ internal object AiRuntimeInputValidator {
             AiConnection.Kind.ANTHROPIC_BEDROCK ->
                 validateAnthropic(mediaInputs, MAX_BEDROCK_IMAGE_BASE64_BYTES, false)
             AiConnection.Kind.GEMINI_API,
+            AiConnection.Kind.SONIOX_API,
             AiConnection.Kind.OLLAMA -> error(
                 "Binary inputs are not implemented for connection kind ${runtime.connection.kind}"
             )

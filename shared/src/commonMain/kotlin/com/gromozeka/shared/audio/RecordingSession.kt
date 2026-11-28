@@ -5,5 +5,6 @@ import kotlinx.coroutines.flow.Flow
 interface RecordingSession {
     val audioChunks: Flow<ByteArray>
     suspend fun stop(): ByteArray
+    suspend fun stopCapture()
     fun cancel()
 }

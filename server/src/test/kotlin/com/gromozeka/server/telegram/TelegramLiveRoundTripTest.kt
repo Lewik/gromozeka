@@ -121,6 +121,7 @@ class TelegramLiveRoundTripTest {
             is AiConnection.OpenAiSubscription -> it.copy(enabled = true, webSearchEnabled = true)
             is AiConnection.OpenAiApi -> it.copy(enabled = false)
             is AiConnection.OpenAiCompatible -> it.copy(enabled = false)
+            is AiConnection.SonioxApi -> it.copy(enabled = false)
             is AiConnection.GitHubCopilot -> it.copy(enabled = false)
             is AiConnection.AnthropicApi -> it.copy(enabled = false)
             is AiConnection.AnthropicBedrock -> it.copy(enabled = false)

@@ -31,17 +31,28 @@ class BrowserClientAudioRecorder : ClientAudioRecorder {
         return session
     }
 
+    override suspend fun startStreaming(scope: CoroutineScope): ClientAudioCaptureSession {
+        val session = BrowserClientAudioRecordingSession(manager, retainRecording = false)
+        session.start()
+        return object : ClientAudioCaptureSession {
+            override val audioChunks: Flow<ByteArray> = session.audioChunks
+            override suspend fun stop() = session.stopCapture()
+            override fun cancel() = session.cancel()
+        }
+    }
+
     override val supportsStreamingAudioChunks: Boolean = true
 }
 
 @OptIn(ExperimentalEncodingApi::class)
 private class BrowserClientAudioRecordingSession(
     private val manager: JsAny,
+    private val retainRecording: Boolean = true,
 ) : ClientAudioRecordingSession {
     private val log = KLoggers.logger(this)
     private val started = CompletableDeferred<Unit>()
-    private val stopped = CompletableDeferred<ClientRecordedAudio>()
-    private val audioChunkChannel = Channel<ByteArray>(Channel.UNLIMITED)
+    private val stopped = CompletableDeferred<ClientRecordedAudio?>()
+    private val audioChunkChannel = Channel<ByteArray>(if (retainRecording) Channel.UNLIMITED else 32)
     private var recordingHandle: JsAny? = null
     override val audioChunks: Flow<ByteArray> = audioChunkChannel.receiveAsFlow()
 
@@ -51,6 +62,7 @@ private class BrowserClientAudioRecordingSession(
         try {
             handle = startBrowserAudioRecording(
                 manager = manager,
+                retainRecording = retainRecording,
                 onStarted = { firstSampleLatencyMillis: Double ->
                     log.info {
                         "Browser PCM audio recorder started: " +
@@ -64,22 +76,22 @@ private class BrowserClientAudioRecordingSession(
                     check(pcm.size == pcmByteSize) {
                         "Browser PCM chunk byte count mismatch: reported=$pcmByteSize decoded=${pcm.size}"
                     }
-                    audioChunkChannel.trySend(pcm)
+                    val result = audioChunkChannel.trySend(pcm)
+                    check(retainRecording || result.isSuccess) { "Live microphone audio buffer overflow" }
                 },
                 onStopped = { dataUrl: String, pcmByteSize: Int ->
-                    val base64 = dataUrl.substringAfter("base64,", "")
-                    val pcm = Base64.Default.decode(base64)
-                    check(pcm.size == pcmByteSize) {
-                        "Browser PCM byte count mismatch: reported=$pcmByteSize decoded=${pcm.size}"
+                    if (retainRecording) {
+                        val base64 = dataUrl.substringAfter("base64,", "")
+                        val pcm = Base64.Default.decode(base64)
+                        check(pcm.size == pcmByteSize) {
+                            "Browser PCM byte count mismatch: reported=$pcmByteSize decoded=${pcm.size}"
+                        }
+                        val wav = SpeechPcmWav.encode(pcm)
+                        log.info { "Browser PCM audio recorder stopped: pcmBytes=${pcm.size} wavBytes=${wav.size}" }
+                        stopped.complete(ClientRecordedAudio(wav, SpeechAudioFormat.WAV_PCM_S16LE_MONO_16_KHZ))
+                    } else {
+                        stopped.complete(null)
                     }
-                    val wav = SpeechPcmWav.encode(pcm)
-                    log.info { "Browser PCM audio recorder stopped: pcmBytes=${pcm.size} wavBytes=${wav.size}" }
-                    stopped.complete(
-                        ClientRecordedAudio(
-                            data = wav,
-                            format = SpeechAudioFormat.WAV_PCM_S16LE_MONO_16_KHZ,
-                        )
-                    )
                     audioChunkChannel.close()
                 },
                 onError = { messageKey: String, message: String ->
@@ -105,11 +117,17 @@ private class BrowserClientAudioRecordingSession(
         }
     }
 
-    override suspend fun stop(): ClientRecordedAudio {
-        log.info { "Browser PCM audio recorder stop requested" }
+    suspend fun stopCapture() {
         started.await()
         stopBrowserAudioRecording(recordingHandle)
-        return stopped.await()
+        stopped.await()
+    }
+
+    override suspend fun stop(): ClientRecordedAudio {
+        check(retainRecording) { "Streaming audio capture has no retained recording" }
+        log.info { "Browser PCM audio recorder stop requested" }
+        stopCapture()
+        return checkNotNull(stopped.await()) { "Browser recording is missing retained audio" }
     }
 
     override fun cancel() {
@@ -213,6 +231,7 @@ private external fun browserAudioDebugInfo(): String
         let context = null;
         let contextReady = null;
         let generation = 0;
+        const activeRecordings = new Set();
 
         const createContext = () => {
             if (!AudioContextConstructor) {
@@ -251,10 +270,67 @@ private external fun browserAudioDebugInfo(): String
             return selectedContext;
         };
 
+        const createStreamingResampler = (sourceSampleRate, targetSampleRate) => {
+            if (!(sourceSampleRate > 0) || !(targetSampleRate > 0)) {
+                throw new Error("Audio sample rates must be positive");
+            }
+            const sourceSamplesPerOutput = sourceSampleRate / targetSampleRate;
+            let inputOffset = 0;
+            let nextSourcePosition = 0;
+            let previousSample = 0;
+            let hasPreviousSample = false;
+            return {
+                push(samples) {
+                    if (!samples || typeof samples.length !== "number" || typeof samples.slice !== "function") {
+                        throw new Error("Streaming resampler expects typed-array input");
+                    }
+                    if (samples.length === 0) return new Float32Array(0);
+                    if (sourceSampleRate === targetSampleRate) {
+                        inputOffset += samples.length;
+                        previousSample = samples[samples.length - 1];
+                        hasPreviousSample = true;
+                        nextSourcePosition = inputOffset;
+                        return samples;
+                    }
+                    const chunkStart = inputOffset;
+                    const chunkEnd = chunkStart + samples.length;
+                    const output = [];
+                    while (true) {
+                        const leftIndex = Math.floor(nextSourcePosition);
+                        const fraction = nextSourcePosition - leftIndex;
+                        let left;
+                        let right;
+                        if (leftIndex < chunkStart) {
+                            if (!hasPreviousSample || leftIndex !== chunkStart - 1) break;
+                            left = previousSample;
+                            right = samples[0];
+                        } else {
+                            if (leftIndex >= chunkEnd) break;
+                            left = samples[leftIndex - chunkStart];
+                            if (fraction === 0) {
+                                right = left;
+                            } else {
+                                if (leftIndex + 1 >= chunkEnd) break;
+                                right = samples[leftIndex + 1 - chunkStart];
+                            }
+                        }
+                        output.push(left + (right - left) * fraction);
+                        nextSourcePosition += sourceSamplesPerOutput;
+                    }
+                    inputOffset = chunkEnd;
+                    previousSample = samples[samples.length - 1];
+                    hasPreviousSample = true;
+                    return Float32Array.from(output);
+                }
+            };
+        };
+
         const manager = {
             processorName,
+            createStreamingResampler,
             begin() {
                 generation += 1;
+                activeRecordings.add(generation);
                 return generation;
             },
             async prepare() {
@@ -266,7 +342,7 @@ private external fun browserAudioDebugInfo(): String
             },
             ensureContext,
             async release(recordingGeneration) {
-                if (recordingGeneration !== generation) return;
+                if (!activeRecordings.delete(recordingGeneration) || activeRecordings.size !== 0) return;
                 const selectedContext = context;
                 if (!selectedContext || selectedContext.state !== "running") return;
                 try {
@@ -274,7 +350,7 @@ private external fun browserAudioDebugInfo(): String
                 } catch (_) {
                     return;
                 }
-                if (recordingGeneration !== generation && context === selectedContext) {
+                if (activeRecordings.size !== 0 && context === selectedContext) {
                     try { await selectedContext.resume(); } catch (_) {}
                 }
             }
@@ -291,7 +367,7 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
 
 @JsFun(
     """
-    (manager, onStarted, onChunk, onStopped, onError) => {
+    (manager, retainRecording, onStarted, onChunk, onStopped, onError) => {
         const targetSampleRate = 16000;
         const processorName = manager.processorName;
         const requestedAt = performance.now();
@@ -301,9 +377,11 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
         let sourceNode = null;
         let workletNode = null;
         let silentGain = null;
+        let streamingResampler = null;
         let startedSignalled = false;
         const chunks = [];
         let chunkPipeline = Promise.resolve();
+        let queuedChunks = 0;
         const handle = {
             state: "starting",
             cancelRequested: false,
@@ -413,6 +491,10 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
                 const sourceSampleRate = audioContext.sampleRate;
                 await cleanup();
                 await chunkPipeline;
+                if (!retainRecording) {
+                    onStopped("", 0);
+                    return;
+                }
                 const samples = concatenate(chunks);
                 const resampled = await resample(samples, sourceSampleRate);
                 const pcm = toPcm16LittleEndian(resampled);
@@ -463,6 +545,7 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
 
                 sourceNode = audioContext.createMediaStreamSource(stream);
                 workletNode = new AudioWorkletNode(audioContext, processorName);
+                streamingResampler = manager.createStreamingResampler(audioContext.sampleRate, targetSampleRate);
                 silentGain = audioContext.createGain();
                 silentGain.gain.value = 0;
 
@@ -474,16 +557,22 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
                         }
                     } else if (event.data?.type === "samples") {
                         if (handle.finalized || handle.cancelRequested) return;
-                        chunks.push(event.data.samples);
+                        if (!retainRecording && queuedChunks >= 32) {
+                            fail(Object.assign(new Error("Live audio processing buffer overflow"), { messageKey: "interpreter.audioBacklog" }));
+                            return;
+                        }
+                        if (retainRecording) chunks.push(event.data.samples);
+                        queuedChunks += 1;
                         const samples = event.data.samples;
-                        const sourceSampleRate = audioContext.sampleRate;
                         chunkPipeline = chunkPipeline
                             .then(async () => {
-                                const resampled = await resample(samples, sourceSampleRate);
+                                const resampled = streamingResampler.push(samples);
+                                if (resampled.length === 0) return;
                                 const pcm = toPcm16BigEndian(resampled);
                                 const dataUrl = await toDataUrl(pcm);
                                 onChunk(dataUrl, pcm.byteLength);
                             })
+                            .finally(() => { queuedChunks -= 1; })
                             .catch(error => {
                                 fail(error);
                                 throw error;
@@ -513,6 +602,7 @@ private external fun prewarmBrowserAudioRecorder(manager: JsAny)
 )
 private external fun startBrowserAudioRecording(
     manager: JsAny,
+    retainRecording: Boolean,
     onStarted: (Double) -> Unit,
     onChunk: (String, Int) -> Unit,
     onStopped: (String, Int) -> Unit,

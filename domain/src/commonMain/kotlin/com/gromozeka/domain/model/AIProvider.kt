@@ -14,6 +14,7 @@ enum class AiProvider {
     OPENAI,
     ANTHROPIC,
     GOOGLE,
+    SONIOX,
     OLLAMA,
     CUSTOM,
 }

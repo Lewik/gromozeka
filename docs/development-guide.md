@@ -343,6 +343,164 @@ resolve the currently selected tab again or redirect a result when its target
 has closed. Provider VAD forwards the speech-start `item_id` through the Server
 so transcripts arriving out of order retain their original destinations.
 
+### Live transcription
+
+The separate Live tab shows original-language transcription and optional contextual
+translations into multiple languages. Recognition uses an enabled Server-targeted
+OpenAI or Soniox API model with the `REALTIME_TRANSCRIPTION` capability. The
+`LIVE_TRANSCRIPTION` runtime assignment supplies the default model; a user may
+explicitly select another eligible model. Bootstrap inserts missing bundled catalog
+entries but does not rewrite an existing model configuration or assignment.
+The bundled default is `gpt-transcribe`; `gpt-live-transcribe` and Soniox STT v6
+remain eligible alternatives. `whisper-1` remains available for ordinary finite
+`SPEECH_TO_TEXT` requests but is deliberately not a Live model. Ordinary dictation
+retains its separate assignment and behavior.
+
+The client sends mono PCM16 at 16 kHz, big endian. `gpt-transcribe` uses provider
+`semantic_vad` at `eagerness=low`, while `gpt-live-transcribe` uses the client
+silence/max-turn detector and receives `delay=low`. Their Stop path drains commit
+acknowledgements and final transcripts. There is no audio overlap or LLM transcript
+stabilizer in any path, and translation never modifies the original.
+
+The root client controller owns the logical session across tab switches. Its text
+is held in client memory for that app lifetime, not stored in conversation history.
+A failed stage marks unfinished fragments and possible audio gaps. Retryable
+failures use bounded fresh connections; permanent/contract failures pause for
+explicit continuation. Stop drains pending originals and must not report a failed
+drain as success. Native iOS currently reports streaming capture as unavailable;
+it does not fall back to sliced recordings.
+
+`node --test scripts/test-browser-audio-recorder.cjs` checks shared browser
+AudioContext ownership and verifies that the stateful 48/44.1 kHz to 16 kHz Live
+resampler is split-invariant and preserves its long-run sample count, without
+recording a microphone. Focused JVM tests cover
+Live ownership, cancellation, ordering, reconnect and native WebSocket framing.
+Local fake-ASR tests do not establish actual OpenAI model access or recognition
+quality; those require a separate authorized audio evaluation.
+
+`OpenAiLiveTranscriptionLiveTest` is an opt-in real-provider smoke test. Enable it
+with `GROMOZEKA_OPENAI_LIVE_SMOKE=true`, inject `OPENAI_API_KEY` through the secret
+store, and set `GROMOZEKA_OPENAI_LIVE_AUDIO_DIR` to a directory containing synthetic
+`en.pcm`, `he.pcm` and `ru.pcm`: mono PCM16 big endian at 16 kHz, at most 30 seconds
+each. The spoken fixtures must mention a blue notebook on a table in their
+original languages (English: `blue`, `notebook`; Hebrew: `מחברת`, `שולחן`;
+Russian: `тетрадь`, `стол`). The test streams them in real time and verifies the
+committed originals. `GROMOZEKA_OPENAI_LIVE_MODEL` defaults to `gpt-live-transcribe`;
+set it to `gpt-transcribe` to test committed-turn transcription. The former must
+emit native partials before the first commit; the latter must not. The test does
+not start the application or record a microphone. `GROMOZEKA_OPENAI_LIVE_HINTS`
+defaults to `he,en,ru`; set it to an empty string to evaluate automatic detection.
+Run this opt-in test with `--no-configuration-cache` so a cached Gradle test task
+does not retain stale environment values. The effective model and hints are
+printed before connecting. Do not pass a literal key through command-line
+arguments or commit API keys.
+
+### Soniox Live 2
+
+`soniox-api-stt-rt-v6` is an optional Live transcription model configuration on the
+disabled `soniox-api` connection. Enable the connection explicitly, provide
+`SONIOX_API_KEY`, and select **Soniox Live 2
+(STT v6)** in the Live model menu. The connection may override its realtime endpoint;
+the default is `https://stt-rt.soniox.com/transcribe-websocket`, and regional projects
+can use the corresponding EU, Japan, or India endpoint.
+
+The client sends the existing PCM16BE/16 kHz mono stream directly to Soniox. The
+session enables language identification and speaker diarization with the configured
+language hints. Endpoint detection and manual finalization remain disabled: Soniox
+may revise provisional tokens itself, while finalized tokens are immutable. The UI
+shows provisional text immediately and attaches Soniox's session-stable anonymous
+speaker label to finalized source blocks. Speaker changes close translation source
+blocks so text from different people is not merged into one translatable passage.
+Sentence punctuation closes a final segment; an eight-second safety threshold waits
+for the next word boundary and therefore never splits a Soniox subword token.
+
+The provider keeps the API key on the Server, sends periodic keepalives, drains the
+WebSocket with an empty text frame on Stop, and waits for Soniox's `finished` response.
+A single stream supports up to 300 minutes according to the provider contract; longer
+meetings still require a future planned handoff. Realtime speaker labels can change
+while provisional and are bound only when final tokens arrive.
+
+Live 2 can also enable Soniox's native one-way speech translation for one target
+language on the same WebSocket. The original and translated token chunks remain
+separate; translated chunks have no audio timestamps, so the provider binds each one
+to the preceding finalized original chunk and preserves its speaker and source
+language. Speech already in the target language is passed through from the original
+tokens because Soniox intentionally emits no redundant translation tokens. This native
+column is skipped by the OpenAI text translator; any additional selected languages
+continue through the independent contextual text-translation pipeline.
+
+`SonioxLiveTranscriptionLiveTest` is an opt-in production-adapter evaluation. Set
+`GROMOZEKA_SONIOX_LIVE_SMOKE=true`, inject `SONIOX_API_KEY`, and point
+`GROMOZEKA_SONIOX_LIVE_AUDIO` to a one-second to five-minute recording. Optional
+variables are `GROMOZEKA_SONIOX_LIVE_HINTS`,
+`GROMOZEKA_SONIOX_LIVE_MIN_SPEAKERS`, and comma-separated
+`GROMOZEKA_SONIOX_LIVE_EXPECTED`. Set `GROMOZEKA_SONIOX_LIVE_TRANSLATE_TO` to
+exercise native one-way translation and optionally provide comma-separated
+`GROMOZEKA_SONIOX_LIVE_EXPECTED_TRANSLATION`. The test streams in real time and
+verifies provisional text, ordered immutable originals and translations, timestamps,
+languages, speaker labels, and admission cleanup. It does not record a hardware
+microphone.
+
+### Contextual Live text translation
+
+`LIVE_TRANSLATION` is a separate optional runtime purpose requiring `TEXT_GENERATION`
+and `STRUCTURED_OUTPUT`. It may remain unassigned in a catalog, but using it requires
+an explicit model selection or assignment; it has no chat fallback. Only Server-targeted
+OpenAI API configurations are eligible.
+The import template assigns `gpt-5.4-mini` with model-default `reasoning.effort=low`;
+Live does not impose reasoning settings on other selected models. The template does
+not silently change an existing catalog or fall back to chat/subscription assignments. Existing installations can
+select an eligible translation model in Live or configure the runtime purpose.
+
+Target languages can be added and removed while capture continues. The initial
+selection follows the client interface locale until explicitly overridden. A newly
+selected language catches up on all confirmed source history; completed translations
+of other languages are retained. An empty target selection disables translation.
+Each language has its own drafts, fixed prefix, errors and retry action. One shared
+round-robin worker performs one request at a time and batches newly available text;
+it does not wait artificially to fill a batch. Removing a target does not replay or
+cancel the ASR stream. A new logical meeting/model generation fences late responses.
+
+Shared source blocks group text, not sentence pairs. Languages may split or combine
+sentences within each block. Native finals are ordered by epoch and committed
+position, including empty finals; known finals survive a gap even when an earlier
+turn did not complete. The UI keeps original and target columns aligned by source
+block and distinguishes fixed output, revisable drafts, and translations catching up.
+Stop drains originals before fixing the completed translated tail.
+
+The prompt contains immutable source/translation context first, followed by the
+previous drafts, a continuous editable passage, its block alignment, and the target
+language. The passage and alignment represent the same original, not repeated
+speech; gaps remain explicit in both. Keeping discourse together lets later source
+evidence inform earlier editable wording. The response schema does not embed
+changing block ids or languages. Normal work keeps the two latest blocks revisable. Context
+grows to a 64,000-character high-water mark, then drops whole old blocks towards
+32,000 characters while retaining at least 2,400 original-source characters where
+available. These are bounded application policies, not guarantees about provider
+cache hits or translation quality. Cache keys are stable per authenticated user,
+logical meeting and target language. Cache reads are reported through normal AI usage.
+Tools and provider-native web access are disabled. Invalid output pauses the affected
+language explicitly, preserving old translations and allowing manual retry; it does
+not stop microphone capture. An internal source-planning failure stops that stage
+and remains visible rather than guessing a replacement state.
+
+`LiveTranslationOpenAiLiveTest` exercises the real Server translation service and
+OpenAI SDK adapter using synthetic multilingual text, not a microphone or UI. Enable
+it with `GROMOZEKA_OPENAI_LIVE_TRANSLATION_SMOKE=true` and inject `OPENAI_API_KEY` from
+the secret store. The test uses a test admission implementation, not the production
+quota/identity database. It checks context-based draft revision, numbers, negation,
+mixed languages and quoted instructions, and reports cached-input usage on a growing
+prefix. `GROMOZEKA_OPENAI_LIVE_TRANSLATION_MODEL` optionally selects another catalog
+model spec for an explicit comparison without changing the application default.
+`GROMOZEKA_OPENAI_LIVE_TRANSLATION_REASONING` optionally selects an explicit effort
+for that comparison; otherwise the probe applies the actual model defaults. The
+effective model and reasoning configuration are printed before making requests.
+The separately gated `GROMOZEKA_OPENAI_LIVE_TRANSLATION_LAYOUT_PROBE=true` diagnostic
+runs the same source as a single passage rather than several output blocks.
+Run `:server:test --tests '*LiveTranslationOpenAiLiveTest'` with
+`--no-daemon --no-configuration-cache`. These probes are not human translation-quality
+certification or long-meeting/failure tests.
+
 ## Personal Message Delivery
 
 The authenticated User owns one delivery preference across conversations and clients:

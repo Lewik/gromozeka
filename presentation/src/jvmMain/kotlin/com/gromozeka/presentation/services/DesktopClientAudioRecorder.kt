@@ -18,6 +18,15 @@ class DesktopClientAudioRecorder : ClientAudioRecorder {
 
     override val supportsStreamingAudioChunks: Boolean = true
 
+    override suspend fun startStreaming(scope: CoroutineScope): ClientAudioCaptureSession {
+        val session = AudioRecorder().launchRecording(scope, audioConfig.copy(retainRecording = false))
+        return object : ClientAudioCaptureSession {
+            override val audioChunks: Flow<ByteArray> = session.audioChunks
+            override suspend fun stop() = session.stopCapture()
+            override fun cancel() = session.cancel()
+        }
+    }
+
     override suspend fun start(scope: CoroutineScope): ClientAudioRecordingSession =
         DesktopClientAudioRecordingSession(
             session = AudioRecorder().launchRecording(scope, audioConfig),

@@ -44,7 +44,18 @@ class AndroidClientAudioRecorder(
 
     override val supportsStreamingAudioChunks: Boolean = true
 
-    override suspend fun start(scope: CoroutineScope): ClientAudioRecordingSession = startMutex.withLock {
+    override suspend fun start(scope: CoroutineScope): ClientAudioRecordingSession = startSession(scope, retainRecording = true)
+
+    override suspend fun startStreaming(scope: CoroutineScope): ClientAudioCaptureSession {
+        val session = startSession(scope, retainRecording = false)
+        return object : ClientAudioCaptureSession {
+            override val audioChunks: Flow<ByteArray> = session.audioChunks
+            override suspend fun stop() = session.stopCapture()
+            override fun cancel() = session.cancel()
+        }
+    }
+
+    private suspend fun startSession(scope: CoroutineScope, retainRecording: Boolean): AndroidClientAudioRecordingSession = startMutex.withLock {
         check(!closed.get()) { "Android audio recorder is closed" }
         check(scope.isActive) { "Android audio recording scope is not active" }
         check(synchronized(activeSessionLock) { activeSession == null }) {
@@ -56,7 +67,7 @@ class AndroidClientAudioRecorder(
 
         val recorder = createAudioRecord()
         lateinit var session: AndroidClientAudioRecordingSession
-        session = AndroidClientAudioRecordingSession(recorder, scope) {
+        session = AndroidClientAudioRecordingSession(recorder, scope, retainRecording) {
             synchronized(activeSessionLock) {
                 if (activeSession === session) activeSession = null
             }
@@ -130,10 +141,11 @@ class AndroidClientAudioRecorder(
 private class AndroidClientAudioRecordingSession(
     private val recorder: AudioRecord,
     private val scope: CoroutineScope,
+    private val retainRecording: Boolean,
     private val onFinished: () -> Unit,
 ) : ClientAudioRecordingSession {
     private val terminationRequested = AtomicBoolean(false)
-    private val audioChannel = Channel<ByteArray>(Channel.UNLIMITED)
+    private val audioChannel = Channel<ByteArray>(if (retainRecording) Channel.UNLIMITED else 32)
     private val rawPcm = ByteArrayOutputStream()
     private var captureFailure: Throwable? = null
     private lateinit var captureJob: Job
@@ -158,13 +170,18 @@ private class AndroidClientAudioRecordingSession(
         }
     }
 
-    override suspend fun stop(): ClientRecordedAudio {
+    suspend fun stopCapture() {
         if (terminationRequested.compareAndSet(false, true)) {
             stopRecorder()
             captureJob.cancel()
         }
         captureJob.join()
         captureFailure?.let { throw it }
+    }
+
+    override suspend fun stop(): ClientRecordedAudio {
+        check(retainRecording) { "Streaming audio capture has no retained recording" }
+        stopCapture()
         return ClientRecordedAudio(
             data = SpeechPcmWav.encode(rawPcm.toByteArray()),
             format = SpeechAudioFormat.WAV_PCM_S16LE_MONO_16_KHZ,
@@ -213,8 +230,9 @@ private class AndroidClientAudioRecordingSession(
     }
 
     private fun publishPcm(pcmLittleEndian: ByteArray) {
-        rawPcm.write(pcmLittleEndian)
-        audioChannel.trySend(pcmLittleEndian.toBigEndianPcm16())
+        if (retainRecording) rawPcm.write(pcmLittleEndian)
+        val result = audioChannel.trySend(pcmLittleEndian.toBigEndianPcm16())
+        check(retainRecording || result.isSuccess) { "Live microphone audio buffer overflow" }
     }
 
     private fun stopRecorder() {

@@ -48,6 +48,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -607,79 +608,71 @@ class RemoteProtocolCodecTest {
 
     @Test
     fun cborRoundTripSupportsLiveInterpreterPayloads() {
-        val startEnvelope = GromozekaClientEnvelope(
-            id = "live-start-1",
-            payload = StartLiveInterpreterRequest(
-                targetLanguage = "ru",
-                sourceLanguageCode = "he",
-                sourceLanguageHint = "Hebrew workplace conversation",
-            )
-        )
-        val decodedStart = RemoteProtocolCodec.decodeClientBinary(
-            RemoteProtocolCodec.encodeClientBinary(startEnvelope)
-        ).payload as StartLiveInterpreterRequest
+        val startEnvelope = GromozekaClientEnvelope("live-start-1", StartLiveInterpreterRequest(
+            sessionId = "live-session-1", languages = listOf("he", "en", "ru"), nativeTranslationLanguage = "ru",
+        ))
+        val start = RemoteProtocolCodec.decodeClientBinary(RemoteProtocolCodec.encodeClientBinary(startEnvelope))
+            .payload as StartLiveInterpreterRequest
+        assertEquals("live-session-1", start.sessionId)
+        assertEquals(listOf("he", "en", "ru"), start.languages)
+        assertEquals("ru", start.nativeTranslationLanguage)
+        val bytes = ByteArray(128) { it.toByte() }
+        val audioEnvelope = GromozekaClientEnvelope("live-audio-1", LiveInterpreterAudioChunkCommand(
+            "live-session-1", RemotePcmAudioChunk(7, bytes),
+        ))
+        val audio = RemoteProtocolCodec.decodeClientBinary(RemoteProtocolCodec.encodeClientBinary(audioEnvelope))
+            .payload as LiveInterpreterAudioChunkCommand
+        assertContentEquals(bytes, audio.chunk.data)
+        assertEquals(7, audio.chunk.sequenceNumber)
+        assertEquals(16_000, audio.chunk.sampleRate)
+        assertEquals(RemotePcmByteOrder.BIG_ENDIAN, audio.chunk.byteOrder)
+        val partialEnvelope = GromozekaServerEnvelope("partial", LiveInterpreterTranscriptEvent(
+            "live-session-1", "segment-1", null, "שלום", false,
+        ))
+        val partial = RemoteProtocolCodec.decodeServerBinary(RemoteProtocolCodec.encodeServerBinary(partialEnvelope))
+            .payload as LiveInterpreterTranscriptEvent
+        assertEquals(null, partial.sequenceNumber)
+        assertEquals("שלום", partial.text)
+        assertFalse(partial.isFinal)
+        val finalEnvelope = GromozekaServerEnvelope("final", LiveInterpreterTranscriptEvent(
+            "live-session-1", "segment-1", 0, "שלום world", true,
+            speakerId = "2", language = "he", startMillis = 100, endMillis = 900,
+        ))
+        val final = RemoteProtocolCodec.decodeServerBinary(RemoteProtocolCodec.encodeServerBinary(finalEnvelope))
+            .payload as LiveInterpreterTranscriptEvent
+        assertEquals(0, final.sequenceNumber)
+        assertTrue(final.isFinal)
+        assertEquals("2", final.speakerId)
+        assertEquals("he", final.language)
+        assertEquals(100L, final.startMillis)
+        assertEquals(900L, final.endMillis)
+        val nativeEnvelope = GromozekaServerEnvelope("native", LiveInterpreterNativeTranslationEvent(
+            "live-session-1", "segment-1", 0, "Привет, мир", true,
+            targetLanguage = "ru", sourceLanguage = "he", speakerId = "2",
+        ))
+        val native = RemoteProtocolCodec.decodeServerBinary(RemoteProtocolCodec.encodeServerBinary(nativeEnvelope))
+            .payload as LiveInterpreterNativeTranslationEvent
+        assertEquals("Привет, мир", native.text)
+        assertEquals("ru", native.targetLanguage)
+        assertEquals("he", native.sourceLanguage)
+        assertEquals("2", native.speakerId)
+        val failureEnvelope = GromozekaServerEnvelope("failure", LiveInterpreterFailedEvent(
+            "live-session-1", "synthetic failure", retryable = true,
+        ))
+        val failure = RemoteProtocolCodec.decodeServerBinary(RemoteProtocolCodec.encodeServerBinary(failureEnvelope))
+            .payload as LiveInterpreterFailedEvent
+        assertTrue(failure.retryable)
+        val autoEnvelope = GromozekaClientEnvelope("auto", StartLiveInterpreterRequest("auto-session", languages = emptyList()))
+        val auto = RemoteProtocolCodec.decodeClientText(RemoteProtocolCodec.encodeClientText(autoEnvelope))
+            .payload as StartLiveInterpreterRequest
+        assertEquals(emptyList(), auto.languages)
+    }
 
-        assertEquals("he", decodedStart.sourceLanguageCode)
-        assertEquals("Hebrew workplace conversation", decodedStart.sourceLanguageHint)
-
-        val bytes = ByteArray(128) { index -> index.toByte() }
-        val clientEnvelope = GromozekaClientEnvelope(
-            id = "live-command-1",
-            payload = LiveInterpreterAudioChunkCommand(
-                sessionId = "live-session-1",
-                chunk = RemoteLiveAudioChunk(
-                    sequenceNumber = 7,
-                    data = bytes,
-                    format = SpeechAudioFormat.WAV_PCM_S16LE_MONO_16_KHZ,
-                )
-            )
-        )
-        val decodedClient = RemoteProtocolCodec.decodeClientBinary(
-            RemoteProtocolCodec.encodeClientBinary(clientEnvelope)
-        )
-        val command = decodedClient.payload as LiveInterpreterAudioChunkCommand
-
-        assertEquals("live-session-1", command.sessionId)
-        assertEquals(7, command.chunk.sequenceNumber)
-        assertContentEquals(bytes, command.chunk.data)
-        assertEquals(SpeechAudioFormat.WAV_PCM_S16LE_MONO_16_KHZ, command.chunk.format)
-
-        val transcriptEnvelope = GromozekaClientEnvelope(
-            id = "live-transcript-1",
-            payload = LiveInterpreterTranscriptChunkCommand(
-                sessionId = "live-session-1",
-                chunk = RemoteLiveTranscriptChunk(
-                    sequenceNumber = 8,
-                    text = "שלום",
-                )
-            )
-        )
-        val decodedTranscript = RemoteProtocolCodec.decodeClientBinary(
-            RemoteProtocolCodec.encodeClientBinary(transcriptEnvelope)
-        ).payload as LiveInterpreterTranscriptChunkCommand
-
-        assertEquals("live-session-1", decodedTranscript.sessionId)
-        assertEquals(8, decodedTranscript.chunk.sequenceNumber)
-        assertEquals("שלום", decodedTranscript.chunk.text)
-
-        val serverEnvelope = GromozekaServerEnvelope(
-            id = "live-event-1",
-            payload = LiveInterpreterTranslationEvent(
-                sessionId = "live-session-1",
-                segmentId = "segment-7",
-                sequenceNumber = 3,
-                text = "Привет",
-                targetLanguage = "ru",
-            )
-        )
-        val decodedServer = RemoteProtocolCodec.decodeServerBinary(
-            RemoteProtocolCodec.encodeServerBinary(serverEnvelope)
-        )
-        val event = decodedServer.payload as LiveInterpreterTranslationEvent
-
-        assertEquals("segment-7", event.segmentId)
-        assertEquals("Привет", event.text)
-        assertTrue(event.isFinal)
+    @Test
+    fun liveNativeTranslationTargetRequiresAnIso6391Code() {
+        assertFailsWith<IllegalArgumentException> {
+            StartLiveInterpreterRequest("regional-target", nativeTranslationLanguage = "pt-br")
+        }
     }
 
     @Test

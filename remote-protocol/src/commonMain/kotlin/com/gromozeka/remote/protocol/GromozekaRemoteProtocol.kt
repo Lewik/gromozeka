@@ -795,14 +795,23 @@ data class SynthesizeSpeechRequest(
     val tone: String = "neutral colleague",
 ) : ClientRequest
 
+private val liveSessionIdPattern = Regex("[A-Za-z0-9._:-]{1,128}")
+
 @Serializable
 @SerialName("start_live_interpreter")
 data class StartLiveInterpreterRequest(
-    val targetLanguage: String,
-    val sourceLanguageCode: String = "auto",
-    val sourceLanguageHint: String = "Speech in any language, including multilingual conversation, names, and technical terms",
-    val translationRuntimeSelection: AiRuntimeSelection? = null,
-) : ClientRequest
+    val sessionId: String,
+    val languages: List<String> = listOf("he", "en", "ru"),
+    val transcriptionRuntimeSelection: AiRuntimeSelection? = null,
+    val nativeTranslationLanguage: String? = null,
+) : ClientRequest {
+    init {
+        require(liveSessionIdPattern.matches(sessionId)) { "Invalid Live session id" }
+        require(nativeTranslationLanguage == null || nativeTranslationLanguage.matches(Regex("[a-z]{2}"))) {
+            "Live native translation requires a two-letter ISO 639-1 language code"
+        }
+    }
+}
 
 @Serializable
 @SerialName("start_live_voice_provider_vad")
@@ -826,19 +835,6 @@ data class RemoteAudioRecording(
 data class RemoteAudioChunk(
     val sequenceNumber: Int,
     val data: ByteArray,
-)
-
-@Serializable
-data class RemoteLiveAudioChunk(
-    val sequenceNumber: Int,
-    val data: ByteArray,
-    val format: SpeechAudioFormat,
-)
-
-@Serializable
-data class RemoteLiveTranscriptChunk(
-    val sequenceNumber: Int,
-    val text: String,
 )
 
 @Serializable
@@ -866,13 +862,6 @@ data class RemotePcmAudioChunk(
         }
     }
 }
-
-@Serializable
-data class RemoteLiveInterpreterDraft(
-    val id: String,
-    val sequenceNumber: Int,
-    val text: String,
-)
 
 @Serializable
 @JsonClassDiscriminator("stateQueryType")
@@ -1049,21 +1038,22 @@ data class SynthesizeSpeechStreamCommand(
 @SerialName("live_interpreter_audio_chunk")
 data class LiveInterpreterAudioChunkCommand(
     val sessionId: String,
-    val chunk: RemoteLiveAudioChunk,
-) : ClientPayload
-
-@Serializable
-@SerialName("live_interpreter_transcript_chunk")
-data class LiveInterpreterTranscriptChunkCommand(
-    val sessionId: String,
-    val chunk: RemoteLiveTranscriptChunk,
-) : ClientPayload
+    val chunk: RemotePcmAudioChunk,
+) : ClientPayload {
+    init {
+        require(liveSessionIdPattern.matches(sessionId)) { "Invalid Live session id" }
+    }
+}
 
 @Serializable
 @SerialName("stop_live_interpreter")
 data class StopLiveInterpreterCommand(
     val sessionId: String,
-) : ClientPayload
+) : ClientPayload {
+    init {
+        require(liveSessionIdPattern.matches(sessionId)) { "Invalid Live session id" }
+    }
+}
 
 @Serializable
 @SerialName("live_voice_provider_vad_audio_chunk")
@@ -1722,28 +1712,55 @@ data class LiveInterpreterStatusEvent(
 data class LiveInterpreterTranscriptEvent(
     val sessionId: String,
     val segmentId: String,
-    val sequenceNumber: Int,
+    val sequenceNumber: Int?,
     val text: String,
-    val isFinal: Boolean = true,
-) : ServerPayload
+    val isFinal: Boolean,
+    val speakerId: String? = null,
+    val language: String? = null,
+    val startMillis: Long? = null,
+    val endMillis: Long? = null,
+) : ServerPayload {
+    init {
+        require(segmentId.isNotBlank()) { "Live transcript segment id must not be blank" }
+        require(sequenceNumber == null || sequenceNumber >= 0) { "Live transcript position must not be negative" }
+        require(!isFinal || sequenceNumber != null) { "A final Live transcript requires its committed position" }
+        require(speakerId == null || speakerId.isNotBlank() && speakerId.length <= 64) { "Live speaker id is invalid" }
+        require(language == null || language.matches(Regex("[a-z]{2,3}(-[a-z0-9]{2,8})*"))) {
+            "Live transcript language is invalid"
+        }
+        require((startMillis == null) == (endMillis == null) &&
+            (startMillis == null || startMillis >= 0 && endMillis!! >= startMillis)) {
+            "Live transcript audio range is invalid"
+        }
+    }
+}
 
 @Serializable
-@SerialName("live_interpreter_drafts")
-data class LiveInterpreterDraftsEvent(
-    val sessionId: String,
-    val drafts: List<RemoteLiveInterpreterDraft>,
-) : ServerPayload
-
-@Serializable
-@SerialName("live_interpreter_translation")
-data class LiveInterpreterTranslationEvent(
+@SerialName("live_interpreter_native_translation")
+data class LiveInterpreterNativeTranslationEvent(
     val sessionId: String,
     val segmentId: String,
     val sequenceNumber: Int,
     val text: String,
+    val isFinal: Boolean,
     val targetLanguage: String,
-    val isFinal: Boolean = true,
-) : ServerPayload
+    val sourceLanguage: String? = null,
+    val speakerId: String? = null,
+) : ServerPayload {
+    init {
+        require(segmentId.isNotBlank()) { "Live native translation segment id must not be blank" }
+        require(sequenceNumber >= 0) { "Live native translation position must not be negative" }
+        require(targetLanguage.matches(Regex("[a-z]{2,3}(-[a-z0-9]{2,8})*"))) {
+            "Live native translation target language is invalid"
+        }
+        require(sourceLanguage == null || sourceLanguage.matches(Regex("[a-z]{2,3}(-[a-z0-9]{2,8})*"))) {
+            "Live native translation source language is invalid"
+        }
+        require(speakerId == null || speakerId.isNotBlank() && speakerId.length <= 64) {
+            "Live native translation speaker id is invalid"
+        }
+    }
+}
 
 @Serializable
 @SerialName("live_interpreter_stopped")
@@ -1756,6 +1773,7 @@ data class LiveInterpreterStoppedEvent(
 data class LiveInterpreterFailedEvent(
     val sessionId: String,
     val message: String,
+    val retryable: Boolean,
 ) : ServerPayload
 
 @Serializable

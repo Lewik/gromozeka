@@ -82,7 +82,6 @@ data class UserProfile(
                 val timeoutSeconds: Int = 120,
                 val serverStartupTimeoutSeconds: Int = 300,
                 val audioContext: AudioContext = AudioContext(),
-                val liveStreaming: LiveStreaming = LiveStreaming(),
                 val executionTarget: AiExecutionTarget = AiExecutionTarget.Server,
             ) {
                 init {
@@ -131,35 +130,7 @@ data class UserProfile(
                     }
                 }
 
-                @Serializable
-                data class LiveStreaming(
-                    val profile: Profile = Profile.BALANCED,
-                    val maximumAdaptiveWindowMillis: Long = 90_000L,
-                ) {
-                    init {
-                        require(maximumAdaptiveWindowMillis >= profile.windowMillis) {
-                            "Local Whisper maximum adaptive live window must be greater than or equal to profile window"
-                        }
-                    }
 
-                    val windowMillis: Long get() = profile.windowMillis
-                    val stepMillis: Long get() = profile.stepMillis
-                    val minWindowMillis: Long get() = profile.minWindowMillis
-                    val overlapMillis: Long get() = profile.overlapMillis
-
-                    @Serializable
-                    enum class Profile(
-                        val label: String,
-                        val windowMillis: Long,
-                        val stepMillis: Long,
-                        val minWindowMillis: Long,
-                        val overlapMillis: Long,
-                    ) {
-                        LOW_LATENCY("Low latency", 12_000L, 6_000L, 4_000L, 4_000L),
-                        BALANCED("Balanced", 20_000L, 15_000L, 5_000L, 5_000L),
-                        SLOW_CPU("Slow CPU", 30_000L, 25_000L, 8_000L, 5_000L),
-                    }
-                }
             }
         }
 

@@ -7,7 +7,6 @@ import com.gromozeka.presentation.services.translation.LocalizedTextException
 import com.gromozeka.presentation.services.translation.localizedText
 import com.gromozeka.presentation.services.translation.localizedPlural
 import com.gromozeka.remote.protocol.RemoteAudioRecording
-import com.gromozeka.remote.protocol.RemoteLiveAudioChunk
 import com.gromozeka.shared.concurrency.DynamicConcurrencyGate
 import klog.KLoggers
 import kotlinx.coroutines.Dispatchers
@@ -71,30 +70,13 @@ class DesktopLocalWhisperSpeechToTextService(
             audioData = audioBytes,
             format = recording.format,
             language = settingsService.userProfile.speechSettings.speechToText.mainLanguageCode,
-            prompt = null,
-            sequenceNumber = null,
         )
     }
-
-    override suspend fun transcribe(
-        chunk: RemoteLiveAudioChunk,
-        language: String,
-        prompt: String?,
-    ): String =
-        transcribe(
-            audioData = chunk.data,
-            format = chunk.format,
-            language = language.ifBlank { settingsService.userProfile.speechSettings.speechToText.mainLanguageCode },
-            prompt = prompt,
-            sequenceNumber = chunk.sequenceNumber,
-        )
 
     private suspend fun transcribe(
         audioData: ByteArray,
         format: SpeechAudioFormat,
         language: String,
-        prompt: String?,
-        sequenceNumber: Int?,
     ): String {
         if (!isAvailable()) throw LocalizedTextException(localizedText("client.whisper.disabled"))
         val speechToText = settingsService.userProfile.speechSettings.speechToText
@@ -108,7 +90,7 @@ class DesktopLocalWhisperSpeechToTextService(
                 val audioDurationSeconds = wavDurationSeconds(audioData.size)
 
                 log.info {
-                    "Client Local Whisper transcription requested: sequence=$sequenceNumber bytes=${audioData.size} " +
+                    "Client Local Whisper transcription requested: bytes=${audioData.size} " +
                         "format=$format language=$requestedLanguage audioCtx=$audioContext url=${server.inferenceUrl}"
                 }
 
@@ -117,7 +99,6 @@ class DesktopLocalWhisperSpeechToTextService(
                     server = server,
                     audioData = audioData,
                     language = requestedLanguage,
-                    prompt = prompt,
                     audioContext = audioContext,
                     timeoutSeconds = settings.timeoutSeconds,
                 )
@@ -126,7 +107,7 @@ class DesktopLocalWhisperSpeechToTextService(
                     ?.let { elapsed.inWholeMilliseconds / 1000.0 / it }
 
                 log.info {
-                    "Client Local Whisper transcription completed: sequence=$sequenceNumber textChars=${transcript.length} " +
+                    "Client Local Whisper transcription completed: textChars=${transcript.length} " +
                         "elapsedMs=${elapsed.inWholeMilliseconds} audioSec=${audioDurationSeconds?.formatSeconds()} rtf=${rtf?.formatRatio()}"
                 }
 
@@ -240,7 +221,6 @@ class DesktopLocalWhisperSpeechToTextService(
         server: WhisperServerHandle,
         audioData: ByteArray,
         language: String,
-        prompt: String?,
         audioContext: Int?,
         timeoutSeconds: Int,
     ): String {
@@ -250,7 +230,6 @@ class DesktopLocalWhisperSpeechToTextService(
             .field("no_timestamps", "true")
             .apply {
                 audioContext?.let { field("audio_ctx", it.toString()) }
-                prompt?.trim()?.takeIf { it.isNotBlank() }?.let { field("prompt", it) }
             }
             .file(
                 name = "file",

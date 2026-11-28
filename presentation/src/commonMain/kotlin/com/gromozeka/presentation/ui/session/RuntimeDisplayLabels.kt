@@ -81,6 +81,7 @@ internal fun AiProvider.runtimeDisplayName(translation: Translation): String = t
     AiProvider.OPENAI -> "ai.provider.openai"
     AiProvider.ANTHROPIC -> "ai.provider.anthropic"
     AiProvider.GOOGLE -> "ai.provider.google"
+    AiProvider.SONIOX -> "ai.provider.soniox"
     AiProvider.OLLAMA -> "ai.provider.ollama"
     AiProvider.CUSTOM -> "ai.provider.custom"
 })

@@ -666,28 +666,7 @@ fun SettingsPanel(
                                     }
                                 )
 
-                                DropdownSettingItem(
-                                    label = translation.text("settingsUi.whisperLiveProfile"),
-                                    description = translation.text("settingsUi.controlsLiveChunkSizeSlowCPUIncreasesLatency"),
-                                    value = localWhisper.liveStreaming.profile,
-                                    options = UserProfile.SpeechSettings.SpeechToText.LocalWhisper.LiveStreaming.Profile.entries,
-                                    optionLabel = { it.displayName(translation) },
-                                    onValueChange = { profile ->
-                                        onSettingsChange(
-                                            settings.updateUserProfile {
-                                                copy(
-                                                    speechSettings = speechSettings.copy(
-                                                        speechToText = speechSettings.speechToText.copy(
-                                                            localWhisper = localWhisper.copy(
-                                                                liveStreaming = localWhisper.liveStreaming.copy(profile = profile)
-                                                            )
-                                                        )
-                                                    )
-                                                )
-                                            }
-                                        )
-                                    }
-                                )
+
                             }
 
                             val recognitionLanguageNames = Translation.builtIn.values
@@ -2736,14 +2715,6 @@ private fun KeyboardShortcutKey.displayName(): String = when (this) {
 private fun WorkerCatalogEntry.Status.displayName(translation: Translation): String = translation.text(when (this) {
     WorkerCatalogEntry.Status.ONLINE -> "settingsUi.workerOnline"
     WorkerCatalogEntry.Status.OFFLINE -> "settingsUi.workerOffline"
-})
-
-private fun UserProfile.SpeechSettings.SpeechToText.LocalWhisper.LiveStreaming.Profile.displayName(
-    translation: Translation,
-): String = translation.text(when (this) {
-    UserProfile.SpeechSettings.SpeechToText.LocalWhisper.LiveStreaming.Profile.LOW_LATENCY -> "settingsUi.whisperProfileLowLatency"
-    UserProfile.SpeechSettings.SpeechToText.LocalWhisper.LiveStreaming.Profile.BALANCED -> "settingsUi.whisperProfileBalanced"
-    UserProfile.SpeechSettings.SpeechToText.LocalWhisper.LiveStreaming.Profile.SLOW_CPU -> "settingsUi.whisperProfileSlowCpu"
 })
 
 private fun KeyboardShortcutScope.displayName(translation: Translation): String = localizedText().resolve(translation)

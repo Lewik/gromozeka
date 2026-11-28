@@ -15,5 +15,8 @@ private object UnsupportedRecordingSession : RecordingSession {
     override suspend fun stop(): ByteArray =
         throw UnsupportedOperationException("Audio recording is not available on wasmJs")
 
+    override suspend fun stopCapture(): Unit =
+        throw UnsupportedOperationException("Streaming capture is not available through shared AudioRecorder on this platform")
+
     override fun cancel() = Unit
 }

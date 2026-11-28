@@ -28,13 +28,11 @@ import com.gromozeka.remote.protocol.GromozekaClientEnvelope
 import com.gromozeka.remote.protocol.GromozekaServerEnvelope
 import com.gromozeka.remote.protocol.LiveInterpreterAudioChunkCommand
 import com.gromozeka.remote.protocol.LiveInterpreterFailedEvent
-import com.gromozeka.remote.protocol.LiveInterpreterDraftsEvent
+import com.gromozeka.remote.protocol.LiveInterpreterNativeTranslationEvent
 import com.gromozeka.remote.protocol.LiveInterpreterStartedResponse
 import com.gromozeka.remote.protocol.LiveInterpreterStatusEvent
 import com.gromozeka.remote.protocol.LiveInterpreterStoppedEvent
 import com.gromozeka.remote.protocol.LiveInterpreterTranscriptEvent
-import com.gromozeka.remote.protocol.LiveInterpreterTranslationEvent
-import com.gromozeka.remote.protocol.LiveInterpreterTranscriptChunkCommand
 import com.gromozeka.remote.protocol.LiveVoiceProviderVadAudioChunkCommand
 import com.gromozeka.remote.protocol.LiveVoiceProviderVadFailedEvent
 import com.gromozeka.remote.protocol.LiveVoiceProviderVadSpeechStartedEvent
@@ -48,8 +46,6 @@ import com.gromozeka.remote.protocol.MessageUpsertedEvent
 import com.gromozeka.remote.protocol.ObserveConversationCommand
 import com.gromozeka.remote.protocol.ObserveStateSyncCommand
 import com.gromozeka.remote.protocol.PullStateSyncRequest
-import com.gromozeka.remote.protocol.RemoteLiveAudioChunk
-import com.gromozeka.remote.protocol.RemoteLiveTranscriptChunk
 import com.gromozeka.remote.protocol.RemoteClientPlatform
 import com.gromozeka.remote.protocol.RemotePcmAudioChunk
 import com.gromozeka.remote.protocol.RemoteProtocolCodec
@@ -98,6 +94,12 @@ import io.ktor.http.isSuccess
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readBytes
 import io.ktor.websocket.readText
+import com.gromozeka.domain.service.LiveTranscriptionException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -155,7 +157,7 @@ internal class GromozekaWsClient(
     private val conversationSubscriptions = mutableMapOf<String, ConversationSubscription>()
     private val conversationEventSequences = mutableMapOf<Conversation.Id, Long>()
     private val stateSubscriptions = mutableMapOf<String, RemoteStateSubscription>()
-    private val liveInterpreterSessions = mutableMapOf<String, Channel<ServerPayload>>()
+    private val liveInterpreterSessions = mutableMapOf<String, LiveInterpreterClientSession>()
     private val liveVoiceProviderVadSessions = mutableMapOf<String, Channel<ServerPayload>>()
 
     fun reportActivity(kind: ClientActivityKind) {
@@ -170,7 +172,9 @@ internal class GromozekaWsClient(
         }
     }
 
-    suspend fun request(payload: ClientRequest): ServerResponse {
+    suspend fun request(payload: ClientRequest): ServerResponse = request(payload, null)
+
+    private suspend fun request(payload: ClientRequest, connection: DefaultClientWebSocketSession?): ServerResponse {
         val id = uuid7()
         val deferred = CompletableDeferred<ServerResponse>()
         registryMutex.withLock {
@@ -179,13 +183,14 @@ internal class GromozekaWsClient(
 
         try {
             log.debug { "Request id=$id type=${payload::class.simpleName}" }
-            sendEnvelope(GromozekaClientEnvelope(id, payload))
+            val envelope = GromozekaClientEnvelope(id, payload)
+            if (connection == null) sendEnvelope(envelope) else sendEnvelope(connection, envelope)
             return deferred.await().also { response ->
                 log.debug { "Response id=$id type=${response::class.simpleName}" }
             }
         } finally {
-            registryMutex.withLock {
-                pending.remove(id)
+            withContext(NonCancellable) {
+                registryMutex.withLock { pending.remove(id) }
             }
         }
     }
@@ -517,38 +522,60 @@ internal class GromozekaWsClient(
     }
 
     suspend fun startLiveInterpreter(request: StartLiveInterpreterRequest): LiveInterpreterClientSession {
-        val response = requestTyped<StartLiveInterpreterRequest, LiveInterpreterStartedResponse>(request)
-        val channel = Channel<ServerPayload>(Channel.UNLIMITED)
+        val connection = ensureConnected().session
+        val registered = LiveInterpreterClientSession(request.sessionId, Channel(64), connection)
         registryMutex.withLock {
-            liveInterpreterSessions[response.sessionId] = channel
+            check(request.sessionId !in liveInterpreterSessions) { "Live session id is already registered" }
+            liveInterpreterSessions[request.sessionId] = registered
         }
-        return LiveInterpreterClientSession(response.sessionId, channel)
+        try {
+            when (val response = this.request(request, connection)) {
+                is LiveInterpreterStartedResponse -> check(response.sessionId == request.sessionId) { "Live session response id mismatch" }
+                is ErrorResponse -> error(response.message)
+                else -> error("Unexpected Live start response: ${response::class.simpleName}")
+            }
+            return registered
+        } catch (error: Throwable) {
+            withContext(NonCancellable) {
+                try {
+                    withTimeout(2_000) { sendEnvelope(connection, GromozekaClientEnvelope(uuid7(), StopLiveInterpreterCommand(request.sessionId))) }
+                } catch (cleanupError: Exception) {
+                    log.warn { "Live start cleanup could not be sent: type=${cleanupError::class.simpleName}" }
+                } finally {
+                    closeLiveInterpreterSession(request.sessionId)
+                }
+            }
+            throw error
+        }
     }
 
-    suspend fun sendLiveInterpreterAudioChunk(
-        sessionId: String,
-        chunk: RemoteLiveAudioChunk,
-    ) {
-        send(LiveInterpreterAudioChunkCommand(sessionId, chunk))
-    }
-
-    suspend fun sendLiveInterpreterTranscriptChunk(
-        sessionId: String,
-        chunk: RemoteLiveTranscriptChunk,
-    ) {
-        send(LiveInterpreterTranscriptChunkCommand(sessionId, chunk))
+    suspend fun sendLiveInterpreterAudioChunk(sessionId: String, chunk: RemotePcmAudioChunk) {
+        val registered = registryMutex.withLock { liveInterpreterSessions[sessionId] }
+            ?: throw LiveTranscriptionException("Live remote session is no longer connected", retryable = true)
+        try {
+            withTimeout(10_000) {
+                sendEnvelope(
+                    registered.connection,
+                    GromozekaClientEnvelope(uuid7(), LiveInterpreterAudioChunkCommand(sessionId, chunk)),
+                )
+            }
+        } catch (error: CancellationException) {
+            if (error is TimeoutCancellationException && currentCoroutineContext().isActive) {
+                throw LiveTranscriptionException("Live audio connection to Gromozeka timed out", retryable = true, cause = error)
+            }
+            throw error
+        } catch (error: Exception) {
+            throw LiveTranscriptionException("Live audio connection to Gromozeka failed", retryable = true, cause = error)
+        }
     }
 
     suspend fun stopLiveInterpreter(sessionId: String) {
-        send(StopLiveInterpreterCommand(sessionId))
+        val registered = registryMutex.withLock { liveInterpreterSessions[sessionId] } ?: return
+        sendEnvelope(registered.connection, GromozekaClientEnvelope(uuid7(), StopLiveInterpreterCommand(sessionId)))
     }
 
-    fun closeLiveInterpreterSession(sessionId: String) {
-        scope.launch {
-            registryMutex.withLock {
-                liveInterpreterSessions.remove(sessionId)
-            }?.close()
-        }
+    suspend fun closeLiveInterpreterSession(sessionId: String) {
+        registryMutex.withLock { liveInterpreterSessions.remove(sessionId) }?.channel?.close()
     }
 
     suspend fun startLiveVoiceProviderVad(
@@ -709,8 +736,7 @@ internal class GromozekaWsClient(
                     is SpeechSynthesisFailedEvent -> routeStreamEvent(payload.streamId, payload)
                     is LiveInterpreterStatusEvent -> routeLiveInterpreterEvent(payload.sessionId, payload)
                     is LiveInterpreterTranscriptEvent -> routeLiveInterpreterEvent(payload.sessionId, payload)
-                    is LiveInterpreterDraftsEvent -> routeLiveInterpreterEvent(payload.sessionId, payload)
-                    is LiveInterpreterTranslationEvent -> routeLiveInterpreterEvent(payload.sessionId, payload)
+                    is LiveInterpreterNativeTranslationEvent -> routeLiveInterpreterEvent(payload.sessionId, payload)
                     is LiveInterpreterStoppedEvent -> {
                         routeLiveInterpreterEvent(payload.sessionId, payload)
                         closeLiveInterpreterSession(payload.sessionId)
@@ -871,7 +897,7 @@ internal class GromozekaWsClient(
             pending.clear()
             activeStreams = streams.values.toList()
             streams.clear()
-            activeInterpreterSessions = liveInterpreterSessions.values.toList()
+            activeInterpreterSessions = liveInterpreterSessions.values.map { it.channel }
             liveInterpreterSessions.clear()
             activeLiveVoiceProviderVadSessions = liveVoiceProviderVadSessions.values.toList()
             liveVoiceProviderVadSessions.clear()
@@ -879,7 +905,7 @@ internal class GromozekaWsClient(
         val connectionError = RemoteConnectionLostException(error)
         pendingRequests.forEach { it.completeExceptionally(connectionError) }
         activeStreams.forEach { it.close(error) }
-        activeInterpreterSessions.forEach { it.close(error) }
+        activeInterpreterSessions.forEach { it.close(connectionError) }
         activeLiveVoiceProviderVadSessions.forEach { it.close(error) }
     }
 
@@ -952,9 +978,12 @@ internal class GromozekaWsClient(
     }
 
     private suspend fun routeLiveInterpreterEvent(sessionId: String, payload: ServerPayload) {
-        registryMutex.withLock {
-            liveInterpreterSessions[sessionId]
-        }?.send(payload)
+        val registered = registryMutex.withLock { liveInterpreterSessions[sessionId] } ?: return
+        val result = registered.channel.trySend(payload)
+        if (!result.isSuccess && !result.isClosed) {
+            registered.channel.close(LiveTranscriptionException("Live event buffer overflow", retryable = true))
+            sendEnvelope(registered.connection, GromozekaClientEnvelope(uuid7(), StopLiveInterpreterCommand(sessionId)))
+        }
     }
 
     private suspend fun routeLiveVoiceProviderVadEvent(sessionId: String, payload: ServerPayload) {
@@ -1004,7 +1033,7 @@ internal class GromozekaWsClient(
     }
 }
 
-private class RemoteConnectionLostException(
+internal class RemoteConnectionLostException(
     cause: Throwable,
 ) : Exception("Gromozeka remote connection was lost", cause)
 
@@ -1023,6 +1052,7 @@ private fun StateSyncCursor.toRemoteStateSyncCursor(): RemoteStateSyncCursor = R
 internal class LiveInterpreterClientSession(
     val sessionId: String,
     internal val channel: Channel<ServerPayload>,
+    internal val connection: DefaultClientWebSocketSession,
 )
 
 internal class LiveVoiceProviderVadClientSession(

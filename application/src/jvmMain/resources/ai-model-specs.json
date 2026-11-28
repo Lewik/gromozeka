@@ -264,6 +264,10 @@
         "contextWindowTokens": 400000,
         "maxOutputTokens": 128000
       }
+    },
+    "reasoning": {
+      "modes": ["DISABLED", "ADAPTIVE"],
+      "efforts": ["LOW", "MEDIUM", "HIGH", "XHIGH"]
     }
   },
   {
@@ -341,9 +345,24 @@
     }
   },
   {
-    "id": "gpt-transcribe",
+    "id": "stt-rt-v6",
+    "provider": "SONIOX",
+    "capabilities": ["SPEECH_TO_TEXT", "REALTIME_TRANSCRIPTION", "SPEAKER_DIARIZATION"]
+  },
+  {
+    "id": "whisper-1",
     "provider": "OPENAI",
     "capabilities": ["SPEECH_TO_TEXT"]
+  },
+  {
+    "id": "gpt-transcribe",
+    "provider": "OPENAI",
+    "capabilities": ["SPEECH_TO_TEXT", "REALTIME_TRANSCRIPTION"]
+  },
+  {
+    "id": "gpt-live-transcribe",
+    "provider": "OPENAI",
+    "capabilities": ["REALTIME_TRANSCRIPTION"]
   },
   {
     "id": "gpt-4o-mini-tts",
