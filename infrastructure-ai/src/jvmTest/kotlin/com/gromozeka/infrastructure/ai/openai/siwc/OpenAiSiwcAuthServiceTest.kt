@@ -48,6 +48,8 @@ class OpenAiSiwcAuthServiceTest {
     private var tokenBodyGate: CountDownLatch? = null
     private var tokenScopes = "openid profile email offline_access resource.invoke chatgpt.tokens.use.direct"
     private var earliestRefreshAtSeconds: Long? = null
+    private var refreshSubject = "subject-1"
+    private var corruptRefreshIdToken = false
     private var now = 1_800_000_000_000L
     private val server: HttpServer
     private val issuer: String
@@ -130,6 +132,18 @@ class OpenAiSiwcAuthServiceTest {
         assertEquals("access-2", service(store).validAccessToken(Long.MAX_VALUE))
         assertEquals(null, store.read()?.pendingRefresh)
         assertEquals(2, tokenCalls.get(), "Recovery must not reuse the consumed refresh token")
+    }
+
+    @Test
+    fun `persisted refresh account mismatch requires reauthentication after restart`() = runBlocking {
+        refreshSubject = "subject-2"
+        assertTerminalPendingRefreshRequiresReauthentication("account_mismatch")
+    }
+
+    @Test
+    fun `persisted invalid refresh identity requires reauthentication after restart`() = runBlocking {
+        corruptRefreshIdToken = true
+        assertTerminalPendingRefreshRequiresReauthentication("invalid_id_token")
     }
 
     @Test
@@ -421,7 +435,14 @@ class OpenAiSiwcAuthServiceTest {
             assertEquals("refresh_token", form["grant_type"])
             assertEquals("refresh-1", form["refresh_token"])
         }
-        val idToken = signedIdToken(clientId = "issued_client", nonce = if (call == 1) nonce else null)
+        var idToken = signedIdToken(
+            clientId = "issued_client",
+            nonce = if (call == 1) nonce else null,
+            subject = if (call == 1) "subject-1" else refreshSubject,
+        )
+        if (call > 1 && corruptRefreshIdToken) {
+            idToken = "${idToken.substringBeforeLast('.')}.${base64Url(ByteArray(256))}"
+        }
         exchange.json(200, """{
             "token_type":"Bearer","access_token":"access-$call","refresh_token":"refresh-$call",
             "expires_in":3600,"scope":"$tokenScopes",
@@ -429,11 +450,11 @@ class OpenAiSiwcAuthServiceTest {
         }""", tokenBodyGate)
     }
 
-    private fun signedIdToken(clientId: String, nonce: String?): String {
+    private fun signedIdToken(clientId: String, nonce: String?, subject: String): String {
         val header = base64Url("""{"alg":"RS256","kid":"test-key","typ":"JWT"}""".toByteArray())
         val claims = base64Url("""{
             "iss":"$issuer","aud":"$clientId","exp":${now / 1000 + 3600},"iat":${now / 1000},
-            "sub":"subject-1","name":"Lev","email":"lev@example.test"${nonce?.let { ",\"nonce\":\"$it\"" }.orEmpty()}
+            "sub":"$subject","name":"Lev","email":"lev@example.test"${nonce?.let { ",\"nonce\":\"$it\"" }.orEmpty()}
         }""".toByteArray())
         val unsigned = "$header.$claims"
         val signature = Signature.getInstance("SHA256withRSA").apply {
@@ -441,6 +462,37 @@ class OpenAiSiwcAuthServiceTest {
             update(unsigned.toByteArray(StandardCharsets.US_ASCII))
         }.sign()
         return "$unsigned.${base64Url(signature)}"
+    }
+
+    private suspend fun assertTerminalPendingRefreshRequiresReauthentication(expectedCode: String) {
+        val store = OpenAiSiwcCredentialStore(TestSettings(home))
+        val initial = service(store)
+        val authorization = initial.prepareAuthorization("http://127.0.0.1:14555/auth/callback")
+        nonce = parseQuery(URI.create(authorization.url).rawQuery).getValue("nonce")
+        initial.completeAuthorization(authorization, "one-time-code", "issued_client")
+
+        now += 3_600_000L
+        jwksAvailable = false
+        val unavailable = assertFailsWith<OpenAiSiwcException> { service(store).validAccessToken(Long.MAX_VALUE) }
+        assertEquals("identity_verification_unavailable", unavailable.code)
+        assertNotNull(store.read()?.pendingRefresh)
+
+        jwksAvailable = true
+        val restartedStore = OpenAiSiwcCredentialStore(TestSettings(home))
+        val browser = OpenAiSiwcBrowserAuthService(service(restartedStore))
+        try {
+            val terminal = assertFailsWith<OpenAiSiwcException> { browser.validAccessToken(Long.MAX_VALUE) }
+            assertEquals(expectedCode, terminal.code)
+            val reauthentication = assertNotNull(restartedStore.read())
+            assertEquals(OpenAiSiwcStoredState.Status.REAUTH_REQUIRED, reauthentication.status)
+            assertEquals("subject-1", reauthentication.subject)
+            assertEquals(null, reauthentication.credentials)
+            assertEquals(null, reauthentication.pendingRefresh)
+            assertTrue(browser.isLoginPending())
+            assertEquals(2, tokenCalls.get(), "Recovery must not retry the consumed refresh token")
+        } finally {
+            browser.shutdown()
+        }
     }
 
     private fun HttpExchange.json(

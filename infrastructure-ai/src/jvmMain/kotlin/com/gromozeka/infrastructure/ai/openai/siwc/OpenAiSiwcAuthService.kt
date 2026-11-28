@@ -211,7 +211,7 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
                 }
                 refreshed.accessToken
             } catch (error: OpenAiSiwcException) {
-                if (error.code in UNUSABLE_REFRESH_TOKEN_CODES) {
+                if (error.code in REAUTH_REQUIRED_ERROR_CODES) {
                     save((state ?: current).copy(
                         status = OpenAiSiwcStoredState.Status.REAUTH_REQUIRED,
                         scopes = emptyList(),
@@ -632,9 +632,9 @@ internal class OpenAiSiwcAuthService @Autowired constructor(
         const val MAX_TOKEN_CHARS = 1024 * 1024
         const val MAX_HTTP_BODY_BYTES = 1024 * 1024
         val SCOPES = listOf("openid", "profile", "email", "offline_access", "resource.invoke", SHARING_SCOPE)
-        val UNUSABLE_REFRESH_TOKEN_CODES = setOf(
+        val REAUTH_REQUIRED_ERROR_CODES = setOf(
             "invalid_grant", "invalid_refresh_token", "token_expired", "refresh_token_expired",
-            "refresh_token_invalidated", "refresh_token_reused",
+            "refresh_token_invalidated", "refresh_token_reused", "invalid_id_token", "account_mismatch",
         )
     }
 }
