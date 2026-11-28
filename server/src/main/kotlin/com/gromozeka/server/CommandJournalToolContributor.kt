@@ -217,7 +217,7 @@ internal class CommandJournalToolContributor(
     private fun readContentTool(): AiToolCallback = toolFactory.create(
         source = CORE_TOOL_SOURCE,
         name = READ_CONTENT_TOOL_NAME,
-        description = "Read bounded Command Journal command, code, arguments or output text. Use nextLinkId as after_link_id to continue.",
+        description = "Read bounded Command Journal command, code, arguments or output text. Pass the returned nextCursor object as cursor to continue, including within one large content item.",
         inputSchema = READ_CONTENT_SCHEMA,
         readOnly = true,
         idempotent = true,
@@ -227,7 +227,7 @@ internal class CommandJournalToolContributor(
     ) { input ->
         requireKeys(
             input,
-            setOf("entry_id", "call_id", "event_id", "kinds", "after_link_id", "limit", "max_characters_per_item"),
+            setOf("entry_id", "call_id", "event_id", "kinds", "cursor", "limit", "max_characters_per_item"),
         )
         val projectId = toolContext.requiredProjectId()
         projectAccess.requirePermission(user.id, projectId, ProjectPermission.READ)
@@ -241,7 +241,18 @@ internal class CommandJournalToolContributor(
                 kinds = input.optionalStringList("kinds").mapTo(linkedSetOf()) {
                     parseEnum<CommandJournal.Content.Kind>("kinds", it)
                 },
-                afterLinkId = input["after_link_id"]?.let { input.requiredLong("after_link_id") },
+                cursor = input["cursor"]?.let {
+                    val cursor = input.requiredObject("cursor")
+                    requireKeys(cursor, setOf("linkId", "characterOffset"))
+                    val characterOffset = cursor.requiredLong("characterOffset")
+                    if (characterOffset !in 0..Int.MAX_VALUE.toLong()) {
+                        throw ServerToolException("invalid_argument", "'cursor.characterOffset' is out of range")
+                    }
+                    CommandJournal.ContentCursor(
+                        linkId = cursor.requiredLong("linkId"),
+                        characterOffset = characterOffset.toInt(),
+                    )
+                },
                 limit = input.optionalInt("limit", 10, 1..50),
                 maxCharactersPerItem = input.optionalInt("max_characters_per_item", 8_192, 256..65_536),
             )
@@ -389,7 +400,13 @@ internal class CommandJournalToolContributor(
                 "call_id" to ServerToolSchemas.string("Optional exact call id."),
                 "event_id" to ServerToolSchemas.string("Optional exact event id."),
                 "kinds" to ServerToolSchemas.stringArray("Optional content kinds to include."),
-                "after_link_id" to ServerToolSchemas.integer("Return links after this cursor.", 0),
+                "cursor" to ServerToolSchemas.objectSchema(
+                    properties = mapOf(
+                        "linkId" to ServerToolSchemas.integer("Content link id returned by the previous page.", 1),
+                        "characterOffset" to ServerToolSchemas.integer("Next unread character offset within that link.", 0),
+                    ),
+                    required = listOf("linkId", "characterOffset"),
+                ),
                 "limit" to ServerToolSchemas.integer("Maximum content links returned; limit multiplied by max_characters_per_item must not exceed 131072.", 1, 50),
                 "max_characters_per_item" to ServerToolSchemas.integer("Maximum returned characters per item; the complete requested page is capped at 131072 characters.", 256, 65_536),
             ),

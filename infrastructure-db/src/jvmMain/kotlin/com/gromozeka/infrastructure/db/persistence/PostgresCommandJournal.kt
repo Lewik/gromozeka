@@ -426,8 +426,9 @@ internal class PostgresCommandJournal(
     override suspend fun readContent(query: CommandJournal.ContentQuery): CommandJournal.ContentPage? = io {
         dataSource.connection.use { connection ->
             connection.findEntry(query.projectId, query.entryId) ?: return@use null
-            val conditions = mutableListOf("link.entry_id=?", "link.id>?")
-            val parameters = mutableListOf<Any>(query.entryId.value, query.afterLinkId ?: 0L)
+            val cursor = query.cursor
+            val conditions = mutableListOf("link.entry_id=?", "link.id>=?")
+            val parameters = mutableListOf<Any>(query.entryId.value, cursor?.linkId ?: 1L)
             query.callId?.let {
                 conditions += "link.call_id=?"
                 parameters += it.value
@@ -441,36 +442,62 @@ internal class PostgresCommandJournal(
                 parameters.addAll(query.kinds.map { it.name })
             }
             val sql = """
+                WITH selected AS (
+                    SELECT
+                        link.id AS link_id,
+                        link.entry_id,
+                        link.call_id,
+                        link.event_id,
+                        link.content_id,
+                        link.kind,
+                        link.sequence,
+                        content.text_content,
+                        content.size_bytes,
+                        link.start_byte,
+                        link.end_byte,
+                        link.total_bytes,
+                        link.truncated_before,
+                        link.truncated_after,
+                        link.created_at,
+                        CASE WHEN link.id=? THEN ? ELSE 0 END AS character_start
+                    FROM command_journal_content_links link
+                    JOIN command_journal_contents content ON content.id=link.content_id
+                    WHERE ${conditions.joinToString(" AND ")}
+                    ORDER BY link.id
+                    LIMIT ?
+                )
                 SELECT
-                    link.id AS link_id,
-                    link.entry_id,
-                    link.call_id,
-                    link.event_id,
-                    link.content_id,
-                    link.kind,
-                    link.sequence,
-                    LEFT(content.text_content, ?) AS visible_text,
-                    content.size_bytes,
-                    CHAR_LENGTH(content.text_content) > ? AS text_truncated,
-                    link.start_byte,
-                    link.end_byte,
-                    link.total_bytes,
-                    link.truncated_before,
-                    link.truncated_after,
-                    link.created_at
-                FROM command_journal_content_links link
-                JOIN command_journal_contents content ON content.id=link.content_id
-                WHERE ${conditions.joinToString(" AND ")}
-                ORDER BY link.id
-                LIMIT ?
+                    selected.*,
+                    SUBSTRING(text_content FROM character_start + 1 FOR ?) AS visible_text,
+                    CHAR_LENGTH(text_content) AS total_characters,
+                    character_start + CHAR_LENGTH(
+                        SUBSTRING(text_content FROM character_start + 1 FOR ?)
+                    ) AS character_end,
+                    OCTET_LENGTH(SUBSTRING(text_content FROM 1 FOR character_start)) AS skipped_bytes,
+                    OCTET_LENGTH(
+                        SUBSTRING(text_content FROM character_start + 1 FOR ?)
+                    ) AS visible_bytes
+                FROM selected
+                ORDER BY link_id
             """.trimIndent()
             connection.prepareStatement(sql).use { statement ->
-                statement.setInt(1, query.maxCharactersPerItem)
-                statement.setInt(2, query.maxCharactersPerItem)
-                statement.bind(parameters + (query.limit + 1), startIndex = 3)
+                statement.setLong(1, cursor?.linkId ?: -1L)
+                statement.setInt(2, cursor?.characterOffset ?: 0)
+                val bound = parameters + (query.limit + 2)
+                statement.bind(bound, startIndex = 3)
+                val maximumIndex = 3 + bound.size
+                statement.setInt(maximumIndex, query.maxCharactersPerItem)
+                statement.setInt(maximumIndex + 1, query.maxCharactersPerItem)
+                statement.setInt(maximumIndex + 2, query.maxCharactersPerItem)
                 statement.executeQuery().use { rows ->
                     val values = buildList {
                         while (rows.next()) {
+                            val characterStart = rows.getInt("character_start")
+                            val characterEnd = rows.getInt("character_end")
+                            val totalCharacters = rows.getInt("total_characters")
+                            val sourceStart = rows.nullableLong("start_byte")
+                            val visibleStart = sourceStart?.plus(rows.getLong("skipped_bytes"))
+                            val visibleEnd = visibleStart?.plus(rows.getLong("visible_bytes"))
                             add(
                                 CommandJournal.ContentRecord(
                                     linkId = rows.getLong("link_id"),
@@ -482,22 +509,40 @@ internal class PostgresCommandJournal(
                                     sequence = rows.getInt("sequence"),
                                     text = rows.getString("visible_text"),
                                     sizeBytes = rows.getInt("size_bytes"),
-                                    textTruncated = rows.getBoolean("text_truncated"),
-                                    startByte = rows.nullableLong("start_byte"),
-                                    endByte = rows.nullableLong("end_byte"),
+                                    characterStart = characterStart,
+                                    characterEnd = characterEnd,
+                                    totalCharacters = totalCharacters,
+                                    textTruncated = characterStart > 0 || characterEnd < totalCharacters,
+                                    startByte = visibleStart,
+                                    endByte = visibleEnd,
                                     totalBytes = rows.nullableLong("total_bytes"),
-                                    truncatedBefore = rows.getBoolean("truncated_before"),
-                                    truncatedAfter = rows.getBoolean("truncated_after"),
+                                    truncatedBefore = rows.getBoolean("truncated_before") || characterStart > 0,
+                                    truncatedAfter = rows.getBoolean("truncated_after") || characterEnd < totalCharacters,
                                     createdAt = rows.getTimestamp("created_at").instant(),
                                 )
                             )
                         }
                     }
-                    val page = values.take(query.limit)
-                    CommandJournal.ContentPage(
-                        items = page,
-                        nextLinkId = if (values.size > query.limit) page.lastOrNull()?.linkId else null,
-                    )
+                    val page = mutableListOf<CommandJournal.ContentRecord>()
+                    var nextCursor: CommandJournal.ContentCursor? = null
+                    for (value in values) {
+                        if (cursor != null && value.linkId == cursor.linkId) {
+                            require(value.characterStart <= value.totalCharacters) {
+                                "Command Journal content cursor exceeds link ${value.linkId}"
+                            }
+                        }
+                        if (value.characterStart == value.totalCharacters) continue
+                        if (page.size == query.limit) {
+                            nextCursor = CommandJournal.ContentCursor(value.linkId, value.characterStart)
+                            break
+                        }
+                        page += value
+                        if (value.characterEnd < value.totalCharacters) {
+                            nextCursor = CommandJournal.ContentCursor(value.linkId, value.characterEnd)
+                            break
+                        }
+                    }
+                    CommandJournal.ContentPage(items = page, nextCursor = nextCursor)
                 }
             }
         }

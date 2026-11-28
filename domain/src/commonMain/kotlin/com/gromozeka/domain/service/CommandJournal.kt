@@ -127,18 +127,28 @@ interface CommandJournal {
     )
 
     @Serializable
+    data class ContentCursor(
+        val linkId: Long,
+        val characterOffset: Int,
+    ) {
+        init {
+            require(linkId > 0) { "Command Journal content link cursor must be positive" }
+            require(characterOffset >= 0) { "Command Journal content character cursor must be non-negative" }
+        }
+    }
+
+    @Serializable
     data class ContentQuery(
         val projectId: Project.Id,
         val entryId: Entry.Id,
         val callId: Call.Id? = null,
         val eventId: Event.Id? = null,
         val kinds: Set<Content.Kind> = emptySet(),
-        val afterLinkId: Long? = null,
+        val cursor: ContentCursor? = null,
         val limit: Int = 10,
         val maxCharactersPerItem: Int = 8_192,
     ) {
         init {
-            require(afterLinkId == null || afterLinkId >= 0) { "Command Journal content cursor is invalid" }
             require(limit in 1..50) { "Command Journal content limit must be between 1 and 50" }
             require(maxCharactersPerItem in 256..65_536) {
                 "Command Journal content character limit must be between 256 and 65536"
@@ -152,7 +162,7 @@ interface CommandJournal {
     @Serializable
     data class ContentPage(
         val items: List<ContentRecord>,
-        val nextLinkId: Long? = null,
+        val nextCursor: ContentCursor? = null,
     )
 
     @Serializable
@@ -166,6 +176,9 @@ interface CommandJournal {
         val sequence: Int,
         val text: String,
         val sizeBytes: Int,
+        val characterStart: Int,
+        val characterEnd: Int,
+        val totalCharacters: Int,
         val textTruncated: Boolean,
         val startByte: Long? = null,
         val endByte: Long? = null,

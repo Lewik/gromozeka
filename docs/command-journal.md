@@ -55,7 +55,7 @@ The following read tools remain on-demand and are discoverable through the ordin
 
 - `grz_command_journal_search` — bounded project search with exact metadata filters and literal text;
 - `grz_command_journal_get` — entry metadata, bounded calls, and bounded lifecycle events;
-- `grz_command_journal_read_content` — paged text with per-item character limits and truncation metadata;
+- `grz_command_journal_read_content` — paged text with a cursor that resumes within oversized content and preserves slice/range metadata;
 - `grz_command_journal_stats` — logical project counts plus physical Journal/database sizes; owner-only.
 
 Search and reads enforce current project access. Self-report requires current Conversation write access.

@@ -127,10 +127,15 @@ class CommandJournalToolContributorTest {
 
         val secondContext = context.withValue(TOOL_CONTEXT_TOOL_CALL_ID, "report-call-2")
         val secondReport = report.callResult(
-            buildJsonObject { put("command", "echo second") }.toString(),
+            buildJsonObject {
+                put("command", "echo second")
+                put("output", "x".repeat(300))
+            }.toString(),
             secondContext,
         )
         assertFalse(secondReport.isError)
+        val secondEntryId = assertNotNull(secondReport.structuredContent?.get("result")?.jsonObject)
+            .getValue("entry_id").jsonPrimitive.content
 
         val searchTool = contributor.callbacks.single { it.definition.name == "grz_command_journal_search" }
         val firstSearch = searchTool.callResult(buildJsonObject { put("limit", 1) }.toString(), context)
@@ -162,6 +167,42 @@ class CommandJournalToolContributorTest {
             .callResult(buildJsonObject { put("entry_id", entry.id.value) }.toString(), context)
         assertFalse(read.isError)
         assertEquals(3, read.structuredContent?.get("result")?.jsonObject?.get("items")?.let { it as kotlinx.serialization.json.JsonArray }?.size)
+
+        val firstContentRead = contributor.callbacks.single { it.definition.name == "grz_command_journal_read_content" }
+            .callResult(
+                buildJsonObject {
+                    put("entry_id", secondEntryId)
+                    put("kinds", kotlinx.serialization.json.JsonArray(listOf(JsonPrimitive("REPORTED_OUTPUT"))))
+                    put("max_characters_per_item", 256)
+                }.toString(),
+                context,
+            )
+        assertFalse(firstContentRead.isError)
+        val firstContentPage = assertNotNull(firstContentRead.structuredContent?.get("result")?.jsonObject)
+        val firstContentItems = firstContentPage.getValue("items") as kotlinx.serialization.json.JsonArray
+        val firstOutputSlice = firstContentItems.last().jsonObject
+        assertEquals(256, firstOutputSlice.getValue("text").jsonPrimitive.content.length)
+        assertEquals("0", firstOutputSlice.getValue("characterStart").jsonPrimitive.content)
+        assertEquals("256", firstOutputSlice.getValue("characterEnd").jsonPrimitive.content)
+        val contentCursor = assertNotNull(firstContentPage["nextCursor"]?.jsonObject)
+
+        val secondContentRead = contributor.callbacks.single { it.definition.name == "grz_command_journal_read_content" }
+            .callResult(
+                buildJsonObject {
+                    put("entry_id", secondEntryId)
+                    put("kinds", kotlinx.serialization.json.JsonArray(listOf(JsonPrimitive("REPORTED_OUTPUT"))))
+                    put("max_characters_per_item", 256)
+                    put("cursor", contentCursor)
+                }.toString(),
+                context,
+            )
+        assertFalse(secondContentRead.isError)
+        val secondContentPage = assertNotNull(secondContentRead.structuredContent?.get("result")?.jsonObject)
+        val secondOutputSlice = (secondContentPage.getValue("items") as kotlinx.serialization.json.JsonArray).single().jsonObject
+        assertEquals(44, secondOutputSlice.getValue("text").jsonPrimitive.content.length)
+        assertEquals("256", secondOutputSlice.getValue("characterStart").jsonPrimitive.content)
+        assertEquals("300", secondOutputSlice.getValue("characterEnd").jsonPrimitive.content)
+        assertEquals(null, secondContentPage["nextCursor"])
 
         val stats = contributor.callbacks.single { it.definition.name == "grz_command_journal_stats" }
             .callResult("{}", context)
@@ -288,37 +329,56 @@ class CommandJournalToolContributorTest {
 
         override suspend fun readContent(query: CommandJournal.ContentQuery): CommandJournal.ContentPage? {
             val entry = entries[query.entryId]?.takeIf { it.projectId == query.projectId } ?: return null
+            val cursor = query.cursor
             val values = content(entry.id)
                 .filter { query.callId == null || it.callId == query.callId }
                 .filter { query.eventId == null || it.eventId == query.eventId }
                 .filter { query.kinds.isEmpty() || it.kind in query.kinds }
-                .mapIndexed { index, value ->
-                    val linkId = index.toLong() + 1
-                    CommandJournal.ContentRecord(
-                        linkId = linkId,
-                        entryId = value.entryId,
-                        callId = value.callId,
-                        eventId = value.eventId,
-                        contentId = value.id,
-                        kind = value.kind,
-                        sequence = value.sequence,
-                        text = value.text.take(query.maxCharactersPerItem),
-                        sizeBytes = value.sizeBytes,
-                        textTruncated = value.text.length > query.maxCharactersPerItem,
-                        startByte = value.startByte,
-                        endByte = value.endByte,
-                        totalBytes = value.totalBytes,
-                        truncatedBefore = value.truncatedBefore,
-                        truncatedAfter = value.truncatedAfter,
-                        createdAt = value.createdAt,
-                    )
+                .mapIndexed { index, value -> (index.toLong() + 1) to value }
+                .filter { (linkId, _) -> linkId >= (cursor?.linkId ?: 1L) }
+            val page = mutableListOf<CommandJournal.ContentRecord>()
+            var nextCursor: CommandJournal.ContentCursor? = null
+            for ((linkId, value) in values) {
+                val characterStart = if (cursor?.linkId == linkId) cursor.characterOffset else 0
+                require(characterStart <= value.text.length)
+                if (characterStart == value.text.length) continue
+                if (page.size == query.limit) {
+                    nextCursor = CommandJournal.ContentCursor(linkId, characterStart)
+                    break
                 }
-                .filter { it.linkId > (query.afterLinkId ?: 0L) }
-            val page = values.take(query.limit)
-            return CommandJournal.ContentPage(
-                items = page,
-                nextLinkId = if (values.size > query.limit) page.lastOrNull()?.linkId else null,
-            )
+                val characterEnd = minOf(value.text.length, characterStart + query.maxCharactersPerItem)
+                val visibleText = value.text.substring(characterStart, characterEnd)
+                val skippedBytes = value.text.substring(0, characterStart).encodeToByteArray().size.toLong()
+                val visibleBytes = visibleText.encodeToByteArray().size.toLong()
+                val visibleStart = value.startByte?.plus(skippedBytes)
+                val visibleEnd = visibleStart?.plus(visibleBytes)
+                page += CommandJournal.ContentRecord(
+                    linkId = linkId,
+                    entryId = value.entryId,
+                    callId = value.callId,
+                    eventId = value.eventId,
+                    contentId = value.id,
+                    kind = value.kind,
+                    sequence = value.sequence,
+                    text = visibleText,
+                    sizeBytes = value.sizeBytes,
+                    characterStart = characterStart,
+                    characterEnd = characterEnd,
+                    totalCharacters = value.text.length,
+                    textTruncated = characterStart > 0 || characterEnd < value.text.length,
+                    startByte = visibleStart,
+                    endByte = visibleEnd,
+                    totalBytes = value.totalBytes,
+                    truncatedBefore = value.truncatedBefore || characterStart > 0,
+                    truncatedAfter = value.truncatedAfter || characterEnd < value.text.length,
+                    createdAt = value.createdAt,
+                )
+                if (characterEnd < value.text.length) {
+                    nextCursor = CommandJournal.ContentCursor(linkId, characterEnd)
+                    break
+                }
+            }
+            return CommandJournal.ContentPage(page, nextCursor)
         }
 
         override suspend fun statistics(projectId: Project.Id): CommandJournal.Statistics {

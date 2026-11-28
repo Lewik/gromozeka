@@ -76,8 +76,14 @@ class PostgresCommandJournalTest {
                 occurredAt = at + kotlin.time.Duration.parse("2s"),
                 commandTaskId = CommandTask.Id("task"),
             )
-            val output = content(entry, root, CommandJournal.Content.Kind.OUTPUT, "x".repeat(300))
-                .copy(eventId = started.id)
+            val output = content(entry, root, CommandJournal.Content.Kind.OUTPUT, "x".repeat(300)).copy(
+                eventId = started.id,
+                startByte = 100,
+                endByte = 400,
+                totalBytes = 500,
+                truncatedBefore = true,
+                truncatedAfter = true,
+            )
             assertEquals(started, journal.append(started, listOf(output)))
             assertEquals(started, journal.append(started, listOf(output)))
             assertEquals(root, journal.findCallByCommandTask(CommandTask.Id("task")))
@@ -127,9 +133,40 @@ class PostgresCommandJournalTest {
                 )
             )
             assertEquals(1, contentPage.items.size)
-            assertEquals(256, contentPage.items.single().text.length)
-            assertEquals(true, contentPage.items.single().textTruncated)
-            assertEquals(300, contentPage.items.single().sizeBytes)
+            val firstSlice = contentPage.items.single()
+            assertEquals(256, firstSlice.text.length)
+            assertEquals(0, firstSlice.characterStart)
+            assertEquals(256, firstSlice.characterEnd)
+            assertEquals(300, firstSlice.totalCharacters)
+            assertEquals(true, firstSlice.textTruncated)
+            assertEquals(300, firstSlice.sizeBytes)
+            assertEquals(100L, firstSlice.startByte)
+            assertEquals(356L, firstSlice.endByte)
+            val nextCursor = assertNotNull(contentPage.nextCursor)
+            assertEquals(firstSlice.linkId, nextCursor.linkId)
+            assertEquals(256, nextCursor.characterOffset)
+
+            val secondPage = assertNotNull(
+                journal.readContent(
+                    CommandJournal.ContentQuery(
+                        projectId = entry.projectId,
+                        entryId = entry.id,
+                        kinds = setOf(CommandJournal.Content.Kind.OUTPUT),
+                        cursor = nextCursor,
+                        limit = 1,
+                        maxCharactersPerItem = 256,
+                    )
+                )
+            )
+            val secondSlice = secondPage.items.single()
+            assertEquals(44, secondSlice.text.length)
+            assertEquals(256, secondSlice.characterStart)
+            assertEquals(300, secondSlice.characterEnd)
+            assertEquals(300, secondSlice.totalCharacters)
+            assertEquals(true, secondSlice.textTruncated)
+            assertEquals(356L, secondSlice.startByte)
+            assertEquals(400L, secondSlice.endByte)
+            assertNull(secondPage.nextCursor)
 
             val statistics = journal.statistics(entry.projectId)
             assertEquals(1, statistics.entryCount)
