@@ -657,6 +657,34 @@ class TabViewModelRuntimeReplayTest {
     }
 
     @Test
+    fun `overlapping history pages are deduplicated by message id`() = runTest {
+        val thread = Conversation.Thread.Id("thread-1")
+        fun message(position: Int) = Conversation.Message(
+            Conversation.Message.Id("message-$position"), Conversation.Id("conversation-1"),
+            role = Conversation.Message.Role.USER,
+            content = listOf(Conversation.Message.ContentItem.UserMessage("Message $position")),
+            createdAt = Instant.parse("2026-09-16T00:00:00Z"),
+        )
+        fun page(range: IntRange) = ConversationHistoryPage(
+            thread,
+            range.map { ConversationHistoryMessage(it, message(it)) },
+            older = range.first.takeIf { it > 0 }?.let { ConversationHistoryCursor(thread, it) },
+            newer = range.last.takeIf { it < 100 }?.let { ConversationHistoryCursor(thread, it) },
+        )
+        var response = page(50..100)
+        val model = viewModel(backgroundScope, MutableSharedFlow()) { response }
+        backgroundScope.launch { model.historyContent.collect {} }
+        runCurrent()
+
+        response = page(0..50)
+        model.loadOlderHistory(requireNotNull(model.historyContent.value.firstLoadedMessageId))
+        runCurrent()
+
+        assertEquals((0..100).map { message(it).id }, model.allMessages.value.map { it.id })
+        assertEquals(101, model.allMessages.value.map { it.id }.distinct().size)
+    }
+
+    @Test
     fun `visible history carries raw boundaries including filtered tool results`() = runTest {
         val thread = Conversation.Thread.Id("thread-1")
         fun message(position: Int, hidden: Boolean) = Conversation.Message(

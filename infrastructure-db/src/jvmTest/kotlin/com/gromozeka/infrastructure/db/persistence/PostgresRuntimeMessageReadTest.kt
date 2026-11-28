@@ -150,7 +150,7 @@ class PostgresRuntimeMessageReadTest {
 
             lateinit var results: List<com.gromozeka.domain.repository.PositionedConversationMessage>
             val resultsToastBefore = f.messageToastBlocks()
-            val resultsRead = f.measure { results = f.history.toolResults(thread, setOf(callId.value)) }
+            val resultsRead = f.measure { results = f.history.providerManagedToolResults(thread, setOf(callId.value)) }
             assertEquals(listOf(result.id), results.map { it.message.id })
             assertEquals(0L, f.messageToastBlocks() - resultsToastBefore)
             assertEquals(1L, resultsRead.bodies)
@@ -176,8 +176,9 @@ class PostgresRuntimeMessageReadTest {
             assertEquals(listOf(runtime.id, plain.id, thinking.id, call.id, result.id), all)
             val resultsSql = resultsRead.queries.single()
             val resultsRoleFilter = resultsSql.indexOf("m.role <> 'RUNTIME'")
-            val resultsBodyInspection = resultsSql.indexOf("m.message_json::jsonb")
-            assertTrue(resultsRoleFilter >= 0 && resultsBodyInspection > resultsRoleFilter, resultsSql)
+            val typedResultFilter = resultsSql.indexOf("m.tool_result_ids")
+            assertTrue(resultsRoleFilter >= 0 && typedResultFilter > resultsRoleFilter, resultsSql)
+            assertFalse(resultsSql.contains("m.message_json::jsonb"), resultsSql)
             assertEquals(0L, allRead.bodies)
         }
     }
