@@ -103,7 +103,8 @@ class CommandJournalToolContributorTest {
                 TOOL_CONTEXT_THREAD_ID to "thread",
                 TOOL_CONTEXT_AGENT_DEFINITION_ID to "agent",
                 TOOL_CONTEXT_TOOL_CALL_ID to "report-call",
-            )
+            ),
+            commandJournalSource = CommandJournal.Source(CommandJournal.Source.Kind.CONVERSATION_TOOL_CALL),
         )
         val result = report.callResult(
             buildJsonObject {

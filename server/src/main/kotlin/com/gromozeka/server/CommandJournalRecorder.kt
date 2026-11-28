@@ -104,18 +104,36 @@ class CommandJournalRecorder(
             "A caller report must describe a command or Python invocation"
         }
         val journal = requireNotNull(journalProvider.ifAvailable) { "Command Journal is disabled" }
+        val actorUserId = required(context, TOOL_CONTEXT_USER_ID).let(User::Id)
+        val projectId = required(context, TOOL_CONTEXT_PROJECT_ID).let(Project::Id)
         val conversationId = required(context, TOOL_CONTEXT_CONVERSATION_ID).let(Conversation::Id)
         val threadId = required(context, TOOL_CONTEXT_THREAD_ID).let(Conversation.Thread::Id)
+        val source = requireNotNull(context.commandJournalSource) {
+            "A caller report requires trusted Command Journal provenance"
+        }
+        val parentEntryId = reportedParentEntryId(
+            journal = journal,
+            source = source,
+            actorUserId = actorUserId,
+            projectId = projectId,
+            conversationId = conversationId,
+        )
         val existing = journal.findEntryBySource(conversationId, sourceToolCallId)
+        if (existing != null) {
+            require(existing.parentEntryId == parentEntryId) {
+                "A retried caller report cannot change its parent Command Journal entry"
+            }
+        }
         val entry = existing ?: CommandJournal.Entry(
             id = entryId(conversationId, threadId, sourceToolCallId),
             origin = CommandJournal.Entry.Origin.REPORTED_BY_CALLER,
-            actorUserId = required(context, TOOL_CONTEXT_USER_ID).let(User::Id),
-            projectId = required(context, TOOL_CONTEXT_PROJECT_ID).let(Project::Id),
+            actorUserId = actorUserId,
+            projectId = projectId,
             conversationId = conversationId,
             threadId = threadId,
             agentDefinitionId = context.getString(TOOL_CONTEXT_AGENT_DEFINITION_ID)?.let(AgentDefinition::Id),
             sourceToolCallId = sourceToolCallId,
+            parentEntryId = parentEntryId,
             createdAt = at,
         )
         val rootCall = existing?.let {
@@ -268,6 +286,36 @@ class CommandJournalRecorder(
                 occurredAt = at,
             )
         )
+    }
+
+    private suspend fun reportedParentEntryId(
+        journal: CommandJournal,
+        source: CommandJournal.Source,
+        actorUserId: User.Id,
+        projectId: Project.Id,
+        conversationId: Conversation.Id,
+    ): CommandJournal.Entry.Id? = when (source.kind) {
+        CommandJournal.Source.Kind.CONVERSATION_TOOL_CALL,
+        CommandJournal.Source.Kind.DIRECT_MCP,
+        -> null
+
+        CommandJournal.Source.Kind.COMMAND_SDK_MCP -> {
+            val commandTaskId = requireNotNull(source.parentCommandTaskId) {
+                "A command SDK report requires its trusted parent command task"
+            }
+            val parentCall = requireNotNull(journal.findCallByCommandTask(commandTaskId)) {
+                "Parent command task ${commandTaskId.value} is missing from Command Journal"
+            }
+            val parentEntry = requireNotNull(journal.findEntry(parentCall.entryId)) {
+                "Parent command call ${parentCall.id.value} lost its Command Journal entry"
+            }
+            require(parentEntry.actorUserId == actorUserId) { "Caller report actor differs from its parent command" }
+            require(parentEntry.projectId == projectId) { "Caller report project differs from its parent command" }
+            require(parentEntry.conversationId == conversationId) {
+                "Caller report conversation differs from its parent command"
+            }
+            parentEntry.id
+        }
     }
 
     private fun newEntry(

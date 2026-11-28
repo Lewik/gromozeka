@@ -293,6 +293,53 @@ class CommandJournalRecorderTest {
     }
 
     @Test
+    fun `command SDK caller report is a child entry of its managed command`() = runBlocking {
+        val journal = InMemoryJournal()
+        val recorder = recorder(journal)
+        val rootSource = commandCall("root-call", "python script.py")
+        recorder.admitManagedCalls(listOf(rootSource), target(), context())
+        val rootEntry = assertNotNull(journal.findEntryBySource(Conversation.Id("conversation"), rootSource.id))
+        val rootCall = journal.calls(rootEntry.id).single()
+        val commandTaskId = CommandTask.Id("script-command")
+        journal.append(
+            CommandJournal.Event(
+                id = CommandJournal.Event.Id("root-started"),
+                entryId = rootEntry.id,
+                callId = rootCall.id,
+                sourceKey = "root-started",
+                kind = CommandJournal.Event.Kind.STARTED,
+                occurredAt = Instant.fromEpochSeconds(2),
+                commandTaskId = commandTaskId,
+            )
+        )
+        val reportSourceId = ContentItem.ToolCall.Id("report-call")
+        val report = recorder.reportByCaller(
+            sourceToolCallId = reportSourceId,
+            toolName = COMMAND_JOURNAL_REPORT_TOOL_NAME,
+            kind = CommandJournal.Call.Kind.COMMAND,
+            commandOrCode = "kubectl get pods",
+            rawArguments = buildJsonObject { put("command", "kubectl get pods") },
+            workingDirectory = "/workspace",
+            output = "pod-a Running",
+            statusMessage = null,
+            exitCode = 0,
+            observedAt = null,
+            context = context().copy(
+                commandJournalSource = CommandJournal.Source(
+                    kind = CommandJournal.Source.Kind.COMMAND_SDK_MCP,
+                    parentCommandTaskId = commandTaskId,
+                )
+            ),
+            at = Instant.fromEpochSeconds(3),
+        )
+
+        assertEquals(CommandJournal.Entry.Origin.REPORTED_BY_CALLER, report.entry.origin)
+        assertEquals(rootEntry.id, report.entry.parentEntryId)
+        assertEquals(report.call, journal.findCallBySource(Conversation.Id("conversation"), reportSourceId))
+        assertEquals(2, journal.entries.size)
+    }
+
+    @Test
     fun `managed root admission is idempotent across delivery retry`() = runBlocking {
         val journal = InMemoryJournal()
         val recorder = recorder(journal)

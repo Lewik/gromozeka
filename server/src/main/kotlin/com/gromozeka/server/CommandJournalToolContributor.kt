@@ -28,6 +28,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 import kotlin.time.Instant
 
+internal const val COMMAND_JOURNAL_REPORT_TOOL_NAME = "grz_command_journal_report"
+
 @Service
 @ConditionalOnProperty(name = ["gromozeka.command-journal.enabled"], havingValue = "true")
 internal class CommandJournalToolContributor(
@@ -325,7 +327,7 @@ internal class CommandJournalToolContributor(
 
     private companion object {
         const val CORE_TOOL_SOURCE = "gromozeka"
-        const val REPORT_TOOL_NAME = "grz_command_journal_report"
+        const val REPORT_TOOL_NAME = COMMAND_JOURNAL_REPORT_TOOL_NAME
         const val SEARCH_TOOL_NAME = "grz_command_journal_search"
         const val GET_TOOL_NAME = "grz_command_journal_get"
         const val READ_CONTENT_TOOL_NAME = "grz_command_journal_read_content"

@@ -112,7 +112,9 @@ internal class GromozekaMcpToolService(
                     callId,
                     ContentItem.ToolCall.Data(entry.contract.logicalName, resolved.input.arguments),
                 )
-                recordedCall = script?.let {
+                val isCallerReport = entry.descriptor.definition.source == "gromozeka" &&
+                    entry.contract.logicalName == COMMAND_JOURNAL_REPORT_TOOL_NAME
+                recordedCall = script?.takeUnless { isCallerReport }?.let {
                     commandJournal?.admitNestedCall(
                         parentCommandTaskId = it.commandId,
                         call = toolCall,
