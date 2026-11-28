@@ -56,12 +56,11 @@ class ServerCommandRuntimeStateService(
     private suspend fun recordCommandJournal(task: CommandTask) {
         val journal = commandJournal ?: return
         val sourceCallId = task.launchReference?.toolCallId?.let(ContentItem.ToolCall::Id)
-        val entry = journal.findEntryByCommandTask(task.id)
-            ?: sourceCallId?.let { journal.findEntryBySource(task.conversationId, it) }
             ?: return // An older or non-tool command can legitimately predate the optional journal.
-        val call = sourceCallId?.let { source ->
-            journal.calls(entry.id).singleOrNull { it.sourceToolCallId == source }
-        } ?: return
+        val call = journal.findCallBySource(task.conversationId, sourceCallId) ?: return
+        val entry = requireNotNull(journal.findEntry(call.entryId)) {
+            "Command Journal call ${call.id.value} lost its entry ${call.entryId.value}"
+        }
         val eventKind = when (task.status) {
             CommandTask.Status.WORKING -> CommandJournal.Event.Kind.STARTED
             CommandTask.Status.COMPLETED -> CommandJournal.Event.Kind.COMPLETED

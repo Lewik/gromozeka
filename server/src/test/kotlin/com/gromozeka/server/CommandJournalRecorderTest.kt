@@ -313,6 +313,13 @@ class CommandJournalRecorderTest {
         override suspend fun findEntryBySource(conversationId: Conversation.Id, sourceToolCallId: ContentItem.ToolCall.Id) =
             entries.values.singleOrNull { it.conversationId == conversationId && it.sourceToolCallId == sourceToolCallId }
 
+        override suspend fun findCallBySource(
+            conversationId: Conversation.Id,
+            sourceToolCallId: ContentItem.ToolCall.Id,
+        ) = callValues.values.singleOrNull { call ->
+            call.sourceToolCallId == sourceToolCallId && entries[call.entryId]?.conversationId == conversationId
+        }
+
         override suspend fun findEntryByCommandTask(commandTaskId: CommandTask.Id): CommandJournal.Entry? =
             eventValues.values.firstOrNull { it.commandTaskId == commandTaskId }?.let { entries[it.entryId] }
 

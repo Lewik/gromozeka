@@ -48,6 +48,7 @@ class PostgresCommandJournalTest {
             assertEquals(entry, journal.admit(entry, root, listOf(command, arguments)))
             assertEquals(entry, journal.findEntry(entry.id))
             assertEquals(entry, journal.findEntryBySource(entry.conversationId, assertNotNull(entry.sourceToolCallId)))
+            assertEquals(root, journal.findCallBySource(entry.conversationId, assertNotNull(root.sourceToolCallId)))
             assertEquals(listOf(root), journal.calls(entry.id))
             assertEquals(setOf(command, arguments), journal.content(entry.id).toSet())
 
@@ -55,6 +56,7 @@ class PostgresCommandJournalTest {
                 id = CommandJournal.Call.Id("child-call"),
                 entryId = entry.id,
                 parentId = root.id,
+                sourceToolCallId = ContentItem.ToolCall.Id("child-source"),
                 kind = CommandJournal.Call.Kind.TOOL,
                 toolName = "grz_read_file",
                 target = root.target,
@@ -62,6 +64,8 @@ class PostgresCommandJournalTest {
             )
             assertEquals(child, journal.append(child))
             assertEquals(child, journal.append(child))
+            assertEquals(child, journal.findCallBySource(entry.conversationId, assertNotNull(child.sourceToolCallId)))
+            assertNull(journal.findCallBySource(Conversation.Id("other-conversation"), assertNotNull(child.sourceToolCallId)))
 
             val started = CommandJournal.Event(
                 id = CommandJournal.Event.Id("started-event"),

@@ -39,6 +39,11 @@ interface CommandJournal {
         sourceToolCallId: ContentItem.ToolCall.Id,
     ): Entry?
 
+    suspend fun findCallBySource(
+        conversationId: Conversation.Id,
+        sourceToolCallId: ContentItem.ToolCall.Id,
+    ): Call?
+
     suspend fun findEntryByCommandTask(commandTaskId: CommandTask.Id): Entry?
 
     suspend fun calls(entryId: Entry.Id): List<Call>

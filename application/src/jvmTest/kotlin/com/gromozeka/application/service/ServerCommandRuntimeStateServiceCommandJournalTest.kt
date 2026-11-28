@@ -16,7 +16,7 @@ import kotlin.time.Instant
 
 class ServerCommandRuntimeStateServiceCommandJournalTest {
     @Test
-    fun `command task lifecycle records stable start terminal status and retained text output`() = runBlocking {
+    fun `nested command task lifecycle records stable start terminal status and retained text output`() = runBlocking {
         val coordinator = Mockito.mock(ConversationRuntimeCoordinator::class.java)
         val journal = InMemoryJournal()
         val entry = CommandJournal.Entry(
@@ -26,22 +26,33 @@ class ServerCommandRuntimeStateServiceCommandJournalTest {
             projectId = Project.Id("project"),
             conversationId = Conversation.Id("conversation"),
             threadId = Conversation.Thread.Id("thread"),
-            sourceToolCallId = ContentItem.ToolCall.Id("call"),
+            sourceToolCallId = ContentItem.ToolCall.Id("root-call"),
             createdAt = Instant.fromEpochSeconds(1),
         )
-        val call = CommandJournal.Call(
-            id = CommandJournal.Call.Id("call-record"),
+        val rootCall = CommandJournal.Call(
+            id = CommandJournal.Call.Id("root-call-record"),
             entryId = entry.id,
             sourceToolCallId = entry.sourceToolCallId,
-            kind = CommandJournal.Call.Kind.COMMAND,
-            toolName = "grz_execute_command",
+            kind = CommandJournal.Call.Kind.PYTHON,
+            toolName = "grz_execute_python",
             target = CommandJournal.Call.Target(
                 workerId = ConversationRuntimeWorkerId("worker"),
                 workspaceMountId = WorkspaceMount.Id("mount"),
             ),
             createdAt = entry.createdAt,
         )
-        journal.admit(entry, call)
+        val nestedCall = CommandJournal.Call(
+            id = CommandJournal.Call.Id("nested-call-record"),
+            entryId = entry.id,
+            parentId = rootCall.id,
+            sourceToolCallId = ContentItem.ToolCall.Id("call"),
+            kind = CommandJournal.Call.Kind.COMMAND,
+            toolName = "grz_execute_command",
+            target = rootCall.target,
+            createdAt = Instant.fromEpochSeconds(2),
+        )
+        journal.admit(entry, rootCall)
+        journal.append(nestedCall)
         val working = task(CommandTask.Status.WORKING)
         val completed = working.copy(
             status = CommandTask.Status.COMPLETED,
@@ -69,11 +80,15 @@ class ServerCommandRuntimeStateServiceCommandJournalTest {
         service.upsertCommandTask(completed)
         service.upsertCommandTask(completed)
 
+        val events = journal.events(entry.id)
         assertEquals(
             listOf(CommandJournal.Event.Kind.STARTED, CommandJournal.Event.Kind.COMPLETED),
-            journal.events(entry.id).map { it.kind },
+            events.map { it.kind },
         )
+        assertEquals(listOf(nestedCall.id, nestedCall.id), events.map { it.callId })
+        assertEquals(entry, journal.findEntryByCommandTask(CommandTask.Id("task")))
         val output = assertNotNull(journal.content(entry.id).singleOrNull())
+        assertEquals(nestedCall.id, output.callId)
         assertEquals("tail-output", output.text)
         assertEquals(10, output.startByte)
         assertEquals(21, output.endByte)
@@ -129,6 +144,10 @@ class ServerCommandRuntimeStateServiceCommandJournalTest {
         override suspend fun findEntry(id: CommandJournal.Entry.Id) = entries[id]
         override suspend fun findEntryBySource(conversationId: Conversation.Id, sourceToolCallId: ContentItem.ToolCall.Id) =
             entries.values.singleOrNull { it.conversationId == conversationId && it.sourceToolCallId == sourceToolCallId }
+        override suspend fun findCallBySource(conversationId: Conversation.Id, sourceToolCallId: ContentItem.ToolCall.Id) =
+            calls.values.singleOrNull { call ->
+                call.sourceToolCallId == sourceToolCallId && entries[call.entryId]?.conversationId == conversationId
+            }
         override suspend fun findEntryByCommandTask(commandTaskId: CommandTask.Id) =
             events.values.firstOrNull { it.commandTaskId == commandTaskId }?.let { entries[it.entryId] }
         override suspend fun calls(entryId: CommandJournal.Entry.Id) = calls.values.filter { it.entryId == entryId }

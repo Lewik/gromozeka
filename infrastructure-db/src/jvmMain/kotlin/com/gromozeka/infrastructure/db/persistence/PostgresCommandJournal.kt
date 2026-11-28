@@ -128,6 +128,34 @@ internal class PostgresCommandJournal(
         }
     }
 
+    override suspend fun findCallBySource(
+        conversationId: Conversation.Id,
+        sourceToolCallId: ContentItem.ToolCall.Id,
+    ): CommandJournal.Call? = io {
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                """
+                SELECT call.*
+                FROM command_journal_calls call
+                JOIN command_journal_entries entry ON entry.id=call.entry_id
+                WHERE entry.conversation_id=? AND call.source_tool_call_id=?
+                ORDER BY call.id
+                LIMIT 2
+                """.trimIndent()
+            ).use { statement ->
+                statement.setString(1, conversationId.value)
+                statement.setString(2, sourceToolCallId.value)
+                statement.executeQuery().use { rows ->
+                    val matches = buildList { while (rows.next()) add(rows.call()) }
+                    check(matches.size <= 1) {
+                        "Command Journal source tool call is not unique in conversation ${conversationId.value}"
+                    }
+                    matches.singleOrNull()
+                }
+            }
+        }
+    }
+
     override suspend fun findEntryByCommandTask(commandTaskId: CommandTask.Id): CommandJournal.Entry? = io {
         dataSource.connection.use { connection ->
             connection.prepareStatement(
