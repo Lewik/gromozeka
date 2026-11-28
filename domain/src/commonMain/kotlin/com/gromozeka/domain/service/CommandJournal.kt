@@ -31,6 +31,14 @@ interface CommandJournal {
         content: List<Content> = emptyList(),
     ): Entry
 
+    /** Atomically records the complete effect of the explicit caller-report tool. */
+    suspend fun recordReport(
+        entry: Entry,
+        rootCall: Call,
+        event: Event,
+        content: List<Content> = emptyList(),
+    ): Entry
+
     suspend fun append(
         call: Call,
         content: List<Content> = emptyList(),

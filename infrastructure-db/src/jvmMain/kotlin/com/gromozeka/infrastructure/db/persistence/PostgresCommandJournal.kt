@@ -58,6 +58,39 @@ internal class PostgresCommandJournal(
         storedEntry
     }
 
+    override suspend fun recordReport(
+        entry: CommandJournal.Entry,
+        rootCall: CommandJournal.Call,
+        event: CommandJournal.Event,
+        content: List<CommandJournal.Content>,
+    ): CommandJournal.Entry = transaction { connection ->
+        require(entry.origin == CommandJournal.Entry.Origin.REPORTED_BY_CALLER) {
+            "Command Journal caller report requires REPORTED_BY_CALLER provenance"
+        }
+        require(rootCall.entryId == entry.id && rootCall.parentId == null) {
+            "Command Journal caller report requires its root call"
+        }
+        require(event.entryId == entry.id && event.callId == rootCall.id &&
+            event.kind == CommandJournal.Event.Kind.REPORTED) {
+            "Command Journal caller report requires its REPORTED event"
+        }
+        requireReportContentOwners(entry.id, rootCall.id, event.id, content)
+
+        connection.insert(entry)
+        val storedEntry = requireNotNull(connection.findEntry(entry.id, forUpdate = true))
+        require(storedEntry == entry) { "Command Journal report entry identity cannot be rebound" }
+        connection.insert(rootCall)
+        require(connection.findCall(rootCall.id) == rootCall) {
+            "Command Journal report root call identity cannot be rebound"
+        }
+        connection.insert(event)
+        require(connection.findEvent(entry.id, event.sourceKey) == event) {
+            "Command Journal report event identity cannot be rebound"
+        }
+        connection.storeContent(content)
+        storedEntry
+    }
+
     override suspend fun append(
         call: CommandJournal.Call,
         content: List<CommandJournal.Content>,
@@ -626,6 +659,19 @@ internal class PostgresCommandJournal(
         content.forEach {
             require(it.entryId == entryId && it.callId == callId && it.eventId == eventId) {
                 "Command Journal content belongs to another owner"
+            }
+        }
+    }
+
+    private fun requireReportContentOwners(
+        entryId: CommandJournal.Entry.Id,
+        callId: CommandJournal.Call.Id,
+        eventId: CommandJournal.Event.Id,
+        content: List<CommandJournal.Content>,
+    ) {
+        content.forEach {
+            require(it.entryId == entryId && it.callId == callId && (it.eventId == null || it.eventId == eventId)) {
+                "Command Journal caller-report content belongs to another owner"
             }
         }
     }

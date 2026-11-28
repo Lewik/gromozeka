@@ -458,6 +458,19 @@ class CommandJournalRecorderTest {
             return entry
         }
 
+        override suspend fun recordReport(
+            entry: CommandJournal.Entry,
+            rootCall: CommandJournal.Call,
+            event: CommandJournal.Event,
+            content: List<CommandJournal.Content>,
+        ): CommandJournal.Entry {
+            val input = content.filter { it.eventId == null }
+            val output = content.filter { it.eventId == event.id }
+            admit(entry, rootCall, input)
+            append(event, output)
+            return entry
+        }
+
         override suspend fun append(call: CommandJournal.Call, content: List<CommandJournal.Content>): CommandJournal.Call {
             callValues[call.id]?.let { require(it == call) } ?: run { callValues[call.id] = call }
             content.forEach(::store)

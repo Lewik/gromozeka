@@ -196,6 +196,17 @@ class ServerCommandRuntimeStateServiceCommandJournalTest {
             return entry
         }
 
+        override suspend fun recordReport(
+            entry: CommandJournal.Entry,
+            rootCall: CommandJournal.Call,
+            event: CommandJournal.Event,
+            content: List<CommandJournal.Content>,
+        ): CommandJournal.Entry {
+            admit(entry, rootCall, content.filter { it.eventId == null })
+            append(event, content.filter { it.eventId == event.id })
+            return entry
+        }
+
         override suspend fun append(call: CommandJournal.Call, content: List<CommandJournal.Content>): CommandJournal.Call {
             calls[call.id] = call
             content.forEach(::store)

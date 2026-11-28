@@ -206,6 +206,87 @@ class PostgresCommandJournalTest {
     }
 
     @Test
+    fun `caller report rolls back completely when output linking fails`() = runBlocking {
+        database { dataSource ->
+            val journal = PostgresCommandJournal(dataSource)
+            val at = Instant.fromEpochSeconds(100)
+            val entry = entry(at).copy(
+                id = CommandJournal.Entry.Id("reported-entry"),
+                origin = CommandJournal.Entry.Origin.REPORTED_BY_CALLER,
+                sourceToolCallId = ContentItem.ToolCall.Id("reported-source"),
+                sourceRuntimeTaskId = null,
+            )
+            val root = rootCall(entry, at).copy(
+                id = CommandJournal.Call.Id("reported-call"),
+                toolName = "grz_command_journal_report",
+            )
+            val event = CommandJournal.Event(
+                id = CommandJournal.Event.Id("reported-event"),
+                entryId = entry.id,
+                callId = root.id,
+                sourceKey = "tool-call:reported-source:reported",
+                kind = CommandJournal.Event.Kind.REPORTED,
+                occurredAt = at,
+            )
+            val arguments = content(entry, root, CommandJournal.Content.Kind.ARGUMENTS, "{\"command\":\"echo ok\"}")
+            val command = content(entry, root, CommandJournal.Content.Kind.COMMAND, "echo ok")
+            val output = content(entry, root, CommandJournal.Content.Kind.REPORTED_OUTPUT, "ok").copy(eventId = event.id)
+
+            dataSource.connection.use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.execute(
+                        """
+                        CREATE FUNCTION reject_report_output() RETURNS trigger AS ${'$'}${'$'}
+                        BEGIN
+                            IF NEW.event_id IS NOT NULL THEN
+                                RAISE EXCEPTION 'synthetic report output failure';
+                            END IF;
+                            RETURN NEW;
+                        END;
+                        ${'$'}${'$'} LANGUAGE plpgsql
+                        """.trimIndent()
+                    )
+                    statement.execute(
+                        """
+                        CREATE TRIGGER reject_report_output
+                        BEFORE INSERT ON command_journal_content_links
+                        FOR EACH ROW EXECUTE FUNCTION reject_report_output()
+                        """.trimIndent()
+                    )
+                }
+            }
+
+            assertFailsWith<CommandJournal.StorageException> {
+                journal.recordReport(entry, root, event, listOf(arguments, command, output))
+            }
+            assertNull(journal.findEntry(entry.id))
+            dataSource.connection.use { connection ->
+                connection.createStatement().use { statement ->
+                    listOf(
+                        "command_journal_entries",
+                        "command_journal_calls",
+                        "command_journal_events",
+                        "command_journal_contents",
+                        "command_journal_content_links",
+                    ).forEach { table ->
+                        statement.executeQuery("SELECT count(*) FROM $table").use { rows ->
+                            rows.next()
+                            assertEquals(0, rows.getInt(1), "$table must roll back with the caller report")
+                        }
+                    }
+                    statement.execute("DROP TRIGGER reject_report_output ON command_journal_content_links")
+                    statement.execute("DROP FUNCTION reject_report_output()")
+                }
+            }
+
+            assertEquals(entry, journal.recordReport(entry, root, event, listOf(arguments, command, output)))
+            assertEquals(listOf(root), journal.calls(entry.id))
+            assertEquals(listOf(event), journal.events(entry.id))
+            assertEquals(setOf(arguments, command, output), journal.content(entry.id).toSet())
+        }
+    }
+
+    @Test
     fun `latest lifecycle follows append order instead of source clocks`() = runBlocking {
         database { dataSource ->
             val journal = PostgresCommandJournal(dataSource)

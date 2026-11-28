@@ -154,28 +154,25 @@ class CommandJournalRecorder(
             target = CommandJournal.Call.Target(workingDirectory = workingDirectory),
             createdAt = entry.createdAt,
         )
-        if (existing == null) {
-            val inputContent = listOf(
-                content(
-                    entry.id,
-                    rootCall.id,
-                    CommandJournal.Content.Kind.ARGUMENTS,
-                    rawArguments.toString(),
-                    0,
-                    entry.createdAt,
-                ),
-                content(
-                    entry.id,
-                    rootCall.id,
-                    if (kind == CommandJournal.Call.Kind.PYTHON) CommandJournal.Content.Kind.PYTHON_SOURCE
-                    else CommandJournal.Content.Kind.COMMAND,
-                    commandOrCode,
-                    0,
-                    entry.createdAt,
-                ),
-            )
-            journal.admit(entry, rootCall, inputContent)
-        }
+        val inputContent = listOf(
+            content(
+                entry.id,
+                rootCall.id,
+                CommandJournal.Content.Kind.ARGUMENTS,
+                rawArguments.toString(),
+                0,
+                entry.createdAt,
+            ),
+            content(
+                entry.id,
+                rootCall.id,
+                if (kind == CommandJournal.Call.Kind.PYTHON) CommandJournal.Content.Kind.PYTHON_SOURCE
+                else CommandJournal.Content.Kind.COMMAND,
+                commandOrCode,
+                0,
+                entry.createdAt,
+            ),
+        )
         val event = CommandJournal.Event(
             id = eventId(entry.id, sourceToolCallId, "reported"),
             entryId = entry.id,
@@ -199,7 +196,7 @@ class CommandJournalRecorder(
                 )
             )
         }.orEmpty()
-        journal.append(event, outputContent)
+        journal.recordReport(entry, rootCall, event, inputContent + outputContent)
         return RecordedCall(entry, rootCall)
     }
 
