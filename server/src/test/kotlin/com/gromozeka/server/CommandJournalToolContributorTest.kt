@@ -125,7 +125,28 @@ class CommandJournalToolContributorTest {
         assertEquals("kubectl get pods", journal.content(entry.id).single { it.kind == CommandJournal.Content.Kind.COMMAND }.text)
         assertEquals("pod-a Running", journal.content(entry.id).single { it.kind == CommandJournal.Content.Kind.REPORTED_OUTPUT }.text)
         assertEquals(CommandJournal.Event.Kind.REPORTED, journal.events(entry.id).single().kind)
+
+        val search = contributor.callbacks.single { it.definition.name == "grz_command_journal_search" }
+            .callResult("{}", context)
+        assertFalse(search.isError)
+        assertEquals(1, search.structuredContent?.get("result")?.jsonObject?.get("entries")?.let { it as kotlinx.serialization.json.JsonArray }?.size)
+
+        val get = contributor.callbacks.single { it.definition.name == "grz_command_journal_get" }
+            .callResult(buildJsonObject { put("entry_id", entry.id.value) }.toString(), context)
+        assertFalse(get.isError)
+
+        val read = contributor.callbacks.single { it.definition.name == "grz_command_journal_read_content" }
+            .callResult(buildJsonObject { put("entry_id", entry.id.value) }.toString(), context)
+        assertFalse(read.isError)
+        assertEquals(3, read.structuredContent?.get("result")?.jsonObject?.get("items")?.let { it as kotlinx.serialization.json.JsonArray }?.size)
+
+        val stats = contributor.callbacks.single { it.definition.name == "grz_command_journal_stats" }
+            .callResult("{}", context)
+        assertFalse(stats.isError)
+        assertEquals(1L, stats.structuredContent?.get("result")?.jsonObject?.get("entryCount")?.jsonPrimitive?.content?.toLong())
+
         Mockito.verify(authorization).requireConversation(user, Conversation.Id("conversation"), ProjectPermission.WRITE)
+        Mockito.verify(projectAccess, Mockito.atLeast(4)).requirePermission(user.id, Project.Id("project"), ProjectPermission.READ)
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -183,20 +204,96 @@ class CommandJournalToolContributorTest {
         override suspend fun events(entryId: CommandJournal.Entry.Id) = eventValues.values.filter { it.entryId == entryId }
         override suspend fun content(entryId: CommandJournal.Entry.Id) = contentValues.values.filter { it.entryId == entryId }
 
-        override suspend fun search(query: CommandJournal.SearchQuery): CommandJournal.SearchPage =
-            error("Not used by this test")
+        override suspend fun search(query: CommandJournal.SearchQuery): CommandJournal.SearchPage {
+            val summaries = entries.values
+                .filter { it.projectId == query.projectId }
+                .take(query.limit)
+                .map { entry ->
+                    val calls = calls(entry.id)
+                    val events = events(entry.id)
+                    CommandJournal.Summary(
+                        entry = entry,
+                        rootCall = calls.single { it.parentId == null },
+                        latestEvent = events.lastOrNull(),
+                        callCount = calls.size.toLong(),
+                        eventCount = events.size.toLong(),
+                        linkedContentBytes = content(entry.id).sumOf { it.sizeBytes.toLong() },
+                        excerpt = content(entry.id).firstOrNull { it.kind == CommandJournal.Content.Kind.COMMAND }?.text,
+                    )
+                }
+            return CommandJournal.SearchPage(summaries)
+        }
 
         override suspend fun get(
             entryId: CommandJournal.Entry.Id,
             callLimit: Int,
             eventLimit: Int,
-        ): CommandJournal.Snapshot? = error("Not used by this test")
+        ): CommandJournal.Snapshot? {
+            val entry = entries[entryId] ?: return null
+            val calls = calls(entryId)
+            val events = events(entryId)
+            return CommandJournal.Snapshot(
+                entry = entry,
+                calls = calls.take(callLimit),
+                events = events.take(eventLimit),
+                callCount = calls.size.toLong(),
+                eventCount = events.size.toLong(),
+                callsTruncated = calls.size > callLimit,
+                eventsTruncated = events.size > eventLimit,
+            )
+        }
 
-        override suspend fun readContent(query: CommandJournal.ContentQuery): CommandJournal.ContentPage =
-            error("Not used by this test")
+        override suspend fun readContent(query: CommandJournal.ContentQuery): CommandJournal.ContentPage {
+            val values = content(query.entryId)
+                .filter { query.callId == null || it.callId == query.callId }
+                .filter { query.eventId == null || it.eventId == query.eventId }
+                .filter { query.kinds.isEmpty() || it.kind in query.kinds }
+                .mapIndexed { index, value ->
+                    val linkId = index.toLong() + 1
+                    CommandJournal.ContentRecord(
+                        linkId = linkId,
+                        entryId = value.entryId,
+                        callId = value.callId,
+                        eventId = value.eventId,
+                        contentId = value.id,
+                        kind = value.kind,
+                        sequence = value.sequence,
+                        text = value.text.take(query.maxCharactersPerItem),
+                        sizeBytes = value.sizeBytes,
+                        textTruncated = value.text.length > query.maxCharactersPerItem,
+                        startByte = value.startByte,
+                        endByte = value.endByte,
+                        totalBytes = value.totalBytes,
+                        truncatedBefore = value.truncatedBefore,
+                        truncatedAfter = value.truncatedAfter,
+                        createdAt = value.createdAt,
+                    )
+                }
+                .filter { it.linkId > (query.afterLinkId ?: 0L) }
+            val page = values.take(query.limit)
+            return CommandJournal.ContentPage(
+                items = page,
+                nextLinkId = if (values.size > query.limit) page.lastOrNull()?.linkId else null,
+            )
+        }
 
-        override suspend fun statistics(projectId: Project.Id): CommandJournal.Statistics =
-            error("Not used by this test")
+        override suspend fun statistics(projectId: Project.Id): CommandJournal.Statistics {
+            val selected = entries.values.filter { it.projectId == projectId }
+            val ids = selected.mapTo(linkedSetOf()) { it.id }
+            val selectedContent = contentValues.values.filter { it.entryId in ids }
+            return CommandJournal.Statistics(
+                projectId = projectId,
+                entryCount = selected.size.toLong(),
+                callCount = callValues.values.count { it.entryId in ids }.toLong(),
+                eventCount = eventValues.values.count { it.entryId in ids }.toLong(),
+                contentLinkCount = selectedContent.size.toLong(),
+                uniqueContentCount = selectedContent.map { it.id }.distinct().size.toLong(),
+                uniqueContentBytes = selectedContent.distinctBy { it.id }.sumOf { it.sizeBytes.toLong() },
+                journalStorageBytes = 1,
+                databaseBytes = 2,
+                measuredAt = Instant.fromEpochSeconds(1),
+            )
+        }
 
         private fun store(value: CommandJournal.Content) {
             val key = "${value.callId.value}:${value.eventId?.value}:${value.kind}:${value.sequence}"
