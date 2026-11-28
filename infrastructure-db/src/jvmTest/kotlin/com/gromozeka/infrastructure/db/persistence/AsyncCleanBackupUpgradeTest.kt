@@ -40,9 +40,9 @@ class AsyncCleanBackupUpgradeTest {
         }
         val before = messages(source, validateTypedMetadata = false)
         val migration = flyway.migrate()
-        assertEquals((89..106).map(Int::toString), migration.migrations.map { it.version })
+        assertEquals((89..107).map(Int::toString), migration.migrations.map { it.version })
         flyway.validate()
-        assertEquals("106", assertNotNull(flyway.info().current()).version.toString())
+        assertEquals("107", assertNotNull(flyway.info().current()).version.toString())
         val after = messages(source, validateTypedMetadata = true)
         assertEquals(before, after, "Upgrade may normalize typed metadata and compact terminology, but must preserve history semantics and opaque replay payloads")
         assertTrue(after.count > 0, "The restored backup must contain actual history")
@@ -71,7 +71,7 @@ class AsyncCleanBackupUpgradeTest {
                 }
             }
         }
-        println("ASYNC_BACKUP_UPGRADE_VERIFIED messages=${after.count} referencedManagedArtifacts=$verified flyway=88->106")
+        println("ASYNC_BACKUP_UPGRADE_VERIFIED messages=${after.count} referencedManagedArtifacts=$verified flyway=88->107")
     }
 
     @Test fun `empty database receives the same final schema without the old async upgrade step`() {
@@ -82,7 +82,7 @@ class AsyncCleanBackupUpgradeTest {
             val flyway = Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema)
                 .locations("classpath:db/migration/postgres").load()
             flyway.migrate(); flyway.validate()
-            assertEquals("106", assertNotNull(flyway.info().current()).version.toString())
+            assertEquals("107", assertNotNull(flyway.info().current()).version.toString())
             assertEquals(0, legacyAdmissionColumnCount(source))
             source.connection.use { connection -> connection.createStatement().use { statement ->
                 statement.executeQuery("SELECT count(*) FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace WHERE n.nspname=current_schema() AND t.relname='async_tool_operations' AND conname IN ('async_tool_claim_generation_nonnegative','async_tool_claim_generation_owner')").use { rows ->
@@ -105,12 +105,19 @@ class AsyncCleanBackupUpgradeTest {
             assertEquals("105", assertNotNull(old.info().current()).version.toString())
             assertEquals(2, legacyAdmissionColumnCount(source))
 
+            val cleanup = Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema)
+                .locations("classpath:db/migration/postgres").target("106").load()
+            val cleanupResult = cleanup.migrate()
+            cleanup.validate()
+            assertEquals(listOf("106"), cleanupResult.migrations.map { it.version })
+            assertEquals(0, legacyAdmissionColumnCount(source))
+
             val current = Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema)
                 .locations("classpath:db/migration/postgres").load()
-            val result = current.migrate()
+            val currentResult = current.migrate()
             current.validate()
-            assertEquals(listOf("106"), result.migrations.map { it.version })
-            assertEquals(0, legacyAdmissionColumnCount(source))
+            assertEquals(listOf("107"), currentResult.migrations.map { it.version })
+            assertEquals("107", assertNotNull(current.info().current()).version.toString())
         } finally {
             source.connection.use { connection -> connection.createStatement().use { it.execute("DROP SCHEMA IF EXISTS $schema CASCADE") } }
         }

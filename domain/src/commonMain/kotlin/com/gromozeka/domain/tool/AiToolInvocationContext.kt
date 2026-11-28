@@ -16,7 +16,7 @@ enum class AiToolContextField(val contextKey: String, val selector: String? = nu
     THREAD(TOOL_CONTEXT_THREAD_ID),
     MEMORY_NAMESPACE(TOOL_CONTEXT_MEMORY_NAMESPACE),
     TARGET_MESSAGE(TOOL_CONTEXT_TARGET_MESSAGE_ID),
-    TOOL_CALL_ID("toolCallId"),
+    TOOL_CALL_ID(TOOL_CONTEXT_TOOL_CALL_ID),
 }
 
 @Serializable

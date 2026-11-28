@@ -12,8 +12,10 @@ import com.gromozeka.domain.service.*
 import com.gromozeka.domain.tool.*
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
 import org.springframework.stereotype.Service
 import java.util.Base64
@@ -32,6 +34,7 @@ internal class GromozekaMcpToolService(
     private val server: ConversationRuntimeExecutorDescriptor,
     private val targets: ConversationRuntimeWorkerTargetResolver,
     private val workers: WorkerToolExecutionClient,
+    private val commandJournal: CommandJournalRecorder? = null,
 ) {
     suspend fun list(caller: AuthenticatedMcpCaller): List<AiToolDefinition> = currentTools(caller).map { entry ->
         entry.descriptor.withInvocationContext(if (caller is AuthenticatedMcpCaller.CommandScript)
@@ -47,90 +50,166 @@ internal class GromozekaMcpToolService(
             )
     }
 
-    suspend fun call(caller: AuthenticatedMcpCaller, name: String, arguments: JsonObject): AiToolCallResult = try {
-        currentCoroutineContext().ensureActive()
-        require("_context" !in arguments) { "Untrusted context is not accepted" }
-        // Fresh identity, advertisements and contract: a listed tool is not a durable permission grant.
-        val actor = requireNotNull(users.findActiveById(caller.user.id)) { "User unavailable" }
-        val entry = currentTools(caller).singleOrNull { it.contract.modelName == name }
-            ?: error("Tool unavailable")
-        if (entry.descriptor.metadata.accessPolicy == AiToolAccessPolicy.SERVER_OWNER && actor.role != User.Role.OWNER) {
-            failure("forbidden", "Server owner permission is required")
-        } else {
-            if ((arguments[AI_TOOL_INVOCATION_CONTEXT_FIELD] as? JsonObject)?.get("async") == JsonPrimitive(true)) {
-                throw AsyncOriginRequiredException()
-            }
-            val callId = ContentItem.ToolCall.Id(uuid7())
-            val script = (caller as? AuthenticatedMcpCaller.CommandScript)?.principal
-            if (script != null && script.agentDefinitionId == null) {
-                require((arguments[AI_TOOL_INVOCATION_CONTEXT_FIELD] as? JsonObject)?.containsKey("agent_id") != true) {
-                    "A command without a calling Agent cannot select one"
+    suspend fun call(caller: AuthenticatedMcpCaller, name: String, arguments: JsonObject): AiToolCallResult {
+        var recordedCall: CommandJournalRecorder.RecordedCall? = null
+        var executionStarted = false
+        var journalOutcomeRecorded = false
+        return try {
+            currentCoroutineContext().ensureActive()
+            require("_context" !in arguments) { "Untrusted context is not accepted" }
+            // Fresh identity, advertisements and contract: a listed tool is not a durable permission grant.
+            val actor = requireNotNull(users.findActiveById(caller.user.id)) { "User unavailable" }
+            val entry = currentTools(caller).singleOrNull { it.contract.modelName == name }
+                ?: error("Tool unavailable")
+            if (entry.descriptor.metadata.accessPolicy == AiToolAccessPolicy.SERVER_OWNER && actor.role != User.Role.OWNER) {
+                failure("forbidden", "Server owner permission is required")
+            } else {
+                if ((arguments[AI_TOOL_INVOCATION_CONTEXT_FIELD] as? JsonObject)?.get("async") == JsonPrimitive(true)) {
+                    throw AsyncOriginRequiredException()
                 }
-            }
-            val binding = ToolExecutionContext(buildMap {
-                put("toolCallId", callId.value)
-                if (script != null) {
-                    put(TOOL_CONTEXT_PROJECT_ID, script.projectId.value)
-                    put(TOOL_CONTEXT_CONVERSATION_ID, script.conversationId.value)
-                    script.agentDefinitionId?.let { put(TOOL_CONTEXT_AGENT_DEFINITION_ID, it.value) }
+                val callId = ContentItem.ToolCall.Id(uuid7())
+                val script = (caller as? AuthenticatedMcpCaller.CommandScript)?.principal
+                if (script != null && script.agentDefinitionId == null) {
+                    require((arguments[AI_TOOL_INVOCATION_CONTEXT_FIELD] as? JsonObject)?.containsKey("agent_id") != true) {
+                        "A command without a calling Agent cannot select one"
+                    }
                 }
-            })
-            val resolved = contexts.resolve(entry.descriptor, arguments, actor.id, binding)
-            resolved.context.getString(TOOL_CONTEXT_AGENT_DEFINITION_ID)?.let { id ->
-                val agent = requireNotNull(agents.findById(AgentDefinition.Id(id))) { "Agent unavailable" }
-                require(agent.toolAccess.allows(entry.contract)) { "Tool unavailable to selected agent" }
-            }
-            val executionContext = resolved.context.withValue(
-                com.gromozeka.application.service.EXPECTED_TOOL_FINGERPRINTS_CONTEXT_KEY,
-                buildJsonObject { put(callId.value, entry.descriptor.contractFingerprint()) }.toString(),
-            )
-            val target = resolved.target
-            if (target is ConversationRuntimeTaskTarget.Worker) {
-                require(target.workerId in entry.workerIds) { "Worker does not advertise this exact tool contract" }
-            }
-            val toolCall = ContentItem.ToolCall(callId,
-                ContentItem.ToolCall.Data(entry.contract.logicalName, resolved.input.arguments))
-            // Resolve secrets only after resource authorization and exact route/policy validation.
-            val secretValues = secrets.resolve(actor.id, listOf(toolCall))
-            val outcome = when (target) {
-                ConversationRuntimeTaskTarget.Server -> {
-                    check(server.identity is ConversationRuntimeExecutorIdentity.Server)
-                    val result = executor.executeParallel(listOf(toolCall), executionContext, null,
-                        server.identity, target, secretValues)
-                    WorkerToolExecutionResult(result.results, result.returnDirect, result.structuredContentByCallId)
+                val binding = ToolExecutionContext(
+                    values = buildMap {
+                        put("toolCallId", callId.value)
+                        if (script != null) {
+                            put(TOOL_CONTEXT_PROJECT_ID, script.projectId.value)
+                            put(TOOL_CONTEXT_CONVERSATION_ID, script.conversationId.value)
+                            script.agentDefinitionId?.let { put(TOOL_CONTEXT_AGENT_DEFINITION_ID, it.value) }
+                        }
+                    },
+                    commandJournalSource = if (script == null) {
+                        CommandJournal.Source(CommandJournal.Source.Kind.DIRECT_MCP)
+                    } else {
+                        CommandJournal.Source(
+                            kind = CommandJournal.Source.Kind.COMMAND_SDK_MCP,
+                            parentCommandTaskId = script.commandId,
+                        )
+                    },
+                )
+                val resolved = contexts.resolve(entry.descriptor, arguments, actor.id, binding)
+                resolved.context.getString(TOOL_CONTEXT_AGENT_DEFINITION_ID)?.let { id ->
+                    val agent = requireNotNull(agents.findById(AgentDefinition.Id(id))) { "Agent unavailable" }
+                    require(agent.toolAccess.allows(entry.contract)) { "Tool unavailable to selected agent" }
                 }
-                is ConversationRuntimeTaskTarget.Worker -> workers.execute(
-                    targets.requireRegistered(target.workerId, ConversationRuntimeCapability.TOOL_EXECUTION),
-                    target, listOf(toolCall), executionContext, secretValues,
+                val executionContext = resolved.context.withValue(
+                    com.gromozeka.application.service.EXPECTED_TOOL_FINGERPRINTS_CONTEXT_KEY,
+                    buildJsonObject { put(callId.value, entry.descriptor.contractFingerprint()) }.toString(),
+                )
+                val target = resolved.target
+                if (target is ConversationRuntimeTaskTarget.Worker) {
+                    require(target.workerId in entry.workerIds) { "Worker does not advertise this exact tool contract" }
+                }
+                val toolCall = ContentItem.ToolCall(
+                    callId,
+                    ContentItem.ToolCall.Data(entry.contract.logicalName, resolved.input.arguments),
+                )
+                val isCallerReport = entry.descriptor.definition.source == "gromozeka" &&
+                    entry.contract.logicalName == COMMAND_JOURNAL_REPORT_TOOL_NAME
+                recordedCall = script?.takeUnless { isCallerReport }?.let {
+                    commandJournal?.admitNestedCall(
+                        parentCommandTaskId = it.commandId,
+                        call = toolCall,
+                        target = target,
+                        context = executionContext,
+                        logInput = entry.descriptor.metadata.logInput,
+                    )
+                }
+                // Resolve secrets only after resource authorization and exact route/policy validation.
+                val secretValues = secrets.resolve(actor.id, listOf(toolCall))
+                executionStarted = true
+                val outcome = when (target) {
+                    ConversationRuntimeTaskTarget.Server -> {
+                        check(server.identity is ConversationRuntimeExecutorIdentity.Server)
+                        val result = executor.executeParallel(
+                            listOf(toolCall), executionContext, null, server.identity, target, secretValues,
+                        )
+                        WorkerToolExecutionResult(result.results, result.returnDirect, result.structuredContentByCallId)
+                    }
+                    is ConversationRuntimeTaskTarget.Worker -> workers.execute(
+                        targets.requireRegistered(target.workerId, ConversationRuntimeCapability.TOOL_EXECUTION),
+                        target, listOf(toolCall), executionContext, secretValues,
+                    )
+                }
+                val result = outcome.results.single()
+                check(result.toolUseId == callId && result.toolName == entry.contract.logicalName) {
+                    "Tool result identity mismatch"
+                }
+                recordedCall?.let { recorded ->
+                    commandJournal?.recordNestedOutcome(recorded, result)
+                }
+                journalOutcomeRecorded = true
+                currentCoroutineContext().ensureActive()
+                AiToolCallResult(
+                    content = result.result.map { item ->
+                        when (item) {
+                            is ContentItem.ToolResult.Data.Text -> AiToolResult.Text(item.content)
+                            is ContentItem.ToolResult.Data.Base64Data -> AiToolResult.Binary(
+                                Base64.getDecoder().decode(item.data),
+                                item.fileName ?: "tool-result",
+                                item.mediaType.value,
+                            )
+                            is ContentItem.ToolResult.Data.UrlData -> AiToolResult.Text(item.url)
+                            is ContentItem.ToolResult.Data.ArtifactData -> AiToolResult.Text(
+                                Json.encodeToString(ContentItem.ToolResult.Data.serializer(), item)
+                            )
+                        }
+                    },
+                    structuredContent = outcome.structuredContentByCallId[callId.value],
+                    isError = result.isError,
                 )
             }
-            currentCoroutineContext().ensureActive()
-            val result = outcome.results.single()
-            check(result.toolUseId == callId && result.toolName == entry.contract.logicalName) { "Tool result identity mismatch" }
-            AiToolCallResult(
-                content = result.result.map { item -> when (item) {
-                    is ContentItem.ToolResult.Data.Text -> AiToolResult.Text(item.content)
-                    is ContentItem.ToolResult.Data.Base64Data -> AiToolResult.Binary(
-                        Base64.getDecoder().decode(item.data), item.fileName ?: "tool-result", item.mediaType.value)
-                    is ContentItem.ToolResult.Data.UrlData -> AiToolResult.Text(item.url)
-                    is ContentItem.ToolResult.Data.ArtifactData -> AiToolResult.Text(Json.encodeToString(ContentItem.ToolResult.Data.serializer(), item))
-                } },
-                structuredContent = outcome.structuredContentByCallId[callId.value],
-                isError = result.isError,
+        } catch (cancelled: CancellationException) {
+            if (!journalOutcomeRecorded) {
+                try {
+                    withContext(NonCancellable) {
+                        recordedCall?.let {
+                            commandJournal?.recordNestedFailure(it, CommandJournal.Event.Kind.OUTCOME_UNKNOWN)
+                        }
+                    }
+                } catch (journalError: Throwable) {
+                    cancelled.addSuppressed(journalError)
+                }
+            }
+            throw cancelled
+        } catch (_: AsyncOriginRequiredException) {
+            failure(
+                "async_origin_required",
+                "Async execution requires a durable conversation tool call and its persisted acknowledgement. " +
+                    "This HTTP entry point does not provide that identity; the tool was not executed.",
             )
+        } catch (pending: WorkerRequestPendingException) {
+            val status = buildJsonObject {
+                put("status", "PENDING")
+                put("request_id", pending.requestId)
+                put(
+                    "message",
+                    "Waiting ended, not execution. Inspect this request with grz_worker_request_get or cancel it " +
+                        "with grz_worker_request_cancel; do not resubmit the action.",
+                )
+            }
+            AiToolCallResult(content = listOf(AiToolResult.Text(status.toString())), structuredContent = status)
+        } catch (error: Exception) {
+            if (!journalOutcomeRecorded) {
+                try {
+                    recordedCall?.let {
+                        commandJournal?.recordNestedFailure(
+                            it,
+                            if (executionStarted) CommandJournal.Event.Kind.OUTCOME_UNKNOWN
+                            else CommandJournal.Event.Kind.FAILED,
+                        )
+                    }
+                } catch (journalError: Throwable) {
+                    error.addSuppressed(journalError)
+                }
+            }
+            failure("invocation_failed", "Tool unavailable, invalid invocation context, or operation failed")
         }
-    } catch (cancelled: CancellationException) {
-        throw cancelled
-    } catch (_: AsyncOriginRequiredException) {
-        failure("async_origin_required", "Async execution requires a durable conversation tool call and its persisted acknowledgement. This HTTP entry point does not provide that identity; the tool was not executed.")
-    } catch (pending: WorkerRequestPendingException) {
-        val status = buildJsonObject {
-            put("status", "PENDING"); put("request_id", pending.requestId)
-            put("message", "Waiting ended, not execution. Inspect this request with grz_worker_request_get or cancel it with grz_worker_request_cancel; do not resubmit the action.")
-        }
-        AiToolCallResult(content = listOf(AiToolResult.Text(status.toString())), structuredContent = status)
-    } catch (_: Exception) {
-        failure("invocation_failed", "Tool unavailable, invalid invocation context, or operation failed")
     }
 
     private suspend fun currentTools(caller: AuthenticatedMcpCaller): List<AuthenticatedAiTool> {

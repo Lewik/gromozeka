@@ -23,6 +23,7 @@ class GatewayWorkerToolExecutionClient(
     timeoutMillis: Long,
     private val slots: com.gromozeka.application.service.SlotApplicationService,
     private val asyncProjector: AsyncWorkerResultProjector? = null,
+    private val commandJournal: CommandJournalRecorder? = null,
 ) : WorkerToolExecutionClient, com.gromozeka.domain.service.AsyncWorkerToolExecutionClient {
     private val timeout = Duration.ofMillis(timeoutMillis)
     private val json = Json {
@@ -48,6 +49,7 @@ class GatewayWorkerToolExecutionClient(
             slots.origin(actor, conversation, requireNotNull(executionTarget.workspaceMountId)) else null
         val trustedContext = toolContext.asMap().minus(com.gromozeka.domain.slot.TOOL_CONTEXT_SLOT_ORIGIN).toMutableMap()
         origin?.let { trustedContext[com.gromozeka.domain.slot.TOOL_CONTEXT_SLOT_ORIGIN] = json.encodeToString(it) }
+        commandJournal?.admitManagedCalls(toolCalls, executionTarget, toolContext)
         val request = WorkerToolExecutionRequest(
             executionTarget = executionTarget,
             toolCalls = toolCalls,
@@ -91,6 +93,23 @@ class GatewayWorkerToolExecutionClient(
         val call = invocation.toolCall.copy(call = invocation.toolCall.call.copy(input = kotlinx.serialization.json.JsonObject(arguments - "_grz")))
         val context = invocation.context.minus(com.gromozeka.domain.slot.TOOL_CONTEXT_SLOT_ORIGIN).toMutableMap()
         origin.slotOrigin?.let { context[com.gromozeka.domain.slot.TOOL_CONTEXT_SLOT_ORIGIN] = json.encodeToString(it) }
+        commandJournal?.admitManagedCalls(
+            calls = listOf(call),
+            target = target,
+            context = ToolExecutionContext(
+                values = context + mapOf(
+                    com.gromozeka.domain.tool.TOOL_CONTEXT_USER_ID to origin.actorUserId.value,
+                    com.gromozeka.domain.tool.TOOL_CONTEXT_PROJECT_ID to origin.projectId.value,
+                    com.gromozeka.domain.tool.TOOL_CONTEXT_CONVERSATION_ID to origin.conversationId.value,
+                    com.gromozeka.domain.tool.TOOL_CONTEXT_THREAD_ID to origin.threadId.value,
+                    com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID to origin.agentDefinitionId.value,
+                ),
+                commandJournalSource = com.gromozeka.domain.service.CommandJournal.Source(
+                    kind = com.gromozeka.domain.service.CommandJournal.Source.Kind.CONVERSATION_TOOL_CALL,
+                    sourceRuntimeTaskId = origin.sourceTaskId,
+                ),
+            ),
+        )
         val fingerprints = mapOf(call.id.value to invocation.contractFingerprint)
         context[com.gromozeka.application.service.EXPECTED_TOOL_FINGERPRINTS_CONTEXT_KEY] = json.encodeToString(fingerprints)
         val request = WorkerToolExecutionRequest(target, listOf(call), context, resolvedSecretsByToolCallId, fingerprints)

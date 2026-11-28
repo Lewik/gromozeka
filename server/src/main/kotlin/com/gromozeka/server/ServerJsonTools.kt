@@ -16,6 +16,7 @@ import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolCallResult
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.AiToolExecutionScope
+import com.gromozeka.domain.tool.AiToolLoadingPolicy
 import com.gromozeka.domain.tool.AiToolMetadata
 import com.gromozeka.domain.tool.AiToolResult
 import com.gromozeka.domain.tool.TOOL_CONTEXT_AGENT_DEFINITION_ID
@@ -48,6 +49,7 @@ internal data class ServerToolContext(
     val callingAgentId: AgentDefinition.Id? = null,
     val conversationId: Conversation.Id? = null,
     val cancellationSignal: ToolCancellationSignal = ToolCancellationSignal.None,
+    val toolContext: ToolExecutionContext = ToolExecutionContext(),
 ) {
     fun requireServerOwner() {
         if (user.role != User.Role.OWNER) {
@@ -75,6 +77,9 @@ internal class ServerJsonToolFactory(private val users: UserDirectoryService) {
         destructive: Boolean = false,
         idempotent: Boolean = false,
         accessPolicy: AiToolAccessPolicy = AiToolAccessPolicy.AUTHENTICATED,
+        loadingPolicy: AiToolLoadingPolicy = AiToolLoadingPolicy.ON_DEMAND,
+        contextRequirements: AiToolContextRequirements = AiToolContextRequirements(setOf(USER)),
+        logInput: Boolean = false,
         execute: suspend ServerToolContext.(JsonObject) -> JsonObject,
     ): AiToolCallback = object : AiToolCallback {
         override val definition = AiToolDefinition(
@@ -91,10 +96,11 @@ internal class ServerJsonToolFactory(private val users: UserDirectoryService) {
             ),
         )
         override val metadata = AiToolMetadata(
-            contextRequirements = AiToolContextRequirements(setOf(USER)),
+            contextRequirements = contextRequirements,
             executionScope = AiToolExecutionScope.SERVER,
+            loadingPolicy = loadingPolicy,
             visibleToMemoryPipeline = false,
-            logInput = false,
+            logInput = logInput,
             accessPolicy = accessPolicy,
         )
 
@@ -113,6 +119,7 @@ internal class ServerJsonToolFactory(private val users: UserDirectoryService) {
                     callingAgentId = context.getString(TOOL_CONTEXT_AGENT_DEFINITION_ID)?.let(AgentDefinition::Id),
                     conversationId = context.getString(TOOL_CONTEXT_CONVERSATION_ID)?.let(Conversation::Id),
                     cancellationSignal = context.cancellationSignal,
+                    toolContext = context,
                 )
                 if (metadata.accessPolicy == AiToolAccessPolicy.SERVER_OWNER) invocation.requireServerOwner()
                 val arguments = serverToolJson.parseToJsonElement(toolInput) as? JsonObject

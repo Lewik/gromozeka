@@ -80,6 +80,7 @@ class GromozekaMcpToolServiceTest {
         assertNotNull(context?.getString("toolCallId"))
         assertNull(context?.getString(TOOL_CONTEXT_AGENT_DEFINITION_ID))
         assertNull(context?.getString(TOOL_CONTEXT_WORKSPACE_MOUNT_ID))
+        assertEquals(CommandJournal.Source.Kind.DIRECT_MCP, context?.commandJournalSource?.kind)
         assertTrue(f.records.records.isEmpty())
         Mockito.verifyNoInteractions(f.coordinator, f.namedSecrets)
     }

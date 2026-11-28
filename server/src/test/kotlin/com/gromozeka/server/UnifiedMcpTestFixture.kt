@@ -13,7 +13,10 @@ import org.mockito.Mockito
 import kotlin.time.Clock
 
 /** Real catalog/resolver/executor/request service. Synthetic identity/storage and a wire-level Worker peer. */
-internal class UnifiedMcpTestFixture(val provider: AiToolProvider) {
+internal class UnifiedMcpTestFixture(
+    val provider: AiToolProvider,
+    private val commandJournal: CommandJournalRecorder? = null,
+) {
     val now = Clock.System.now()
     val caller = testControlMcpCaller()
     val user = caller.user
@@ -54,7 +57,7 @@ internal class UnifiedMcpTestFixture(val provider: AiToolProvider) {
         ToolSecretResolutionService(namedSecrets), executor,
         ConversationRuntimeExecutorDescriptor(ConversationRuntimeExecutorIdentity.Server(ConversationRuntimeServerSessionId("synthetic-server")),
             setOf(ConversationRuntimeCapability.TOOL_EXECUTION)),
-        DefaultConversationRuntimeWorkerTargetResolver(registry), gateway)
+        DefaultConversationRuntimeWorkerTargetResolver(registry), gateway, commandJournal)
     val factory = GromozekaMcpServerFactory(service)
     val received = mutableListOf<WorkerToolExecutionRequest>()
     var workerTools = emptyList<AiToolCallback>()
