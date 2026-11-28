@@ -6,11 +6,14 @@ import com.gromozeka.domain.model.ConversationHistoryPageRequest
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.ConversationUserActivity
+import com.gromozeka.domain.model.ai.AI_PROVIDER_MANAGED_TOOL_METADATA_KEY
 import com.gromozeka.domain.repository.ConversationHistoryRepository
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.PositionedConversationMessage
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import java.lang.reflect.Proxy
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -85,6 +88,52 @@ class ConversationHistoryReadServiceTest {
     }
 
     @Test
+    fun ordinaryBoundaryToolResultComesFromTheAdjacentRow() = runBlocking {
+        val callId = Conversation.Message.ContentItem.ToolCall.Id("ordinary-call")
+        val call = message("call", Conversation.Message.Role.ASSISTANT, Conversation.Message.ContentItem.ToolCall(
+            callId, Conversation.Message.ContentItem.ToolCall.Data("tool", JsonObject(emptyMap()))))
+        val result = message("result", Conversation.Message.Role.USER, Conversation.Message.ContentItem.ToolResult(
+            callId, "tool", listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("large result"))))
+        var providerResultLookups = 0
+        val service = service(listOf(PositionedConversationMessage(0, call), PositionedConversationMessage(1, result))) {
+            providerResultLookups++
+            emptyList()
+        }
+
+        val page = service.page(conversationId, ConversationHistoryPageRequest(around = call.id, limit = 1), readerId)
+
+        assertEquals(listOf(call.id), page.messages.map { it.message.id })
+        assertEquals(listOf(result.id), page.relatedMessages.map { it.message.id })
+        val related = page.relatedMessages.single()
+        assertTrue(related.hasMoreContent)
+        assertEquals(emptyList(), related.message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>().single().result)
+        assertEquals(0, providerResultLookups)
+    }
+
+    @Test
+    fun providerManagedToolResultCanRemainNonAdjacent() = runBlocking {
+        val callId = Conversation.Message.ContentItem.ToolCall.Id("provider-call")
+        val call = message("call", Conversation.Message.Role.ASSISTANT, Conversation.Message.ContentItem.ToolCall(
+            callId, Conversation.Message.ContentItem.ToolCall.Data("web.run", JsonObject(emptyMap())))).copy(
+                providerMetadata = JsonObject(mapOf(AI_PROVIDER_MANAGED_TOOL_METADATA_KEY to JsonPrimitive(true))))
+        val middle = message("middle", Conversation.Message.Role.ASSISTANT,
+            Conversation.Message.ContentItem.AssistantMessage(Conversation.Message.StructuredText("Working")))
+        val result = message("result", Conversation.Message.Role.ASSISTANT, Conversation.Message.ContentItem.ToolResult(
+            callId, "web.run", listOf(Conversation.Message.ContentItem.ToolResult.Data.Text("source"))))
+        val entries = listOf(call, middle, result).mapIndexed(::PositionedConversationMessage)
+        var requestedIds = emptySet<String>()
+        val service = service(entries) { callIds ->
+            requestedIds = callIds
+            listOf(entries.last())
+        }
+
+        val page = service.page(conversationId, ConversationHistoryPageRequest(around = call.id, limit = 1), readerId)
+
+        assertEquals(setOf(callId.value), requestedIds)
+        assertEquals(listOf(result.id), page.relatedMessages.map { it.message.id })
+    }
+
+    @Test
     fun pointReadsKeepCanonicalRuntimeStateInternalWithoutScanningHistory() = runBlocking {
         val oldThread = Conversation.Thread.Id("old-thread")
         var conversation: Conversation? = Conversation(conversationId, Project.Id("project"),
@@ -140,16 +189,24 @@ class ConversationHistoryReadServiceTest {
     }
 
     private fun service(size: Int, activity: ConversationUserActivity? = null): ConversationHistoryReadService {
-        val conversation = Conversation(
-            id = conversationId, projectId = Project.Id("project"),
-            participants = setOf(Conversation.Participant.User(com.gromozeka.domain.model.User.Id("user"))),
-            currentThread = threadId, createdAt = now, updatedAt = now,
-        )
         val entries = (0 until size).map { position -> PositionedConversationMessage(position, Conversation.Message(
             id = Conversation.Message.Id("message-$position"), conversationId = conversationId,
             role = Conversation.Message.Role.USER,
             content = listOf(Conversation.Message.ContentItem.UserMessage("x".repeat(20_000))), createdAt = now,
         )) }
+        return service(entries, activity = activity)
+    }
+
+    private fun service(
+        entries: List<PositionedConversationMessage>,
+        activity: ConversationUserActivity? = null,
+        providerManagedResults: (Set<String>) -> List<PositionedConversationMessage> = { emptyList() },
+    ): ConversationHistoryReadService {
+        val conversation = Conversation(
+            id = conversationId, projectId = Project.Id("project"),
+            participants = setOf(Conversation.Participant.User(com.gromozeka.domain.model.User.Id("user"))),
+            currentThread = threadId, createdAt = now, updatedAt = now,
+        )
         val repository = stub<ConversationHistoryRepository> { method, args -> when {
             method.startsWith("position") -> entries.firstOrNull { it.message.id.value == args[1] }?.position
             method.startsWith("page") -> {
@@ -164,7 +221,7 @@ class ConversationHistoryReadServiceTest {
                 assertEquals(readerId.value, args[1])
                 activity
             }
-            method.startsWith("toolResults") -> emptyList<PositionedConversationMessage>()
+            method.startsWith("providerManagedToolResults") -> providerManagedResults(args[1] as Set<String>)
             else -> error("Unexpected history call $method")
         } }
         return ConversationHistoryReadService(
@@ -176,6 +233,18 @@ class ConversationHistoryReadServiceTest {
             InMemoryConversationRuntimeCoordinator(),
         )
     }
+
+    private fun message(
+        id: String,
+        role: Conversation.Message.Role,
+        content: Conversation.Message.ContentItem,
+    ) = Conversation.Message(
+        id = Conversation.Message.Id(id),
+        conversationId = conversationId,
+        role = role,
+        content = listOf(content),
+        createdAt = now,
+    )
 
     private inline fun <reified T> stub(crossinline handler: (String, Array<out Any?>) -> Any?): T =
         Proxy.newProxyInstance(T::class.java.classLoader, arrayOf(T::class.java)) { _, method, args ->

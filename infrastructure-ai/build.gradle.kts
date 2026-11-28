@@ -48,7 +48,6 @@ kotlin {
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.json.schema.validator)
                 implementation(libs.jackson.module.kotlin)
-                implementation(libs.pty4j)
                 implementation(libs.jna.platform)
 
                 // MCP SDK for Gromozeka MCP tools

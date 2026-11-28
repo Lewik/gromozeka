@@ -1,16 +1,13 @@
 package com.gromozeka.server
 
-import com.gromozeka.domain.model.SpeechAvailabilityFailure
-import com.gromozeka.domain.model.SpeechAvailabilityException
-
+import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.SpeechAudioSource
+import com.gromozeka.domain.model.SpeechAvailabilityFailure
 import com.gromozeka.domain.model.User
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.WorkerAudioInput
 import com.gromozeka.domain.model.WorkerPermission
 import com.gromozeka.domain.model.WorkerResource
-import com.gromozeka.domain.model.ai.AiCatalog
-import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiExecutionTarget
 import com.gromozeka.domain.service.AiConfigurationProvider
 import com.gromozeka.domain.service.ConversationRuntimeCapability
@@ -28,91 +25,74 @@ import com.gromozeka.domain.service.WorkerCatalogService
 import com.gromozeka.domain.service.WorkerEnvironmentProfile
 import com.gromozeka.domain.service.WorkerNativeShell
 import com.gromozeka.domain.service.WorkerOperatingSystem
-import com.gromozeka.infrastructure.ai.openai.SttService
 import com.gromozeka.remote.protocol.StartSpeechCaptureRequest
+import com.gromozeka.shared.audio.SpeechPcmWav
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
-import kotlin.time.Instant
 import org.mockito.Mockito
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import kotlin.time.Instant
 
 class SpeechCaptureApplicationServiceTest {
     @Test
-    fun `direct Claude microphone does not depend on Java audio discovery and remains connection owned`() = runBlocking {
+    fun `Worker capture returns immutable audio before transcription`() = runBlocking {
         val workerId = ConversationRuntimeWorkerId("voice-worker")
-        val connection = claudeConnection(workerId)
         val client = RecordingAudioCaptureClient()
         val user = user("user-1")
-        val service = service(
-            connection = connection,
-            sourceWorkerId = workerId,
-            workers = listOf(
-                worker(
-                    workerId = workerId,
-                    os = WorkerOperatingSystem.Family.WINDOWS,
-                    audioInputs = emptyList(),
-                )
-            ),
-            client = client,
-            user = user,
-        )
+        val service = service(workerId, listOf(worker(workerId)), client, user)
         val owner = SpeechCaptureSessionOwner(user.id, "client-1")
 
         service.start(owner, user, StartSpeechCaptureRequest("capture-1"))
 
-        assertIs<WorkerAudioCaptureRequest.Command.StartClaudeCodeMicrophone>(
-            client.requests.single().command
-        )
+        val start = assertIs<WorkerAudioCaptureRequest.Command.StartAudio>(client.requests.single().command)
+        assertEquals(WorkerAudioInput.SystemDefault.id, start.inputId)
         assertFailsWith<IllegalStateException> {
             service.stop(SpeechCaptureSessionOwner(user.id, "client-2"), "capture-1")
         }
-        assertEquals("recognized speech", service.stop(owner, "capture-1").text)
+
+        val stopped = service.stop(owner, "capture-1")
+        assertEquals("capture-1", stopped.recording.sessionId)
+        assertEquals(SpeechAudioFormat.WAV_PCM_S16LE_MONO_16_KHZ, stopped.recording.format)
+        assertContentEquals(client.audio, stopped.recording.chunks.single().data)
+        assertTrue(client.requests.last().command is WorkerAudioCaptureRequest.Command.Stop)
     }
 
     @Test
-    fun `availability prewarms direct Claude microphone on its exact Worker`() = runBlocking {
+    fun `failed stop keeps the Worker session available for cancellation`() = runBlocking {
         val workerId = ConversationRuntimeWorkerId("voice-worker")
-        val connection = claudeConnection(workerId)
-        val client = RecordingAudioCaptureClient()
+        val client = RecordingAudioCaptureClient().apply {
+            stopFailure = IllegalStateException("synthetic stop failure")
+        }
         val user = user("user-1")
-        val service = service(
-            connection = connection,
-            sourceWorkerId = workerId,
-            workers = listOf(worker(workerId, WorkerOperatingSystem.Family.MACOS)),
-            client = client,
-            user = user,
-        )
+        val service = service(workerId, listOf(worker(workerId)), client, user)
+        val owner = SpeechCaptureSessionOwner(user.id, "client-1")
 
-        val availability = service.availability(user)
+        service.start(owner, user, StartSpeechCaptureRequest("capture-1"))
+        assertFailsWith<IllegalStateException> { service.stop(owner, "capture-1") }
+        assertTrue(service.cancel(owner, "capture-1"))
 
-        assertTrue(availability.available)
-        val request = client.requests.single()
-        assertEquals(workerId, request.target.workerId)
-        val command = assertIs<WorkerAudioCaptureRequest.Command.PrepareClaudeCodeMicrophone>(
-            request.command
+        assertEquals(
+            listOf(
+                WorkerAudioCaptureRequest.Command.StartAudio::class,
+                WorkerAudioCaptureRequest.Command.Stop::class,
+                WorkerAudioCaptureRequest.Command.Cancel::class,
+            ),
+            client.requests.map { it.command::class },
         )
-        assertEquals(connection, command.connection)
     }
 
     @Test
     fun `cancel before start prevents a late Worker microphone from opening`() = runBlocking {
         val workerId = ConversationRuntimeWorkerId("voice-worker")
-        val connection = claudeConnection(workerId)
         val client = RecordingAudioCaptureClient()
         val user = user("user-1")
-        val service = service(
-            connection = connection,
-            sourceWorkerId = workerId,
-            workers = listOf(worker(workerId, WorkerOperatingSystem.Family.WINDOWS)),
-            client = client,
-            user = user,
-        )
+        val service = service(workerId, listOf(worker(workerId)), client, user)
         val owner = SpeechCaptureSessionOwner(user.id, "client-1")
 
         assertTrue(service.cancel(owner, "capture-1"))
@@ -125,18 +105,34 @@ class SpeechCaptureApplicationServiceTest {
     }
 
     @Test
+    fun `failed start cleanup remains cancellable when Worker cancellation fails`() = runBlocking {
+        val workerId = ConversationRuntimeWorkerId("voice-worker")
+        val client = FailingStartCleanupAudioCaptureClient()
+        val user = user("user-1")
+        val service = service(workerId, listOf(worker(workerId)), client, user)
+        val owner = SpeechCaptureSessionOwner(user.id, "client-1")
+
+        assertFailsWith<IllegalStateException> {
+            service.start(owner, user, StartSpeechCaptureRequest("capture-1"))
+        }
+        assertTrue(service.cancel(owner, "capture-1"))
+
+        assertEquals(
+            listOf(
+                WorkerAudioCaptureRequest.Command.StartAudio::class,
+                WorkerAudioCaptureRequest.Command.Cancel::class,
+                WorkerAudioCaptureRequest.Command.Cancel::class,
+            ),
+            client.requests.map { it.command::class },
+        )
+    }
+
+    @Test
     fun `cancel while Worker microphone is opening prevents a started response`() = runBlocking {
         val workerId = ConversationRuntimeWorkerId("voice-worker")
-        val connection = claudeConnection(workerId)
         val client = BlockingStartAudioCaptureClient()
         val user = user("user-1")
-        val service = service(
-            connection = connection,
-            sourceWorkerId = workerId,
-            workers = listOf(worker(workerId, WorkerOperatingSystem.Family.WINDOWS)),
-            client = client,
-            user = user,
-        )
+        val service = service(workerId, listOf(worker(workerId)), client, user)
         val owner = SpeechCaptureSessionOwner(user.id, "client-1")
 
         val start = async {
@@ -151,7 +147,7 @@ class SpeechCaptureApplicationServiceTest {
         assertTrue(startResult.exceptionOrNull()?.message.orEmpty().contains("cancelled while starting"))
         assertEquals(
             listOf(
-                WorkerAudioCaptureRequest.Command.StartClaudeCodeMicrophone::class,
+                WorkerAudioCaptureRequest.Command.StartAudio::class,
                 WorkerAudioCaptureRequest.Command.Cancel::class,
             ),
             client.requests.map { it.command::class },
@@ -159,102 +155,32 @@ class SpeechCaptureApplicationServiceTest {
     }
 
     @Test
-    fun `forwarding audio to Claude Code rejects a Windows target before recording starts`() = runBlocking {
-        val sourceWorkerId = ConversationRuntimeWorkerId("source-worker")
-        val targetWorkerId = ConversationRuntimeWorkerId("claude-worker")
-        val client = RecordingAudioCaptureClient()
-        val user = user("user-1")
-        val service = service(
-            connection = claudeConnection(targetWorkerId),
-            sourceWorkerId = sourceWorkerId,
-            workers = listOf(
-                worker(sourceWorkerId, WorkerOperatingSystem.Family.WINDOWS),
-                worker(targetWorkerId, WorkerOperatingSystem.Family.WINDOWS),
-            ),
-            client = client,
-            user = user,
-        )
-
-        val availability = service.availability(user)
-
-        assertFalse(availability.available)
-        assertEquals(SpeechAvailabilityFailure.Code.CLAUDE_FORWARDING_REQUIRES_LINUX, availability.unavailableReason?.code)
-        assertTrue(client.requests.isEmpty())
-    }
-
-    @Test
-    fun `forwarding audio to Claude Code reports missing Linux audio utilities`() = runBlocking {
-        val sourceWorkerId = ConversationRuntimeWorkerId("source-worker")
-        val targetWorkerId = ConversationRuntimeWorkerId("claude-worker")
-        val user = user("user-1")
-        val service = service(
-            connection = claudeConnection(targetWorkerId),
-            sourceWorkerId = sourceWorkerId,
-            workers = listOf(
-                worker(sourceWorkerId, WorkerOperatingSystem.Family.LINUX),
-                worker(
-                    workerId = targetWorkerId,
-                    os = WorkerOperatingSystem.Family.LINUX,
-                    availableExecutables = listOf("claude", "pactl"),
-                ),
-            ),
-            client = RecordingAudioCaptureClient(),
-            user = user,
-        )
-
-        val availability = service.availability(user)
-
-        assertFalse(availability.available)
-        assertEquals(SpeechAvailabilityFailure.Code.EXECUTABLE_UNAVAILABLE, availability.unavailableReason?.code)
-        assertEquals("paplay", availability.unavailableReason?.arguments?.get("executable"))
-    }
-
-    @Test
-    fun `direct Claude microphone reports a missing Claude executable`() = runBlocking {
+    fun `availability reports a missing selected Worker input`() = runBlocking {
         val workerId = ConversationRuntimeWorkerId("voice-worker")
         val user = user("user-1")
         val service = service(
-            connection = claudeConnection(workerId),
-            sourceWorkerId = workerId,
-            workers = listOf(
-                worker(
-                    workerId = workerId,
-                    os = WorkerOperatingSystem.Family.MACOS,
-                    availableExecutables = emptyList(),
-                )
-            ),
-            client = RecordingAudioCaptureClient(),
-            user = user,
+            workerId,
+            listOf(worker(workerId, audioInputs = emptyList())),
+            RecordingAudioCaptureClient(),
+            user,
         )
 
         val availability = service.availability(user)
 
-        assertFalse(availability.available)
-        assertEquals(SpeechAvailabilityFailure.Code.EXECUTABLE_UNAVAILABLE, availability.unavailableReason?.code)
-        assertEquals("claude", availability.unavailableReason?.arguments?.get("executable"))
+        assertEquals(false, availability.available)
+        assertEquals(SpeechAvailabilityFailure.Code.AUDIO_INPUT_UNAVAILABLE, availability.unavailableReason?.code)
     }
 
     @Test
-    fun `client audio upload is rejected when a Worker source is selected`() = runBlocking {
+    fun `captured audio can be transcribed while a Worker source remains selected`() = runBlocking {
         val workerId = ConversationRuntimeWorkerId("voice-worker")
         val user = user("user-1")
-        val service = service(
-            connection = claudeConnection(workerId),
-            sourceWorkerId = workerId,
-            workers = listOf(worker(workerId, WorkerOperatingSystem.Family.LINUX)),
-            client = RecordingAudioCaptureClient(),
-            user = user,
-        )
+        val service = service(workerId, listOf(worker(workerId)), RecordingAudioCaptureClient(), user)
 
-        val error = assertFailsWith<SpeechAvailabilityException> {
-            service.requireClientAudioRoute(user)
-        }
-
-        assertEquals(SpeechAvailabilityFailure.Code.CLIENT_AUDIO_UPLOAD_UNAVAILABLE, error.failure.code)
+        service.requireTranscriptionRoute(user)
     }
 
     private fun service(
-        connection: AiConnection.ClaudeCode,
         sourceWorkerId: ConversationRuntimeWorkerId,
         workers: List<WorkerCatalogEntry>,
         client: WorkerAudioCaptureClient,
@@ -265,21 +191,18 @@ class SpeechCaptureApplicationServiceTest {
             speechSettings = UserProfile.SpeechSettings(
                 speechToText = UserProfile.SpeechSettings.SpeechToText(
                     enabled = true,
-                    engine = UserProfile.SpeechSettings.SpeechToText.Engine.CLAUDE_CODE,
-                    claudeCodeConnectionId = connection.id,
+                    engine = UserProfile.SpeechSettings.SpeechToText.Engine.LOCAL_WHISPER,
                     audioSource = SpeechAudioSource.WorkerInput(
                         sourceWorkerId,
                         WorkerAudioInput.SystemDefault.id,
+                    ),
+                    localWhisper = UserProfile.SpeechSettings.SpeechToText.LocalWhisper(
+                        executionTarget = AiExecutionTarget.Server,
                     ),
                 )
             )
         )
         Mockito.`when`(settingsProvider.userProfile).thenReturn(profile)
-
-        val catalog = mock<AiCatalog>()
-        Mockito.`when`(catalog.connections).thenReturn(listOf(connection))
-        val configurationProvider = mock<AiConfigurationProvider>()
-        Mockito.`when`(configurationProvider.catalog).thenReturn(catalog)
 
         val accessService = mock<WorkerAccessService>()
         runBlocking {
@@ -308,29 +231,19 @@ class SpeechCaptureApplicationServiceTest {
 
         return SpeechCaptureApplicationService(
             settingsProvider = settingsProvider,
-            aiConfigurationProvider = configurationProvider,
+            aiConfigurationProvider = mock<AiConfigurationProvider>(),
             workerAccessService = accessService,
             workerCatalogService = object : WorkerCatalogService {
                 override suspend fun listWorkers(): List<WorkerCatalogEntry> = workers
             },
             workerTargetResolver = targetResolver,
             workerAudioCaptureClient = client,
-            sttService = mock<SttService>(),
         )
     }
 
-    private fun claudeConnection(workerId: ConversationRuntimeWorkerId) = AiConnection.ClaudeCode(
-        id = AiConnection.Id("claude-code"),
-        displayName = "Claude Code",
-        voiceTranscriptionEnabled = true,
-        executionTarget = AiExecutionTarget.Worker(workerId.value),
-    )
-
     private fun worker(
         workerId: ConversationRuntimeWorkerId,
-        os: WorkerOperatingSystem.Family,
         audioInputs: List<WorkerAudioInput> = listOf(WorkerAudioInput.SystemDefault),
-        availableExecutables: List<String> = listOf("claude", "pactl", "paplay"),
     ): WorkerCatalogEntry {
         val now = Instant.parse("2026-07-31T00:00:00Z")
         return WorkerCatalogEntry(
@@ -341,14 +254,14 @@ class SpeechCaptureApplicationServiceTest {
             lastHeartbeatAt = now,
             environmentProfile = WorkerEnvironmentProfile(
                 observedAt = now,
-                operatingSystem = WorkerOperatingSystem(os, os.name, "test"),
+                operatingSystem = WorkerOperatingSystem(WorkerOperatingSystem.Family.LINUX, "Linux", "test"),
                 architecture = "test",
                 nativeShell = WorkerNativeShell(WorkerNativeShell.Kind.POSIX_SH, "sh"),
                 timezoneId = "UTC",
                 localeTag = "en",
                 logicalProcessorCount = 1,
                 totalMemoryBytes = null,
-                availableExecutables = availableExecutables,
+                availableExecutables = emptyList(),
                 audioInputs = audioInputs,
             ),
         )
@@ -368,21 +281,43 @@ class SpeechCaptureApplicationServiceTest {
 
     private class RecordingAudioCaptureClient : WorkerAudioCaptureClient {
         val requests = mutableListOf<WorkerAudioCaptureRequest>()
+        val audio = SpeechPcmWav.encode(ByteArray(640))
+        var stopFailure: Throwable? = null
 
         override suspend fun execute(request: WorkerAudioCaptureRequest): WorkerAudioCaptureResult {
             requests += request
             return when (request.command) {
-                is WorkerAudioCaptureRequest.Command.PrepareClaudeCodeMicrophone ->
-                    WorkerAudioCaptureResult(WorkerAudioCaptureResult.Status.PREPARED)
-                is WorkerAudioCaptureRequest.Command.StartAudio,
-                is WorkerAudioCaptureRequest.Command.StartClaudeCodeMicrophone,
-                -> WorkerAudioCaptureResult(WorkerAudioCaptureResult.Status.STARTED)
-                is WorkerAudioCaptureRequest.Command.Stop -> WorkerAudioCaptureResult(
-                    status = WorkerAudioCaptureResult.Status.TRANSCRIBED,
-                    transcript = "recognized speech",
-                )
+                is WorkerAudioCaptureRequest.Command.StartAudio ->
+                    WorkerAudioCaptureResult(WorkerAudioCaptureResult.Status.STARTED)
+                is WorkerAudioCaptureRequest.Command.Stop -> {
+                    stopFailure?.let { throw it }
+                    WorkerAudioCaptureResult(
+                        status = WorkerAudioCaptureResult.Status.AUDIO_CAPTURED,
+                        audioData = audio,
+                        format = SpeechAudioFormat.WAV_PCM_S16LE_MONO_16_KHZ,
+                    )
+                }
                 is WorkerAudioCaptureRequest.Command.Cancel ->
                     WorkerAudioCaptureResult(WorkerAudioCaptureResult.Status.CANCELLED)
+            }
+        }
+    }
+
+    private class FailingStartCleanupAudioCaptureClient : WorkerAudioCaptureClient {
+        val requests = mutableListOf<WorkerAudioCaptureRequest>()
+        private var cancelAttempts = 0
+
+        override suspend fun execute(request: WorkerAudioCaptureRequest): WorkerAudioCaptureResult {
+            requests += request
+            return when (request.command) {
+                is WorkerAudioCaptureRequest.Command.StartAudio ->
+                    error("synthetic start failure")
+                is WorkerAudioCaptureRequest.Command.Cancel -> {
+                    cancelAttempts++
+                    if (cancelAttempts == 1) error("synthetic cleanup failure")
+                    WorkerAudioCaptureResult(WorkerAudioCaptureResult.Status.CANCELLED)
+                }
+                is WorkerAudioCaptureRequest.Command.Stop -> error("Unexpected stop")
             }
         }
     }
@@ -395,14 +330,14 @@ class SpeechCaptureApplicationServiceTest {
         override suspend fun execute(request: WorkerAudioCaptureRequest): WorkerAudioCaptureResult {
             requests += request
             return when (request.command) {
-                is WorkerAudioCaptureRequest.Command.StartClaudeCodeMicrophone -> {
+                is WorkerAudioCaptureRequest.Command.StartAudio -> {
                     startReceived.complete(Unit)
                     allowStart.await()
                     WorkerAudioCaptureResult(WorkerAudioCaptureResult.Status.STARTED)
                 }
                 is WorkerAudioCaptureRequest.Command.Cancel ->
                     WorkerAudioCaptureResult(WorkerAudioCaptureResult.Status.CANCELLED)
-                else -> error("Unexpected command: ${request.command}")
+                is WorkerAudioCaptureRequest.Command.Stop -> error("Unexpected stop")
             }
         }
     }

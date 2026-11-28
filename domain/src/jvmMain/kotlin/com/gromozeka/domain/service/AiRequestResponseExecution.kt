@@ -22,27 +22,17 @@ data class AiSpeechTranscriptionRequest(
     val format: SpeechAudioFormat,
     val engine: UserProfile.SpeechSettings.SpeechToText.Engine,
     val selection: AiRuntimeSelection?,
-    val claudeCodeConnection: AiConnection.ClaudeCode? = null,
     val language: String?,
     val prompt: String?,
 ) {
     init {
         require(audioData.isNotEmpty()) { "Speech transcription audio must not be empty" }
         when (engine) {
-            UserProfile.SpeechSettings.SpeechToText.Engine.OPENAI_API -> require(
-                selection != null && claudeCodeConnection == null
-            ) {
+            UserProfile.SpeechSettings.SpeechToText.Engine.OPENAI_API -> require(selection != null) {
                 "OpenAI speech transcription requires a runtime selection"
             }
-            UserProfile.SpeechSettings.SpeechToText.Engine.LOCAL_WHISPER -> require(
-                selection == null && claudeCodeConnection == null
-            ) {
-                "Local Whisper speech transcription cannot provide an AI connection"
-            }
-            UserProfile.SpeechSettings.SpeechToText.Engine.CLAUDE_CODE -> require(
-                selection == null && claudeCodeConnection != null
-            ) {
-                "Claude Code speech transcription requires a Claude Code connection"
+            UserProfile.SpeechSettings.SpeechToText.Engine.LOCAL_WHISPER -> require(selection == null) {
+                "Local Whisper speech transcription cannot provide an AI runtime selection"
             }
         }
     }

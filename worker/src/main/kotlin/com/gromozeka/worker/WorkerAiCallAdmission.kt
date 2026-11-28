@@ -97,17 +97,11 @@ class WorkerAiCallAdmission(
             wait,
         ))
         check(lease.operation.id == operation.id && lease.operation.target == operation.target &&
-            lease.operation.backgroundSessionId == operation.backgroundSessionId &&
             lease.workerId == identity.workerId.value && lease.workerRequestId == owner.requestId) {
             "Server returned an AI admission lease for a different operation"
         }
         try {
             withContext(NonCancellable) { journal.saveAiAdmission(lease) }
-            if (operation.backgroundSessionId != null) {
-                // Persist ownership before accepting a grant that may outlive the start RPC.
-                outbound.execute(WorkerGatewayOperation.AI_ADMISSION,
-                    AiAdmissionGatewayCodec.encode(AiAdmissionCommand.Accept(operation.id)))
-            }
             currentCoroutineContext().ensureActive()
             return lease
         } catch (error: Throwable) {

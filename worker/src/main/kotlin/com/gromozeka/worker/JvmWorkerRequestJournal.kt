@@ -12,6 +12,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonObject
 import org.springframework.stereotype.Service
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
@@ -74,11 +80,10 @@ class JvmWorkerRequestJournal(
 
     suspend fun loadAiAdmissions(): List<AiAdmissionLease> = withContext(Dispatchers.IO) {
         Files.list(directory).use { files ->
-            files.filter { it.fileName.toString().endsWith(".admission") }.map { path ->
-                json.decodeFromString<AiAdmissionLease>(readEncrypted(path).decodeToString()).also {
-                    require(path.fileName.toString() == "${it.operation.id.sha256()}.admission")
-                }
-            }.toList()
+            files.filter { it.fileName.toString().endsWith(".admission") }
+                .map(::loadAiAdmission)
+                .toList()
+                .filterNotNull()
         }
     }
 
@@ -87,11 +92,12 @@ class JvmWorkerRequestJournal(
     }
 
     suspend fun loadAiAdmissionCompletions(): List<AiAdmissionCompletion> = withContext(Dispatchers.IO) {
-        Files.list(directory).use { files -> files.filter { it.fileName.toString().endsWith(".admission-completion") }.map { path ->
-            json.decodeFromString<AiAdmissionCompletion>(readEncrypted(path).decodeToString()).also {
-                require(path.fileName.toString() == "${it.lease.operation.id.sha256()}.admission-completion")
-            }
-        }.toList() }
+        Files.list(directory).use { files ->
+            files.filter { it.fileName.toString().endsWith(".admission-completion") }
+                .map(::loadAiAdmissionCompletion)
+                .toList()
+                .filterNotNull()
+        }
     }
 
     suspend fun saveAiAdmissionCompletion(completion: AiAdmissionCompletion): Unit = withContext(Dispatchers.IO) {
@@ -101,6 +107,67 @@ class JvmWorkerRequestJournal(
     suspend fun deleteAiAdmission(id: String): Unit = withContext(Dispatchers.IO) {
         Files.deleteIfExists(directory.resolve("${id.sha256()}.admission"))
         Files.deleteIfExists(directory.resolve("${id.sha256()}.admission-completion"))
+        syncDirectory()
+    }
+
+    private fun loadAiAdmission(path: Path): AiAdmissionLease? {
+        val original = json.parseToJsonElement(readEncrypted(path).decodeToString()).jsonObject
+        val migrated = migrateLegacyAdmissionLease(original)
+        if (migrated == null) {
+            discardObsoleteAdmission(path)
+            return null
+        }
+        val lease = json.decodeFromJsonElement<AiAdmissionLease>(migrated)
+        require(path.fileName.toString() == "${lease.operation.id.sha256()}.admission")
+        if (migrated != original) {
+            writeEncrypted(path, json.encodeToString(lease).encodeToByteArray())
+        }
+        return lease
+    }
+
+    private fun loadAiAdmissionCompletion(path: Path): AiAdmissionCompletion? {
+        val original = json.parseToJsonElement(readEncrypted(path).decodeToString()).jsonObject
+        val legacyLease = requireNotNull(original["lease"]) {
+            "AI admission completion journal is missing its lease"
+        }.jsonObject
+        val migratedLease = migrateLegacyAdmissionLease(legacyLease)
+        if (migratedLease == null) {
+            discardObsoleteAdmission(path)
+            return null
+        }
+        val migrated = JsonObject(original + ("lease" to migratedLease))
+        val completion = json.decodeFromJsonElement<AiAdmissionCompletion>(migrated)
+        require(path.fileName.toString() == "${completion.lease.operation.id.sha256()}.admission-completion")
+        if (migrated != original) {
+            writeEncrypted(path, json.encodeToString(completion).encodeToByteArray())
+        }
+        return completion
+    }
+
+    private fun migrateLegacyAdmissionLease(lease: JsonObject): JsonObject? {
+        lease[LEGACY_ACCEPTED]?.let { accepted ->
+            require(accepted is JsonPrimitive && accepted.booleanOrNull != null) {
+                "Invalid legacy AI admission acceptance state"
+            }
+        }
+        val operation = requireNotNull(lease["operation"]) {
+            "AI admission journal is missing its operation"
+        }.jsonObject
+        val backgroundSessionId = operation[LEGACY_BACKGROUND_SESSION_ID]
+        if (backgroundSessionId != null && backgroundSessionId != JsonNull) {
+            require(
+                backgroundSessionId is JsonPrimitive &&
+                    backgroundSessionId.isString &&
+                    backgroundSessionId.content.matches(LEGACY_BACKGROUND_SESSION_ID_PATTERN)
+            ) { "Invalid legacy AI admission background session id" }
+            return null
+        }
+        val migratedOperation = JsonObject(operation - LEGACY_BACKGROUND_SESSION_ID)
+        return JsonObject((lease - LEGACY_ACCEPTED) + ("operation" to migratedOperation))
+    }
+
+    private fun discardObsoleteAdmission(path: Path) {
+        Files.deleteIfExists(path)
         syncDirectory()
     }
 
@@ -145,6 +212,12 @@ class JvmWorkerRequestJournal(
         if (Files.getFileAttributeView(path, PosixFileAttributeView::class.java) != null) {
             Files.setPosixFilePermissions(path, PosixFilePermissions.fromString(permissions))
         }
+    }
+
+    private companion object {
+        const val LEGACY_ACCEPTED = "accepted"
+        const val LEGACY_BACKGROUND_SESSION_ID = "backgroundSessionId"
+        val LEGACY_BACKGROUND_SESSION_ID_PATTERN = Regex("[A-Za-z0-9-]{1,128}")
     }
 
     @PreDestroy

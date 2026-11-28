@@ -1,17 +1,17 @@
 package com.gromozeka.worker
 
-import com.gromozeka.domain.model.ai.AiExecutionTarget
 import com.gromozeka.domain.service.WorkerAudioCaptureHandler
 import com.gromozeka.domain.service.WorkerAudioCaptureRequest
 import com.gromozeka.domain.service.WorkerAudioCaptureResult
-import com.gromozeka.infrastructure.ai.claude.ClaudeCodeVoiceTranscriptionService
 import jakarta.annotation.PreDestroy
 import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -31,19 +31,10 @@ internal class WorkerAudioCaptureService(
 
     override suspend fun handle(request: WorkerAudioCaptureRequest): WorkerAudioCaptureResult =
         when (val command = request.command) {
-            is WorkerAudioCaptureRequest.Command.PrepareClaudeCodeMicrophone -> prepare(command)
             is WorkerAudioCaptureRequest.Command.StartAudio -> start(request, command.sessionId)
-            is WorkerAudioCaptureRequest.Command.StartClaudeCodeMicrophone -> start(request, command.sessionId)
             is WorkerAudioCaptureRequest.Command.Stop -> stop(command.sessionId)
             is WorkerAudioCaptureRequest.Command.Cancel -> cancel(command.sessionId)
         }
-
-    private suspend fun prepare(
-        command: WorkerAudioCaptureRequest.Command.PrepareClaudeCodeMicrophone,
-    ): WorkerAudioCaptureResult {
-        handleFactory.prepare(command)
-        return WorkerAudioCaptureResult(WorkerAudioCaptureResult.Status.PREPARED)
-    }
 
     private suspend fun start(
         request: WorkerAudioCaptureRequest,
@@ -51,31 +42,26 @@ internal class WorkerAudioCaptureService(
     ): WorkerAudioCaptureResult {
         val reservation = reserve(sessionId)
             ?: error("Worker audio capture session was cancelled before start: $sessionId")
-        val handle = try {
-            handleFactory.open(request)
+        val handle = openReserved(request, sessionId, reservation)
+
+        val active = SessionState.Active(handle)
+        val timeoutJob = createTimeoutJob(sessionId, active)
+        active.timeoutJob = timeoutJob
+        val installed = try {
+            mutex.withLock {
+                if (sessions[sessionId] !== reservation || reservation.cancelRequested) {
+                    sessions.remove(sessionId, reservation)
+                    false
+                } else {
+                    sessions[sessionId] = active
+                    true
+                }
+            }
         } catch (error: Throwable) {
-            mutex.withLock { sessions.remove(sessionId, reservation) }
+            timeoutJob.cancel()
+            removeReservation(sessionId, reservation)
+            withContext(NonCancellable) { runCatching { handle.cancel() } }
             throw error
-        }
-
-        lateinit var active: SessionState.Active
-        val timeoutJob = scope.launch(start = CoroutineStart.LAZY) {
-            delay(MAX_CAPTURE_DURATION)
-            val expired = mutex.withLock {
-                if (sessions.remove(sessionId, active)) active.handle else null
-            }
-            expired?.cancel()
-        }
-        active = SessionState.Active(handle, timeoutJob)
-
-        val installed = mutex.withLock {
-            if (sessions[sessionId] !== reservation || reservation.cancelRequested) {
-                sessions.remove(sessionId, reservation)
-                false
-            } else {
-                sessions[sessionId] = active
-                true
-            }
         }
         if (!installed) {
             timeoutJob.cancel()
@@ -87,6 +73,36 @@ internal class WorkerAudioCaptureService(
         return WorkerAudioCaptureResult(WorkerAudioCaptureResult.Status.STARTED)
     }
 
+    private suspend fun openReserved(
+        request: WorkerAudioCaptureRequest,
+        sessionId: String,
+        reservation: SessionState.Starting,
+    ): WorkerAudioCaptureHandle {
+        var handle: WorkerAudioCaptureHandle? = null
+        try {
+            handle = handleFactory.open(request)
+            currentCoroutineContext().ensureActive()
+            return handle
+        } catch (error: Throwable) {
+            removeReservation(sessionId, reservation)
+            handle?.let { opened ->
+                withContext(NonCancellable) { runCatching { opened.cancel() } }
+            }
+            throw error
+        }
+    }
+
+    private fun createTimeoutJob(
+        sessionId: String,
+        active: SessionState.Active,
+    ): Job = scope.launch(start = CoroutineStart.LAZY) {
+        delay(MAX_CAPTURE_DURATION)
+        val expired = mutex.withLock {
+            if (sessions.remove(sessionId, active)) active.handle else null
+        }
+        expired?.cancel()
+    }
+
     private suspend fun reserve(sessionId: String): SessionState.Starting? = mutex.withLock {
         cancelledBeforeStart.remove(sessionId)?.let { cancellationExpiry ->
             cancellationExpiry.cancel()
@@ -96,24 +112,41 @@ internal class WorkerAudioCaptureService(
         SessionState.Starting().also { sessions[sessionId] = it }
     }
 
-    private suspend fun stop(sessionId: String): WorkerAudioCaptureResult =
-        removeActive(sessionId).handle.stop()
+    private suspend fun removeReservation(
+        sessionId: String,
+        reservation: SessionState.Starting,
+    ) = withContext(NonCancellable) {
+        mutex.withLock { sessions.remove(sessionId, reservation) }
+    }
+
+    private suspend fun stop(sessionId: String): WorkerAudioCaptureResult {
+        val terminal = claimActive(sessionId)
+        return try {
+            val result = terminal.active.handle.stop()
+            completeTerminal(sessionId, terminal)
+            result
+        } catch (error: Throwable) {
+            val cancelled = withContext(NonCancellable) {
+                runCatching { terminal.active.handle.cancel() }.isSuccess
+            }
+            if (cancelled) completeTerminal(sessionId, terminal)
+            else restoreTerminal(sessionId, terminal)
+            throw error
+        }
+    }
 
     private suspend fun cancel(sessionId: String): WorkerAudioCaptureResult {
         var expiryToStart: Job? = null
-        val handle = mutex.withLock {
+        val terminal = mutex.withLock {
             when (val state = sessions[sessionId]) {
                 is SessionState.Starting -> {
                     state.cancelRequested = true
                     null
                 }
-                is SessionState.Active -> {
-                    check(sessions.remove(sessionId, state)) {
-                        "Worker audio capture session changed concurrently"
-                    }
-                    state.timeoutJob.cancel()
-                    state.handle
-                }
+                is SessionState.Active -> claimActive(sessionId, state)
+                is SessionState.Terminal -> error(
+                    "Worker audio capture terminal operation is already running: $sessionId"
+                )
                 null -> {
                     if (sessionId !in cancelledBeforeStart) {
                         lateinit var expiry: Job
@@ -129,33 +162,77 @@ internal class WorkerAudioCaptureService(
             }
         }
         expiryToStart?.start()
-        handle?.cancel()
+        if (terminal != null) {
+            try {
+                terminal.active.handle.cancel()
+                completeTerminal(sessionId, terminal)
+            } catch (error: Throwable) {
+                restoreTerminal(sessionId, terminal)
+                throw error
+            }
+        }
         return WorkerAudioCaptureResult(WorkerAudioCaptureResult.Status.CANCELLED)
     }
 
-    private suspend fun removeActive(sessionId: String): SessionState.Active = mutex.withLock {
+    private suspend fun claimActive(sessionId: String): SessionState.Terminal = mutex.withLock {
         when (val state = sessions[sessionId]) {
-            is SessionState.Active -> {
-                check(sessions.remove(sessionId, state)) {
-                    "Worker audio capture session changed concurrently"
-                }
-                state
-            }
+            is SessionState.Active -> claimActive(sessionId, state)
             is SessionState.Starting -> error("Worker audio capture session is still starting: $sessionId")
+            is SessionState.Terminal -> error(
+                "Worker audio capture terminal operation is already running: $sessionId"
+            )
             null -> error("Worker audio capture session not found: $sessionId")
         }
-    }.also { it.timeoutJob.cancel() }
+    }
+
+    private fun claimActive(
+        sessionId: String,
+        active: SessionState.Active,
+    ): SessionState.Terminal {
+        active.timeoutJob?.cancel()
+        return SessionState.Terminal(active).also { sessions[sessionId] = it }
+    }
+
+    private suspend fun completeTerminal(
+        sessionId: String,
+        terminal: SessionState.Terminal,
+    ) = withContext(NonCancellable) {
+        mutex.withLock { sessions.remove(sessionId, terminal) }
+    }
+
+    private suspend fun restoreTerminal(
+        sessionId: String,
+        terminal: SessionState.Terminal,
+    ) = withContext(NonCancellable) {
+        val timeoutJob = createTimeoutJob(sessionId, terminal.active)
+        terminal.active.timeoutJob = timeoutJob
+        val restored = mutex.withLock {
+            if (sessions[sessionId] === terminal) {
+                sessions[sessionId] = terminal.active
+                true
+            } else {
+                false
+            }
+        }
+        if (restored) timeoutJob.start() else timeoutJob.cancel()
+    }
 
     @PreDestroy
     fun shutdown() = runBlocking {
         val active = mutex.withLock {
             cancelledBeforeStart.values.forEach(Job::cancel)
             cancelledBeforeStart.clear()
-            sessions.values.filterIsInstance<SessionState.Active>().also { sessions.clear() }
+            sessions.values.mapNotNull { state ->
+                when (state) {
+                    is SessionState.Active -> state
+                    is SessionState.Terminal -> state.active
+                    is SessionState.Starting -> null
+                }
+            }.also { sessions.clear() }
         }
         withContext(NonCancellable) {
             active.forEach { session ->
-                session.timeoutJob.cancel()
+                session.timeoutJob?.cancel()
                 session.handle.cancel()
             }
         }
@@ -168,7 +245,11 @@ internal class WorkerAudioCaptureService(
 
         data class Active(
             val handle: WorkerAudioCaptureHandle,
-            val timeoutJob: Job,
+            var timeoutJob: Job? = null,
+        ) : SessionState
+
+        data class Terminal(
+            val active: Active,
         ) : SessionState
     }
 
@@ -178,8 +259,7 @@ internal class WorkerAudioCaptureService(
     }
 }
 
-internal interface WorkerAudioCaptureHandleFactory {
-    suspend fun prepare(command: WorkerAudioCaptureRequest.Command.PrepareClaudeCodeMicrophone)
+internal fun interface WorkerAudioCaptureHandleFactory {
     suspend fun open(request: WorkerAudioCaptureRequest): WorkerAudioCaptureHandle
 }
 
@@ -190,23 +270,10 @@ internal interface WorkerAudioCaptureHandle {
 
 @Service
 internal class JvmWorkerAudioCaptureHandleFactory(
-    private val claudeCodeVoiceTranscriptionService: ClaudeCodeVoiceTranscriptionService,
-    private val admission: com.gromozeka.domain.service.AiCallAdmission,
     @param:Qualifier("applicationScope") private val scope: CoroutineScope,
 ) : WorkerAudioCaptureHandleFactory {
-    override suspend fun prepare(
-        command: WorkerAudioCaptureRequest.Command.PrepareClaudeCodeMicrophone,
-    ) {
-        claudeCodeVoiceTranscriptionService.prepareLocalMicrophone(
-            command.connection,
-            command.language,
-        )
-    }
-
     override suspend fun open(request: WorkerAudioCaptureRequest): WorkerAudioCaptureHandle =
         when (val command = request.command) {
-            is WorkerAudioCaptureRequest.Command.PrepareClaudeCodeMicrophone ->
-                error("Worker audio capture factory cannot open a prepare command")
             is WorkerAudioCaptureRequest.Command.StartAudio -> {
                 val session = JvmWorkerAudioHardware.start(scope, command.inputId)
                 object : WorkerAudioCaptureHandle {
@@ -220,36 +287,6 @@ internal class JvmWorkerAudioCaptureHandleFactory(
                     }
 
                     override suspend fun cancel() = session.cancel()
-                }
-            }
-            is WorkerAudioCaptureRequest.Command.StartClaudeCodeMicrophone -> {
-                val target = command.connection.executionTarget as? AiExecutionTarget.Worker
-                    ?: error("Direct Claude Code microphone capture requires a Worker-targeted connection")
-                require(target.workerId == request.target.workerId.value) {
-                    "Claude Code microphone connection targets another Worker"
-                }
-                val admitted = admission.openSession(command.connection, "SPEECH_TO_TEXT", command.sessionId)
-                val session = try {
-                    claudeCodeVoiceTranscriptionService.startLocalMicrophone(command.connection, command.language)
-                } catch (error: Throwable) {
-                    admitted.finish(com.gromozeka.domain.model.ai.AiAdmissionOutcome.FAILED)
-                    throw error
-                }
-                object : WorkerAudioCaptureHandle {
-                    override suspend fun stop(): WorkerAudioCaptureResult {
-                        val text = try { session.stop() } catch (error: Throwable) {
-                            withContext(NonCancellable) { session.cancel() }
-                            admitted.finish(com.gromozeka.domain.model.ai.AiAdmissionOutcome.FAILED)
-                            throw error
-                        }
-                        admitted.finish()
-                        return WorkerAudioCaptureResult(WorkerAudioCaptureResult.Status.TRANSCRIBED, transcript = text)
-                    }
-
-                    override suspend fun cancel() = withContext(NonCancellable) {
-                        session.cancel()
-                        admitted.finish(com.gromozeka.domain.model.ai.AiAdmissionOutcome.CANCELLED)
-                    }
                 }
             }
             is WorkerAudioCaptureRequest.Command.Stop,

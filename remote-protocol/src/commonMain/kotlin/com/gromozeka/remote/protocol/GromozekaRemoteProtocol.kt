@@ -1510,6 +1510,12 @@ data class SpeechCaptureStartedResponse(
 ) : ServerResponse
 
 @Serializable
+@SerialName("speech_capture_stopped")
+data class SpeechCaptureStoppedResponse(
+    val recording: RemoteAudioRecording,
+) : ServerResponse
+
+@Serializable
 @SerialName("speech_capture_availability")
 data class SpeechCaptureAvailabilityResponse(
     val available: Boolean,

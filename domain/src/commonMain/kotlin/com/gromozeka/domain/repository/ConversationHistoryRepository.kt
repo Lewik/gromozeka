@@ -13,7 +13,11 @@ interface ConversationHistoryRepository {
     suspend fun clientMessage(threadId: Conversation.Thread.Id, messageId: Conversation.Message.Id): PositionedConversationMessage?
     suspend fun position(threadId: Conversation.Thread.Id, messageId: Conversation.Message.Id): Int?
     suspend fun message(threadId: Conversation.Thread.Id, messageId: Conversation.Message.Id): PositionedConversationMessage?
-    suspend fun toolResults(threadId: Conversation.Thread.Id, callIds: Set<String>): List<PositionedConversationMessage>
+    /** Provider-managed tool results may be separated from their calls; ordinary pairs are read from adjacent page rows. */
+    suspend fun providerManagedToolResults(
+        threadId: Conversation.Thread.Id,
+        callIds: Set<String>,
+    ): List<PositionedConversationMessage>
     suspend fun selectedIds(threadId: Conversation.Thread.Id, selection: ConversationMessageSelection): List<Conversation.Message.Id>
     suspend fun latestUserMessage(threadId: Conversation.Thread.Id): PositionedConversationMessage?
     suspend fun latestUserActivity(threadId: Conversation.Thread.Id, userId: com.gromozeka.domain.model.User.Id): com.gromozeka.domain.model.ConversationUserActivity?

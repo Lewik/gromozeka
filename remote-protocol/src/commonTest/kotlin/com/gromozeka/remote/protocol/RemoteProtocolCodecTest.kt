@@ -565,6 +565,27 @@ class RemoteProtocolCodecTest {
     }
 
     @Test
+    fun cborRoundTripSupportsStoppedSpeechCaptureAudio() {
+        val bytes = ByteArray(256) { it.toByte() }
+        val envelope = GromozekaServerEnvelope(
+            id = "response-capture-1",
+            payload = SpeechCaptureStoppedResponse(
+                RemoteAudioRecording(
+                    sessionId = "capture-1",
+                    format = SpeechAudioFormat.WAV_PCM_S16LE_MONO_16_KHZ,
+                    chunks = listOf(RemoteAudioChunk(0, bytes)),
+                )
+            ),
+        )
+
+        val decoded = RemoteProtocolCodec.decodeServerBinary(RemoteProtocolCodec.encodeServerBinary(envelope))
+        val response = decoded.payload as SpeechCaptureStoppedResponse
+
+        assertEquals("capture-1", response.recording.sessionId)
+        assertContentEquals(bytes, response.recording.chunks.single().data)
+    }
+
+    @Test
     fun cborRoundTripSupportsSpeechSynthesisAudio() {
         val bytes = ByteArray(256) { index -> (255 - index).toByte() }
         val envelope = GromozekaServerEnvelope(

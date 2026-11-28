@@ -46,7 +46,7 @@ class AiCallAdmissionTest {
     @Test
     fun `managed session stays admitted until explicit transport completion and completes once`() = runBlocking {
         val admission = RecordingAdmission()
-        val session = admission.openSession(connection, "SPEECH_TO_TEXT", "capture")
+        val session = admission.openSession(connection, "SPEECH_TO_TEXT")
         assertTrue(admission.outcomes.isEmpty())
         listOf(async { session.finish() }, async { session.finish() }).awaitAll()
         assertEquals(1, admission.acquired.get())

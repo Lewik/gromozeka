@@ -225,7 +225,6 @@ sealed interface AiConnection {
         val executablePath: String = "claude",
         val maxCachedProcesses: Int = DEFAULT_MAX_CACHED_PROCESSES,
         val processIdleTtlMinutes: Int = DEFAULT_PROCESS_IDLE_TTL_MINUTES,
-        val voiceTranscriptionEnabled: Boolean = false,
         override val quotaPacing: AiSubscriptionQuotaPacingPolicy = AiSubscriptionQuotaPacingPolicy(),
         override val executionTarget: AiExecutionTarget,
     ) : AiConnection, AiSubscriptionConnection {

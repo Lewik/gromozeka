@@ -2,7 +2,6 @@ package com.gromozeka.infrastructure.ai.openai
 
 import com.gromozeka.domain.model.SpeechAudioFormat
 import com.gromozeka.domain.model.UserProfile
-import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiExecutionTarget
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.service.AiConfigurationProvider
@@ -14,7 +13,6 @@ import com.gromozeka.domain.service.ConversationRuntimeWorkerTargetResolver
 import com.gromozeka.domain.service.DirectAiSpeechToTextProvider
 import com.gromozeka.domain.service.ResolvedAiRuntime
 import com.gromozeka.domain.service.SettingsProvider
-import com.gromozeka.infrastructure.ai.claude.ClaudeCodeVoiceTranscriptionService
 import com.gromozeka.infrastructure.ai.speech.LocalWhisperTranscriptionService
 import com.gromozeka.shared.audio.AudioConfig
 import com.gromozeka.shared.audio.AudioOutputFormat
@@ -129,36 +127,6 @@ class SttService(
                     ),
                 )
             }
-
-            UserProfile.SpeechSettings.SpeechToText.Engine.CLAUDE_CODE -> {
-                val connectionId = requireNotNull(settings.claudeCodeConnectionId) {
-                    "Claude Code speech transcription connection is not configured"
-                }
-                val connection = aiConfigurationProvider.catalog.connections
-                    .singleOrNull { it.id == connectionId }
-                    as? AiConnection.ClaudeCode
-                    ?: error("Claude Code speech transcription connection not found: ${connectionId.value}")
-                require(connection.enabled) {
-                    "Claude Code speech transcription connection is disabled: ${connection.id.value}"
-                }
-                require(connection.voiceTranscriptionEnabled) {
-                    "Claude Code voice transcription is disabled for connection ${connection.id.value}"
-                }
-                ConfiguredSpeechTranscription(
-                    target = connection.executionTarget,
-                    runtime = null,
-                    localWhisperSettings = null,
-                    request = AiSpeechTranscriptionRequest(
-                        audioData = audioData,
-                        format = format,
-                        engine = settings.engine,
-                        selection = null,
-                        claudeCodeConnection = connection,
-                        language = requestedLanguage,
-                        prompt = prompt,
-                    ),
-                )
-            }
         }
     }
 
@@ -184,7 +152,6 @@ class SttService(
 class OpenAiSpeechTranscriptionExecutor(
     private val clientFactory: OpenAiSdkClientFactory,
     private val localWhisperTranscriptionService: LocalWhisperTranscriptionService,
-    private val claudeCodeVoiceTranscriptionService: ClaudeCodeVoiceTranscriptionService,
     private val admission: com.gromozeka.domain.service.AiCallAdmission,
 ) : DirectAiSpeechToTextProvider {
     private val log = KLoggers.logger(this)
@@ -224,16 +191,6 @@ class OpenAiSpeechTranscriptionExecutor(
                         },
                         request,
                     )
-
-                UserProfile.SpeechSettings.SpeechToText.Engine.CLAUDE_CODE ->
-                    admission.execute(requireNotNull(request.claudeCodeConnection), "SPEECH_TO_TEXT") {
-                        claudeCodeVoiceTranscriptionService.transcribeAudio(
-                            connection = requireNotNull(request.claudeCodeConnection),
-                            audioData = request.audioData,
-                            format = request.format,
-                            language = request.language,
-                        )
-                    }
             }
         }
 

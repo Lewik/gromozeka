@@ -24,20 +24,11 @@ class WorkerAiAdmissionGatewayHandler(
                     "AI admission requires an active request owned by this Worker"
                 }
                 val original = WorkerGatewayCodec.decode(owner.request) as WorkerGatewayMessage.Request
-                require(original.operation in setOf(WorkerGatewayOperation.AI_REQUEST_RESPONSE,
-                    WorkerGatewayOperation.TOOL_EXECUTION, WorkerGatewayOperation.AUDIO_CAPTURE)) {
+                require(original.operation in setOf(
+                    WorkerGatewayOperation.AI_REQUEST_RESPONSE,
+                    WorkerGatewayOperation.TOOL_EXECUTION,
+                )) {
                     "This Worker request cannot execute AI operations"
-                }
-                command.operation.backgroundSessionId?.let { sessionId ->
-                    require(original.operation == WorkerGatewayOperation.AUDIO_CAPTURE) { "Only a capture start may own a background AI admission" }
-                    val capture = WorkerAudioCaptureGatewayCodec.decodeRequest(original.payload)
-                    val start = requireNotNull(capture.command as? com.gromozeka.domain.service.WorkerAudioCaptureRequest.Command.StartClaudeCodeMicrophone) {
-                        "Background AI admission requires a Claude Code microphone start"
-                    }
-                    require(capture.target == identity && start.sessionId == sessionId &&
-                        command.operation.target == com.gromozeka.domain.model.ai.AiAdmissionTarget.Connection(start.connection.id)) {
-                        "Background AI admission does not match its capture start"
-                    }
                 }
                 val origin = if (original.operation == WorkerGatewayOperation.AI_REQUEST_RESPONSE)
                     AiRequestResponseGatewayCodec.admissionOrigin(original.payload) else null
@@ -50,10 +41,6 @@ class WorkerAiAdmissionGatewayHandler(
                         command.operation.copy(deadline = deadline), identity.workerId.value, owner.id, command.httpRequest, origin, command.accountingRequest,
                     ))
                 }
-            }
-            is AiAdmissionCommand.Accept -> {
-                admission.acceptOperation(command.operationId, identity.workerId.value)
-                byteArrayOf()
             }
             is AiAdmissionCommand.Finish -> {
                 val feedbackError = try {

@@ -1340,7 +1340,7 @@ class GromozekaRemoteServer(
         user: User,
         recording: RemoteAudioRecording,
     ): AudioTranscriptionResponse {
-        speechCaptureApplicationService.requireClientAudioRoute(user)
+        speechCaptureApplicationService.requireTranscriptionRoute(user)
         require(recording.chunks.isNotEmpty()) { "Audio recording has no chunks" }
 
         val audioBytes = ByteArrayOutputStream().use { output ->

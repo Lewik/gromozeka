@@ -252,7 +252,7 @@ private suspend fun toggleActionButtonConversation(app: RemoteAppComponents) {
 
         PttState.PREPARING,
         PttState.RECORDING,
-        PttState.TRANSCRIBING -> app.components.pttEventRouter.handlePTTRelease()
+        PttState.FINALIZING -> app.components.pttEventRouter.handlePTTRelease()
     }
 }
 

@@ -96,6 +96,7 @@ sealed interface UserDeviceSettings {
     @Serializable
     data class VoiceInputSettings(
         val autoSend: Boolean = true,
+        val allowIndependentTranscriptionAcrossTabs: Boolean = false,
         val liveVoiceInputEnabled: Boolean = false,
         val liveVoiceVadMode: LiveVoiceVadMode = LiveVoiceVadMode.LOCAL_VAD,
     ) {

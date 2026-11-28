@@ -6,11 +6,13 @@ import com.gromozeka.domain.model.ConversationHistoryMessage
 import com.gromozeka.domain.model.ConversationHistoryPage
 import com.gromozeka.domain.model.ConversationHistoryPageRequest
 import com.gromozeka.domain.model.ConversationMessageSelection
+import com.gromozeka.domain.model.ai.AI_PROVIDER_MANAGED_TOOL_METADATA_KEY
 import com.gromozeka.domain.repository.ConversationHistoryRepository
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.PositionedConversationMessage
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
 import org.springframework.stereotype.Service
 
 @Service
@@ -28,9 +30,28 @@ class ConversationHistoryReadService(
         val anchorPosition = actual.around?.let { messages.position(threadId, it) } ?: actual.positionHint
         val before = actual.before?.position ?: anchorPosition?.let { it + actual.limit / 2 + 1 }
         val candidates = messages.page(threadId, before, actual.after?.position, actual.limit)
+        val previousCandidate = candidates.firstOrNull()?.let { first ->
+            messages.page(threadId, first.position, null, 1).firstOrNull()
+        }
+        val nextCandidate = candidates.lastOrNull()?.let { last ->
+            messages.page(threadId, null, last.position, 1).firstOrNull()
+        }
+        val envelope = listOfNotNull(previousCandidate) + candidates + listOfNotNull(nextCandidate)
         val projected = candidates.map { ConversationMessageProjection.project(it) }
-        val calls = projected.flatMap { it.message.content }.filterIsInstance<Conversation.Message.ContentItem.ToolCall>().mapTo(mutableSetOf()) { it.id.value }
-        val results = messages.toolResults(threadId, calls)
+        val nearbyResultIds = envelope.asSequence()
+            .flatMap { it.message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>().asSequence() }
+            .mapTo(mutableSetOf()) { it.toolUseId.value }
+        val providerManagedCalls = candidates.asSequence()
+            .filter { it.message.providerMetadata[AI_PROVIDER_MANAGED_TOOL_METADATA_KEY] == JsonPrimitive(true) }
+            .flatMap { it.message.content.filterIsInstance<Conversation.Message.ContentItem.ToolCall>().asSequence() }
+            .map { it.id.value }
+            .filterNot(nearbyResultIds::contains)
+            .toMutableSet()
+        val providerManagedResults = if (providerManagedCalls.isEmpty()) emptyList()
+            else messages.providerManagedToolResults(threadId, providerManagedCalls)
+        val results = (envelope + providerManagedResults)
+            .filter { entry -> entry.message.content.any { it is Conversation.Message.ContentItem.ToolResult } }
+            .distinctBy { it.message.id }
         fun relatedTo(entries: List<ConversationHistoryMessage>): List<ConversationHistoryMessage> {
             val included = entries.mapTo(mutableSetOf()) { it.message.id }
             val ids = entries.flatMap { it.message.content }
@@ -67,10 +88,10 @@ class ConversationHistoryReadService(
         val bounded = chosen.sortedBy { it.position }
         val related = relatedTo(bounded)
         val older = bounded.firstOrNull()?.let { first ->
-            messages.page(threadId, first.position, null, 1).firstOrNull()?.let { ConversationHistoryCursor(threadId, first.position) }
+            envelope.lastOrNull { it.position < first.position }?.let { ConversationHistoryCursor(threadId, first.position) }
         }
         val newer = bounded.lastOrNull()?.let { last ->
-            messages.page(threadId, null, last.position, 1).firstOrNull()?.let { ConversationHistoryCursor(threadId, last.position) }
+            envelope.firstOrNull { it.position > last.position }?.let { ConversationHistoryCursor(threadId, last.position) }
         }
         return ConversationHistoryPage(threadId, bounded, related, older, newer, sequence, reset, messages.latestUserActivity(threadId, readerId))
     }

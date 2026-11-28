@@ -1030,20 +1030,6 @@
     "description": "States the exact-machine requirement: Claude Code uses the selected Worker's separately installed executable and local credentials. Preserve the restriction to that Worker.",
     "args": []
   },
-  "ai.connection.claude_voice": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:1121"
-    ],
-    "description": "Opt-in experimental adapter for controlling the separately installed Claude Code voice UI. It is not a guarantee of a supported native audio API.",
-    "args": []
-  },
-  "ai.connection.claude_voice_description": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:1123"
-    ],
-    "description": "Explains that the adapter automates a separately installed UI and is conditional on organization/account terms. Preserve the unsupported-by-default status of consumer Pro/Max; these are product plan names.",
-    "args": []
-  },
   "ai.connection.copilot_executable": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/AiCatalogSettings.kt:1192"
@@ -12381,22 +12367,6 @@
     "args": [],
     "literal": "Chrome, Edge, or Chromium"
   },
-  "settingsUi.claudeCodeConnection": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt:457"
-    ],
-    "description": "Dropdown label selecting the configured Claude Code provider connection for speech recognition.",
-    "args": [],
-    "literal": "Claude Code connection"
-  },
-  "settingsUi.claudeCodeVoice": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt:417"
-    ],
-    "description": "Speech recognition engine option using the voice capability of a configured Claude Code connection.",
-    "args": [],
-    "literal": "Claude Code voice"
-  },
   "settingsUi.claudeCodeWebModel": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt:2112"
@@ -12485,14 +12455,6 @@
     "description": "Fallback error shown when the downloadable component catalog cannot be fetched.",
     "args": [],
     "literal": "Could not load distributions."
-  },
-  "settingsUi.createAClaudeCodeConnectionAndEnableVoice": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt:451"
-    ],
-    "description": "Prerequisite message when no eligible Claude Code connection has voice transcription enabled.",
-    "args": [],
-    "literal": "Create a Claude Code connection and enable voice transcription on it first."
   },
   "settingsUi.createAnOpenAIAPIOrOpenAISubscriptionConnection": {
     "source": [
@@ -13045,14 +13007,6 @@
     "args": [],
     "literal": "Remove configured API key"
   },
-  "settingsUi.requiresAnOrganizationApprovedClaudeAiLoginOn": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt:458"
-    ],
-    "description": "Explains the required Claude.ai account login on the machine executing Claude Code voice; API credentials and the listed cloud-provider routes do not qualify. Preserve product names.",
-    "args": [],
-    "literal": "Requires an organization-approved Claude.ai login on the execution target; API keys, Bedrock, Vertex, and Foundry cannot use Claude voice."
-  },
   "settingsUi.resetScale": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt:1242"
@@ -13100,14 +13054,6 @@
     "description": "Navigation category for authentication, access control, device approval, and stored credentials.",
     "args": [],
     "literal": "Security"
-  },
-  "settingsUi.selectAClaudeCodeConnection": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt:462"
-    ],
-    "description": "Placeholder shown before choosing a Claude Code connection for voice transcription.",
-    "args": [],
-    "literal": "Select a Claude Code connection"
   },
   "settingsUi.separateAIRuntime": {
     "source": [
@@ -13516,14 +13462,6 @@
     "args": [],
     "literal": "Voice"
   },
-  "settingsUi.voiceDisabled": {
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt:469"
-    ],
-    "description": "Suffix on a Claude Code connection whose voice-transcription capability is disabled. Preserve the leading space and separator when used as a suffix.",
-    "args": [],
-    "literal": " · voice disabled"
-  },
   "settingsUi.webToolSettingsWillBecomeAvailableAfterThe": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt:1890"
@@ -13860,54 +13798,6 @@
     "args": [],
     "literal": "Проверка доступности непрерывного голосового ввода"
   },
-  "voice.claudeConnectionMissing": {
-    "description": "The configured Claude Code speech-to-text connection is missing or has a different provider type. connection is the exact connection identifier.",
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/services/translation/SpeechAvailabilityTranslation.kt:19"
-    ],
-    "args": [
-      "connection"
-    ]
-  },
-  "voice.claudeConnectionNotConfigured": {
-    "description": "Claude Code is the selected speech-to-text engine, but no Claude Code AI connection was selected in speech settings.",
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/services/translation/SpeechAvailabilityTranslation.kt:18"
-    ],
-    "args": []
-  },
-  "voice.claudeDirectUnsupportedPlatform": {
-    "description": "Direct microphone capture through Claude Code is unsupported on the selected Worker operating system. platform is an operating system family identifier such as LINUX or WINDOWS, preserve it.",
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/services/translation/SpeechAvailabilityTranslation.kt:22"
-    ],
-    "args": [
-      "platform"
-    ]
-  },
-  "voice.claudeForwardingRequiresLinux": {
-    "description": "When recorded audio is forwarded to Claude Code instead of using its microphone directly, the execution target must run Linux.",
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/services/translation/SpeechAvailabilityTranslation.kt:24"
-    ],
-    "args": []
-  },
-  "voice.claudeRequiresWorker": {
-    "description": "Claude Code speech transcription must execute on a Worker. The Server cannot run this integration directly.",
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/services/translation/SpeechAvailabilityTranslation.kt:23"
-    ],
-    "args": []
-  },
-  "voice.claudeVoiceDisabled": {
-    "description": "The selected Claude Code connection has its voice transcription capability switched off. connection is the unchanged connection identifier.",
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/services/translation/SpeechAvailabilityTranslation.kt:20"
-    ],
-    "args": [
-      "connection"
-    ]
-  },
   "voice.clientStreamingUnavailable": {
     "source": [
       "presentation/src/commonMain/kotlin/com/gromozeka/presentation/services/ClientLiveAudioStreamer.kt:233"
@@ -13924,13 +13814,6 @@
     "description": "Capability error from the unimplemented client-side speech recognition service, including use by live interpretation or push-to-talk.",
     "args": [],
     "literal": "Client-side speech-to-text is not available"
-  },
-  "voice.clientUploadUnavailable": {
-    "description": "The client cannot upload its own microphone audio while speech settings select a Worker microphone as the audio source. This does not refer to uploading file attachments.",
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/services/translation/SpeechAvailabilityTranslation.kt:26"
-    ],
-    "args": []
   },
   "voice.connectionDisabled": {
     "description": "The selected speech-to-text AI connection is disabled in the runtime catalog. connection is its exact stable identifier, not a translated label.",
@@ -13965,16 +13848,6 @@
     "description": "Message when push-to-talk processing returns a blank transcript despite a completed recording; no message is sent or inserted.",
     "args": [],
     "literal": "Голос распознан как пустой текст"
-  },
-  "voice.executableUnavailable": {
-    "description": "A required command-line program is absent from the selected Worker environment. executable is its exact command/path (for example ffmpeg); worker is an exact identifier.",
-    "source": [
-      "presentation/src/commonMain/kotlin/com/gromozeka/presentation/services/translation/SpeechAvailabilityTranslation.kt:25"
-    ],
-    "args": [
-      "executable",
-      "worker"
-    ]
   },
   "voice.finishingRecording": {
     "source": [
@@ -15825,5 +15698,9 @@
   "session.sidebar.show": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationSidePanel.kt"], "description": "Show or hide the shared right sidebar while preserving its selected tab. The control is in the main tab bar immediately before notifications.", "args": []},
   "session.sidebar.hide": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationSidePanel.kt"], "description": "Show or hide the shared right sidebar while preserving its selected tab. The control is in the main tab bar immediately before notifications.", "args": []},
   "session.thread.title": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationThreadPanel.kt", "presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationSidePanel.kt"], "description": "Sidebar tab and page containing conversation creation, fork, history selection, editing, pinning, compaction and deletion actions.", "args": []},
-  "session.sidebar.resize": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationSidePanelResize.kt"], "description": "Accessible label for the draggable vertical border that resizes the right sidebar live. Desktop layouts only.", "args": []}
+  "session.sidebar.resize": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/session/ConversationSidePanelResize.kt"], "description": "Accessible label for the draggable vertical border that resizes the right sidebar live. Desktop layouts only.", "args": []},
+  "settingsUi.whisperConcurrentTranscriptions": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt"],"description": "Numeric limit for simultaneous local Whisper transcription processes.","args": [],"literal": "Concurrent Whisper transcriptions"},
+  "settingsUi.maximumLocalWhisperProcessesRunningAtOnce": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt"],"description": "Explains that the Local Whisper limit controls concurrently running local processes.","args": [],"literal": "Maximum number of local Whisper processes allowed to run at once."},
+  "settingsUi.independentVoiceTranscriptionAcrossTabs": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt"],"description": "Device-local switch allowing voice recordings from different tabs to be recognized independently.","args": [],"literal": "Recognize different tabs independently"},
+  "settingsUi.whenEnabledDifferentTabsMayFinishRecognitionIndependently": {"source": ["presentation/src/commonMain/kotlin/com/gromozeka/presentation/ui/SettingsPanel.kt"],"description": "Explains that cross-tab independence never relaxes ordering within one tab.","args": [],"literal": "When enabled, recordings from different tabs may be recognized and delivered independently. Recordings within one tab always stay ordered."}
 }

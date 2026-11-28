@@ -1,6 +1,5 @@
 package com.gromozeka.domain.model
 
-import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiExecutionTarget
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
@@ -59,7 +58,6 @@ data class UserProfile(
             val enabled: Boolean = false,
             val engine: Engine = Engine.OPENAI_API,
             val mainLanguageCode: String = "en",
-            val claudeCodeConnectionId: AiConnection.Id? = null,
             val audioSource: SpeechAudioSource = SpeechAudioSource.CurrentClient,
             val localWhisper: LocalWhisper = LocalWhisper(),
         ) {
@@ -71,7 +69,6 @@ data class UserProfile(
             enum class Engine {
                 OPENAI_API,
                 LOCAL_WHISPER,
-                CLAUDE_CODE,
             }
 
             @Serializable
@@ -80,6 +77,7 @@ data class UserProfile(
                 val modelName: String = "base",
                 val modelPath: String = "",
                 val threadCount: Int = 0,
+                val maxConcurrentTranscriptions: Int = 1,
                 val extraArguments: List<String> = emptyList(),
                 val timeoutSeconds: Int = 120,
                 val serverStartupTimeoutSeconds: Int = 300,
@@ -91,6 +89,9 @@ data class UserProfile(
                     require(executablePath.isNotBlank()) { "Local Whisper executable path must not be blank" }
                     require(modelName.isNotBlank()) { "Local Whisper model name must not be blank" }
                     require(threadCount >= 0) { "Local Whisper thread count must not be negative" }
+                    require(maxConcurrentTranscriptions in 1..64) {
+                        "Local Whisper concurrent transcription limit must be between 1 and 64"
+                    }
                     require(extraArguments.all { it.isNotBlank() }) {
                         "Local Whisper extra arguments must not contain blank values"
                     }

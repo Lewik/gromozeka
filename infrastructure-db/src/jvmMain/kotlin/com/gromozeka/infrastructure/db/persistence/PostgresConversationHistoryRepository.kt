@@ -82,13 +82,17 @@ class PostgresConversationHistoryRepository(
     override suspend fun message(threadId: Conversation.Thread.Id, messageId: Conversation.Message.Id): PositionedConversationMessage? =
         query("$JOIN WHERE tm.thread_id = ? AND tm.message_id = ?", listOf(threadId.value, messageId.value)).singleOrNull()
 
-    override suspend fun toolResults(threadId: Conversation.Thread.Id, callIds: Set<String>): List<PositionedConversationMessage> {
+    override suspend fun providerManagedToolResults(
+        threadId: Conversation.Thread.Id,
+        callIds: Set<String>,
+    ): List<PositionedConversationMessage> {
         if (callIds.isEmpty()) return emptyList()
         val placeholders = callIds.joinToString(",") { "?" }
-        return query("""$JOIN WHERE tm.thread_id = ? AND m.role <> 'RUNTIME' AND EXISTS (
-            SELECT 1 FROM jsonb_array_elements(m.message_json::jsonb -> 'content') item
-            WHERE item ->> 'type' = '$TOOL_RESULT_TYPE' AND item ->> 'toolUseId' IN ($placeholders)
-        ) ORDER BY tm.position""", listOf(threadId.value) + callIds)
+        return query(
+            "$JOIN WHERE tm.thread_id = ? AND m.role <> 'RUNTIME' " +
+                "AND m.tool_result_ids && ARRAY[$placeholders]::text[] ORDER BY tm.position",
+            listOf(threadId.value) + callIds,
+        )
     }
 
     override suspend fun selectedIds(threadId: Conversation.Thread.Id, selection: ConversationMessageSelection): List<Conversation.Message.Id> = withContext(Dispatchers.IO) {

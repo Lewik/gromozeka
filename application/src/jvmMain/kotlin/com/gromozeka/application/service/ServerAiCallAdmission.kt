@@ -98,11 +98,6 @@ class ServerAiCallAdmission(
     override suspend fun finishHttp(lease: AiAdmissionLease, outcome: AiAdmissionOutcome, feedback: AiHttpQuotaFeedback?) =
         finishOperation(lease.operation.id, null, outcome, feedback)
 
-    suspend fun acceptOperation(id: String, workerId: String) = lifecycle.withLock {
-        persist { repository.accept(id, workerId) }
-        queue.accept(id)
-    }
-
     suspend fun finishOperation(id: String, workerId: String?, outcome: AiAdmissionOutcome, raw: AiHttpQuotaFeedback? = null) {
         repository.findCompletion(id, workerId)?.let { completed ->
             completed.feedbackError?.let { throw AiQuotaFeedbackException(it) }

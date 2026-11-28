@@ -2,6 +2,7 @@ package com.gromozeka.infrastructure.ai.speech
 
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.shared.concurrency.DynamicConcurrencyGate
 import klog.KLoggers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -19,49 +20,52 @@ class LocalWhisperTranscriptionService(
     private val settingsProvider: SettingsProvider,
 ) {
     private val log = KLoggers.logger(this)
+    private val concurrency = DynamicConcurrencyGate()
 
     suspend fun transcribe(
         audioData: ByteArray,
         language: String,
         prompt: String?,
         settings: UserProfile.SpeechSettings.SpeechToText.LocalWhisper,
-    ): String = withContext(Dispatchers.IO) {
-        val runDir = createRunDir()
-        try {
-            val wavFile = File(runDir, "input-whisper.wav")
-            wavFile.writeBytes(audioData)
-            val modelFile = resolveModelFile(settings)
-            val outputPrefix = File(runDir, "transcript")
-            val command = buildLocalWhisperCliCommand(
-                settings = settings,
-                modelFile = modelFile,
-                outputPrefix = outputPrefix,
-                wavFile = wavFile,
-                language = language,
-                prompt = prompt,
-                audioBytes = audioData.size,
-            )
+    ): String = concurrency.withPermit(settings.maxConcurrentTranscriptions) {
+        withContext(Dispatchers.IO) {
+            val runDir = createRunDir()
+            try {
+                val wavFile = File(runDir, "input-whisper.wav")
+                wavFile.writeBytes(audioData)
+                val modelFile = resolveModelFile(settings)
+                val outputPrefix = File(runDir, "transcript")
+                val command = buildLocalWhisperCliCommand(
+                    settings = settings,
+                    modelFile = modelFile,
+                    outputPrefix = outputPrefix,
+                    wavFile = wavFile,
+                    language = language,
+                    prompt = prompt,
+                    audioBytes = audioData.size,
+                )
 
-            log.info {
-                "Local Whisper transcription requested: bytes=${audioData.size} " +
-                    "language=$language promptChars=${prompt?.length ?: 0} model=${modelFile.absolutePath}"
+                log.info {
+                    "Local Whisper transcription requested: bytes=${audioData.size} " +
+                        "language=$language promptChars=${prompt?.length ?: 0} model=${modelFile.absolutePath}"
+                }
+
+                val result = runProcess(command, settings.timeoutSeconds)
+                val transcriptFile = File("${outputPrefix.absolutePath}.txt")
+                val transcript = if (transcriptFile.exists()) {
+                    transcriptFile.readText()
+                } else {
+                    result.stdout
+                }.trim()
+
+                log.info {
+                    "Local Whisper transcription completed: textChars=${transcript.length}"
+                }
+
+                transcript
+            } finally {
+                runDir.deleteRecursively()
             }
-
-            val result = runProcess(command, settings.timeoutSeconds)
-            val transcriptFile = File("${outputPrefix.absolutePath}.txt")
-            val transcript = if (transcriptFile.exists()) {
-                transcriptFile.readText()
-            } else {
-                result.stdout
-            }.trim()
-
-            log.info {
-                "Local Whisper transcription completed: textChars=${transcript.length}"
-            }
-
-            transcript
-        } finally {
-            runDir.deleteRecursively()
         }
     }
 
